@@ -9,6 +9,16 @@ Fournir les vues et actions admin/support/finance necessaires pour exploiter les
 - Feature 02 RBAC.
 - Features 04 a 12 selon vues activees.
 
+## Gate documentaire obligatoire
+
+Avant implementation :
+
+1. Lire via Context7 Next.js pour architecture admin UI et data loading.
+2. Lire via Context7 Hono pour middleware auth/role/requestId.
+3. Lire via Context7 Prisma pour requetes admin, pagination et filtres audit.
+4. Lire OWASP Authorization/Logging pour least privilege et audit.
+5. Documenter la matrice de roles avant de coder les endpoints.
+
 ## User stories
 
 ### Story 13.1 - Dashboard admin
@@ -73,8 +83,14 @@ Tests :
 
 ## Definition of Done
 
+- Criteres de tests a valider :
+  - Tests RBAC par role admin/support/finance/super admin.
+  - Tests integration dashboard et filtres audit.
+  - Tests audit ecrit pour chaque action sensible.
+  - Tests secrets provider masques.
+  - Tests action sensible sans reason refusee.
+  - Test E2E support : recherche utilisateur -> consultation sans fuite.
 - Dashboard utilisable.
 - Audit exploitable.
 - Support peut aider sans secrets.
 - Actions sensibles tracees.
-

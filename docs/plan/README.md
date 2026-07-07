@@ -16,6 +16,30 @@ Ce dossier transforme les PRD de `prd/features/` en plan de developpement Scrum.
 - Chaque fin de sprint : demo, retrospective, mise a jour du backlog.
 - Aucune feature n est consideree terminee sans tests, revue, documentation et criteres d acceptation valides.
 
+## Gate documentaire obligatoire avant implementation
+
+Ce gate bloque le developpement. Aucun agent ne doit installer, importer ou coder une librairie, un framework, un SDK, une API externe ou un service cloud sans avoir lu la documentation actuelle.
+
+Pour chaque story technique :
+
+1. Lister les technologies touchees : Next.js, Hono, Prisma, PostgreSQL, Colyseus, BullMQ, Redis, Fapshi, WhatsApp, Docker, OWASP ou autre.
+2. Pour chaque librairie/framework/SDK/API/CLI/cloud service, lancer Context7 :
+   - `npx ctx7@latest library <Nom officiel> "<question complete de la story>"`
+   - choisir l ID le plus pertinent.
+   - `npx ctx7@latest docs <libraryId> "<question complete de la story>"`
+3. Noter dans la story :
+   - library ID utilise ;
+   - version/package installe ou vise ;
+   - imports exacts verifies ;
+   - exemple officiel ou page officielle utilisee ;
+   - peer dependencies ;
+   - contraintes TypeScript/config ;
+   - decisions prises et risques restants.
+4. Si Context7 echoue par quota, stopper la story et demander `npx ctx7@latest login` ou `CONTEXT7_API_KEY`.
+5. Si Context7 ne couvre pas un provider, lire uniquement la documentation officielle du provider.
+6. Ne jamais coder a partir de memoire, d une ancienne API supposee ou d une reponse LLM non verifiee.
+7. Si la version installee ne correspond pas a la documentation lue, resoudre d abord le conflit de version avant de coder.
+
 ## Ordre recommande
 
 1. `00-initialisation-projet.md`
@@ -46,6 +70,27 @@ Une feature peut entrer en sprint seulement si :
 - Les criteres d acceptation sont testables.
 - Les risques securite, paiement, legal ou data sont identifies.
 - Les donnees, API et evenements sont listes.
+- Le gate documentaire obligatoire est execute pour toutes les technologies touchees.
+
+## Criteres de tests obligatoires
+
+Avant de marquer une story ou une feature comme terminee, l agent doit valider et documenter les tests suivants selon le perimetre touche :
+
+- Tests unitaires : fonctions metier, calculs, transitions d etat, helpers, resolvers.
+- Tests d integration : API + DB, transactions, permissions, erreurs normalisees, jobs.
+- Tests E2E : parcours utilisateur critique depuis l UI jusqu a la persistance.
+- Tests de concurrence : double clic, derniere place, double paiement, double debit wallet, double distribution.
+- Tests de securite : auth, RBAC, BOLA, rate limits, cookies, webhook secret, donnees privees.
+- Tests de recovery : retry worker, webhook rejoue, crash game-server, job relance.
+- Tests d observabilite : audit log, requestId, evenement metier, metrique critique.
+- Tests de non-regression : ancienne erreur reproduite puis bloquee par test.
+
+Regle stricte :
+
+- Une feature financiere, live, auth ou admin ne peut pas etre consideree terminee sans au minimum tests unitaires + integration + securite.
+- Une feature exposee a l utilisateur ne peut pas etre consideree terminee sans au minimum un test E2E du parcours principal.
+- Une feature qui touche paiement, wallet, capacite ou resultats ne peut pas etre consideree terminee sans test de concurrence/idempotence.
+- Si un type de test est impossible, l agent doit expliquer pourquoi dans la fiche sprint et creer une tache technique de rattrapage.
 
 ## Definition of Done globale
 
@@ -57,7 +102,7 @@ Une feature est terminee seulement si :
 - Jobs/events necessaires implementes ou explicitement reportes.
 - Validations, erreurs et permissions couvertes.
 - Tests unitaires, integration et E2E pertinents passent.
+- Les criteres de tests obligatoires de la fiche feature sont valides et documentes.
 - Logs, metriques et audit minimum branches.
 - Documentation mise a jour.
 - Demo sprint acceptee par le Product Owner.
-

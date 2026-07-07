@@ -9,6 +9,15 @@ Finaliser une session, publier les resultats officiels et crediter les wallets d
 - Feature 07 wallet/ledger.
 - Feature 10 game-engine.
 
+## Gate documentaire obligatoire
+
+Avant implementation :
+
+1. Lire via Context7 Prisma/PostgreSQL pour transactions, retries et idempotence.
+2. Lire via Context7 BullMQ pour jobs de distribution, retries et deduplication par `jobId`.
+3. Lire OWASP Business Logic pour double payout, races et abus de workflow.
+4. Documenter les formules XAF/bps, policy de reliquat et idempotency keys avant de coder.
+
 ## User stories
 
 ### Story 12.1 - Schema resultats
@@ -77,8 +86,15 @@ Tests :
 
 ## Definition of Done
 
+- Criteres de tests a valider :
+  - Tests unitaires calcul prize pool, commission, winner split, reliquat.
+  - Tests integration finalize session.
+  - Tests idempotence distribution.
+  - Tests recovery worker crash au milieu distribution.
+  - Tests ledger/wallet credits.
+  - Tests correction exige role + reason + audit.
+  - Test E2E session terminee -> resultats -> wallet credite.
 - Resultats officiels figes.
 - Distribution idempotente.
 - Wallet credite via ledger.
 - Aucun cash-out V1.
-

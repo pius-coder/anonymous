@@ -9,6 +9,16 @@ Permettre a un admin de creer, configurer, simuler, publier et annuler une sessi
 - Feature 02 auth/RBAC.
 - Sprint 0 modeles DB.
 
+## Gate documentaire obligatoire
+
+Avant implementation :
+
+1. Lire via Context7 Prisma pour OCC, transactions et migrations.
+2. Lire la documentation PostgreSQL sur isolation/retry si `Serializable` est utilise.
+3. Lire via Context7 Hono pour routes admin, validation et erreurs.
+4. Lire via Context7 Next.js pour formulaires/admin UI selon architecture retenue.
+5. Documenter les formules XAF/bps, contraintes DB et pattern de versioning avant de coder.
+
 ## User stories
 
 ### Story 4.1 - Schema session admin
@@ -77,8 +87,14 @@ Tests :
 
 ## Definition of Done
 
+- Criteres de tests a valider :
+  - Tests unitaires formules XAF/bps.
+  - Tests integration creation DRAFT, simulation, publication, cancel.
+  - Tests RBAC admin.
+  - Tests concurrence `configVersion`/OCC.
+  - Tests audit before/after/reason.
+  - Test E2E admin : creer -> simuler -> publier session.
 - Admin peut creer, simuler et publier une session.
 - Les invariants economiques sont testes.
 - Les actions sensibles sont auditees.
 - Feature 01 peut afficher sessions publiees.
-

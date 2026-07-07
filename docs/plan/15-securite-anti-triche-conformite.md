@@ -9,6 +9,17 @@ Durcir toute la plateforme : session, autorisation, anti-cheat, anti-fraude, mod
 - Toutes les features 01 a 14.
 - Peut aussi etre travaillee transversalement a chaque sprint.
 
+## Gate documentaire obligatoire
+
+Avant implementation :
+
+1. Lire les references OWASP actuelles : Session Management, Authorization, API Security, Business Logic, Logging, Password Storage.
+2. Lire via Context7 Hono pour secure headers, body limit, cookies, requestId, validation et rate limiting si librairie retenue.
+3. Lire via Context7 Next.js pour Data Security et separation server/client.
+4. Relire via Context7 Colyseus pour anti-cheat live si les signaux viennent des rooms.
+5. Lire la documentation de toute librairie de rate limit, device fingerprint ou validation avant installation.
+6. Documenter les menaces, controles, tests adversariaux et gates compliance avant de coder.
+
 ## User stories
 
 ### Story 15.1 - Securite API et session
@@ -96,9 +107,16 @@ Tests :
 
 ## Definition of Done
 
+- Criteres de tests a valider :
+  - Tests securite cookies, headers, rate limits.
+  - Tests BOLA sur tous les endpoints ID sensibles.
+  - Tests anti-cheat double submit, auto-click, late input.
+  - Tests webhook signature failure.
+  - Tests double payout/double debit/double inscription.
+  - Tests compliance gates : cash-out bloque, hasard dominant bloque, publication risquee bloquee.
+  - Tests audit/moderation role + reason.
 - Securite transversale testee.
 - Anti-cheat minimum actif.
 - Cash-out bloque.
 - Legal/compliance gates visibles.
 - Tests adversariaux passent.
-

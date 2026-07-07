@@ -4,6 +4,16 @@
 
 Verifier que le produit complet fonctionne de bout en bout, que les risques critiques sont maitrises et que la V1 peut etre lancee en environnement controle.
 
+## Gate documentaire obligatoire
+
+Avant recette finale :
+
+1. Reexecuter le gate documentaire pour toutes les technologies effectivement installees.
+2. Comparer versions installees, lockfile et documentation lue.
+3. Verifier les breaking changes connus pour Colyseus, Prisma, Next.js, Hono, BullMQ, Redis, Fapshi et WhatsApp.
+4. Bloquer le go/no-go si une implementation depend d une API non documentee ou d une version contradictoire.
+5. Archiver dans la recette finale les library IDs Context7, URLs officielles et versions validees.
+
 ## Parcours de recette E2E obligatoires
 
 ### Parcours 1 - Decouverte et inscription
@@ -120,6 +130,14 @@ Validation :
 
 ## Definition of Done projet
 
+- Criteres de tests a valider :
+  - Typecheck, lint, tests unitaires, integration et E2E passent en CI.
+  - Tous les parcours de recette E2E obligatoires sont executes.
+  - Tests de concurrence critiques passent.
+  - Tests securite critiques passent.
+  - Tests recovery critiques passent.
+  - Tests observabilite/audit passent.
+  - Rapport de tests final archive avec version, commit, environnement et anomalies restantes.
 - Tous les parcours E2E critiques passent.
 - Aucune faille critique connue.
 - Aucune incoherence ledger/wallet.
@@ -127,4 +145,3 @@ Validation :
 - Aucun retrait argent reel en V1.
 - Product Owner accepte la demo finale.
 - Go/no-go documente.
-

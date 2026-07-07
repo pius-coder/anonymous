@@ -4,6 +4,16 @@
 
 Creer le socle technique permettant de developper les 15 features sans improvisation : monorepo, services, base de donnees, environnements, conventions, CI et strategie de test.
 
+## Gate documentaire obligatoire
+
+Avant de creer ou installer quoi que ce soit :
+
+1. Lire via Context7 les docs actuelles de Next.js, Hono, Prisma, Colyseus, BullMQ, Redis et Docker Compose.
+2. Pour chaque outil, noter le library ID Context7, la version visee, la commande d installation, les peer dependencies et les contraintes TypeScript.
+3. Verifier les exemples officiels de setup serveur/API avant de scaffold.
+4. Pour Colyseus, verifier la version actuelle et les imports serveur recommandes avant de choisir `defineServer`, `defineRoom`, `Room`, `Client`, `Schema`, `type` ou un transport.
+5. Si une doc est indisponible ou contradictoire avec la version installee, bloquer la story et resoudre la version avant de coder.
+
 ## Backlog sprint
 
 ### Story 0.1 - Initialiser le monorepo
@@ -82,9 +92,15 @@ Tests :
 
 ## Definition of Done Sprint 0
 
+- Criteres de tests a valider :
+  - Typecheck global.
+  - Lint global.
+  - Tests unitaires du package shared/db initial.
+  - Test integration DB : migration + seed + connexion.
+  - Test integration Redis : connexion worker.
+  - Test CI locale : toutes les commandes de validation executables.
 - Tous les services demarrent localement.
 - DB et Redis fonctionnent.
 - Prisma migre et seed.
 - CI minimale execute typecheck, lint et tests.
 - Le projet est pret pour Feature 01.
-

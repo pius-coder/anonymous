@@ -10,6 +10,16 @@ Livrer un catalogue public fiable : landing, liste des sessions publiques, detai
 - Modeles `GameSession` et `SessionRegistration` disponibles.
 - Seed avec sessions `PUBLIC`, `UNLISTED`, `PRIVATE`.
 
+## Gate documentaire obligatoire
+
+Avant implementation :
+
+1. Lire via Context7 les docs actuelles de Next.js pour App Router, metadata et chargement serveur.
+2. Lire via Context7 Hono pour routing, validation, erreurs et middleware.
+3. Lire via Context7 Prisma pour requetes, pagination et calculs de capacite.
+4. Noter les imports exacts, patterns de routing et conventions de response avant de coder.
+5. Ne pas creer les pages/API tant que le gate documentaire n est pas documente dans les notes de sprint.
+
 ## User stories
 
 ### Story 1.1 - Landing publique
@@ -85,9 +95,15 @@ Tests :
 
 ## Definition of Done
 
+- Criteres de tests a valider :
+  - Test unitaires du calcul `placesRemaining`.
+  - Tests integration API pour `PUBLIC`, `UNLISTED`, `PRIVATE`.
+  - Tests UI catalogue et detail session.
+  - Test E2E visiteur : landing -> catalogue -> detail -> CTA.
+  - Test securite : session `PRIVATE` ne fuite pas.
+  - Test contenu : aucun wording interdit.
 - Landing, catalogue et detail utilisables.
 - Les visibilites `PUBLIC`, `UNLISTED`, `PRIVATE` sont respectees.
 - Les tests API et UI passent.
 - Aucun texte public ne promet un gain garanti.
 - Demo : ouvrir catalogue, detail public, lien unlisted, private bloque.
-

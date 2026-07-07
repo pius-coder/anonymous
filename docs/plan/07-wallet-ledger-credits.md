@@ -10,6 +10,16 @@ Gerer les credits internes non retirables en V1 avec ledger obligatoire, solde c
 - Feature 05 inscription.
 - Feature 06 paiement.
 
+## Gate documentaire obligatoire
+
+Avant implementation :
+
+1. Lire via Context7 Prisma pour transactions interactives et isolation.
+2. Lire la documentation PostgreSQL sur `Serializable` et retries.
+3. Lire via Context7 Hono pour routes securisees et validation.
+4. Lire OWASP Business Logic/Authorization pour features qui distribuent de la valeur.
+5. Documenter le pattern exact `read balance -> verify -> ledger -> update wallet` avant de coder.
+
 ## User stories
 
 ### Story 7.1 - Schema wallet/ledger
@@ -77,8 +87,15 @@ Tests :
 
 ## Definition of Done
 
+- Criteres de tests a valider :
+  - Tests unitaires calcul balance depuis ledger.
+  - Tests integration lecture wallet/ledger.
+  - Tests transaction debit wallet + registration PAID.
+  - Tests concurrence double debit.
+  - Tests idempotence `idempotencyKey`.
+  - Tests securite : autre wallet inaccessible.
+  - Test retrait argent reel bloque.
 - Aucune mutation sans ledger.
 - Balance jamais negative.
 - Wallet utilisable pour inscription.
 - Retrait argent reel bloque.
-

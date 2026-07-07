@@ -10,6 +10,16 @@ Livrer un profil joueur prive, un profil public minimal optionnel, un historique
 - Feature 05 inscriptions.
 - Feature 12 resultats pour statistiques finales completes.
 
+## Gate documentaire obligatoire
+
+Avant implementation :
+
+1. Lire via Context7 Prisma pour requetes relationnelles, agregations et pagination.
+2. Lire via Context7 Next.js si les donnees profil sont chargees depuis server components ou routes client.
+3. Lire via Context7 Hono pour validation `PATCH` et erreurs standard.
+4. Verifier les patterns de protection data/authorization avant de coder les profils publics/prives.
+5. Documenter quelles donnees sont exposees cote client et lesquelles restent serveur.
+
 ## User stories
 
 ### Story 3.1 - Profil prive
@@ -75,8 +85,13 @@ Tests :
 
 ## Definition of Done
 
+- Criteres de tests a valider :
+  - Tests unitaires recomputation statistiques.
+  - Tests integration `GET/PATCH /players/me`.
+  - Tests ownership : un joueur ne lit/modifie pas le profil d un autre.
+  - Tests privacy profil public : email, telephone, wallet, ledger masques.
+  - Test E2E joueur : consulter profil + historique.
 - Profil et historique utilisables.
 - Stats coherentes avec resultats officiels.
 - Donnees sensibles protegees.
 - Tests ownership et privacy passent.
-

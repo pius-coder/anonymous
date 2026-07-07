@@ -9,6 +9,16 @@ Creer un moteur de jeu separe de Colyseus, deterministe, testable et rejouable.
 - Feature 09 live.
 - Feature 11 definitions mini-jeux peut etre en parallele.
 
+## Gate documentaire obligatoire
+
+Avant implementation :
+
+1. Relire la documentation Colyseus actuelle si le moteur consomme des structures venant de la room.
+2. Lire via Context7 Prisma/PostgreSQL pour la finalisation transactionnelle de round.
+3. Lire les references OWASP Business Logic pour tester les abus de workflow.
+4. Verifier les librairies de test/propriete si ajoutees au projet.
+5. Documenter les interfaces pures du moteur avant de coder, afin que Colyseus ne porte pas les regles metier.
+
 ## User stories
 
 ### Story 10.1 - Structure game-engine
@@ -73,8 +83,14 @@ Tests :
 
 ## Definition of Done
 
+- Criteres de tests a valider :
+  - Tests unitaires resolvers par fixtures.
+  - Tests determinisme : meme input/config/seed = meme output.
+  - Tests tie-break et missing inputs.
+  - Tests finalisation round transactionnelle.
+  - Tests idempotence double close.
+  - Tests replay litige identique ou mismatch signale.
 - Game-engine hors Colyseus.
 - Resolvers purs.
 - Meme input = meme output.
 - Finalisation transactionnelle testee.
-

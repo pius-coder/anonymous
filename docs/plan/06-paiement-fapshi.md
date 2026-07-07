@@ -9,6 +9,17 @@ Transformer une inscription pending en inscription payee via Fapshi avec webhook
 - Feature 05 inscriptions.
 - Variables Fapshi sandbox disponibles.
 
+## Gate documentaire obligatoire
+
+Avant implementation :
+
+1. Lire la documentation officielle Fapshi actuelle : initiate-pay, payment status, webhooks, sandbox/live, secrets, limites de polling.
+2. Lire via Context7 Hono pour webhook public sans session utilisateur, body parsing et reponse rapide.
+3. Lire via Context7 Prisma/PostgreSQL pour idempotence et transaction payment + registration.
+4. Lire via Context7 BullMQ pour reconciliation et retries.
+5. Documenter les headers exacts Fapshi, dont `x-wh-secret`, et les statuts provider avant de coder.
+6. Si la doc Fapshi contredit les notes PRD, stopper et mettre a jour la fiche PRD avant implementation.
+
 ## User stories
 
 ### Story 6.1 - Schema paiement
@@ -80,8 +91,15 @@ Tests :
 
 ## Definition of Done
 
+- Criteres de tests a valider :
+  - Tests unitaires mapping statuts Fapshi -> statuts internes.
+  - Tests integration initiate payment.
+  - Tests webhook `x-wh-secret` valide/invalide.
+  - Tests idempotence webhook replay.
+  - Tests reconciliation worker retry.
+  - Tests concurrence : webhook double + registration deja modifiee.
+  - Test sandbox Fapshi documente ou mock contractuel si sandbox indisponible.
 - Paiement webhook-first.
 - Webhook securise.
 - Pas de double validation.
 - Reconciliation disponible.
-

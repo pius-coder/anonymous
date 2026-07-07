@@ -10,6 +10,18 @@ Orchestrer une session live avec Colyseus : room, phases, timers, actions, recon
 - Colyseus configure.
 - Redis et BullMQ disponibles.
 
+## Gate documentaire obligatoire
+
+Avant implementation :
+
+1. Lire via Context7 la documentation Colyseus actuelle avec une question precise sur setup serveur TypeScript, rooms, schema, transport, presence, matchmaking, clock et reconnection.
+2. Verifier la version installee de `colyseus` et des packages `@colyseus/*` avant d ecrire les imports.
+3. Confirmer depuis la doc actuelle les imports serveur. Verification Context7 du 2026-07-07 : la doc Colyseus `/colyseus/docs` montre `import { defineServer, defineRoom } from "colyseus"` pour configurer le serveur, `@colyseus/schema` pour `Schema`, `MapSchema`, `type`, et des transports comme `@colyseus/ws-transport` selon le setup.
+4. Ne pas utiliser l ancienne classe `Server` ou des imports supposes sans confirmer qu ils correspondent exactement a la version installee.
+5. Verifier peer dependencies, transport, RedisPresence/RedisDriver si multi-process, et contraintes TypeScript des decorators avant de coder.
+6. Lire via Context7 BullMQ pour deadline recovery et Redis pour presence.
+7. Documenter les exemples officiels lus et les decisions de version dans les notes de sprint.
+
 ## User stories
 
 ### Story 9.1 - Reservation live
@@ -75,8 +87,15 @@ Tests :
 
 ## Definition of Done
 
+- Criteres de tests a valider :
+  - Tests integration reservation live.
+  - Tests Colyseus room creation avec version/imports confirmes par doc.
+  - Tests state sync minimal sans donnees sensibles.
+  - Tests deadline DB + timer room.
+  - Tests late input refuse.
+  - Tests reconnexion et non-replay action.
+  - Test recovery : worker ferme round si room indisponible.
 - Room live fonctionnelle.
 - Timer officiel durable.
 - Reconnexion testee.
 - Crash/recovery minimal teste.
-

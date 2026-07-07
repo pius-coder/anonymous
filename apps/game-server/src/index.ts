@@ -1,16 +1,13 @@
-import { Server } from "colyseus";
-import { WebSocketTransport } from "@colyseus/ws-transport";
+import { defineServer, defineRoom } from "colyseus";
+import { GameRoom } from "./rooms/GameRoom.js";
 
 const port = Number(process.env.GAME_PORT) || 2567;
 
-const gameServer = new Server({
-  transport: new WebSocketTransport({
-    port,
-  }),
+const server = defineServer({
+  rooms: {
+    game: defineRoom(GameRoom),
+  },
 });
 
-console.log(`Game server starting on port ${port}`);
-
-gameServer.listen(port).then(() => {
-  console.log(`Game server listening on port ${port}`);
-});
+server.listen(port);
+console.log(`Game server listening on port ${port}`);

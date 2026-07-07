@@ -9,6 +9,16 @@ Permettre a un joueur connecte de s inscrire a une session sans double inscripti
 - Feature 02 auth.
 - Feature 04 sessions publiees.
 
+## Gate documentaire obligatoire
+
+Avant implementation :
+
+1. Lire via Context7 Prisma pour transactions interactives, OCC et gestion de contention.
+2. Lire la documentation PostgreSQL sur isolation si la derniere place est protegee par transaction forte.
+3. Lire via Context7 BullMQ pour jobs d expiration et `jobId` idempotent.
+4. Lire via Context7 Hono pour validation, auth middleware et erreurs.
+5. Documenter le choix technique de reservation capacite avant de coder.
+
 ## User stories
 
 ### Story 5.1 - Schema inscription
@@ -78,8 +88,14 @@ Tests :
 
 ## Definition of Done
 
+- Criteres de tests a valider :
+  - Tests unitaires transitions `SessionRegistrationStatus`.
+  - Tests integration register, cancel, status.
+  - Tests concurrence derniere place et double clic.
+  - Tests idempotence expiration reservation.
+  - Tests securite ownership registration.
+  - Test E2E joueur : detail session -> inscription pending.
 - Inscription concurrente fiable.
 - Aucun depassement capacite.
 - Aucune double inscription active.
 - Expiration testee.
-

@@ -9,6 +9,16 @@ Informer les joueurs et communautes sans rendre WhatsApp critique pour le foncti
 - Feature 01 liens partageables.
 - Feature 05/06/08/12 events produit.
 
+## Gate documentaire obligatoire
+
+Avant implementation :
+
+1. Lire la documentation officielle Meta WhatsApp Business Platform si la gateway est implementee.
+2. Lire via Context7 BullMQ pour rappels retardes et deduplication.
+3. Lire via Context7 Hono pour webhook WhatsApp.
+4. Lire via Context7 Prisma pour logs de livraison et preferences.
+5. Documenter opt-in, templates, limites et comportement en cas d echec avant de coder.
+
 ## User stories
 
 ### Story 14.1 - Notifications in-app
@@ -75,8 +85,14 @@ Tests :
 
 ## Definition of Done
 
+- Criteres de tests a valider :
+  - Tests unitaires template/message safe.
+  - Tests integration preferences et notifications in-app.
+  - Tests BullMQ rappels deduplices.
+  - Tests opt-in requis pour WhatsApp non transactionnel.
+  - Tests gateway down non bloquante.
+  - Test privacy : pas de donnees privees dans message partage.
 - Notifications critiques visibles web app.
 - Rappels deduplices.
 - WhatsApp optionnel.
 - Aucun blocage coeur produit par WhatsApp.
-
