@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "agent": {
+    "explore-codebase": {
+      "description": "Fast codebase exploration agent. Finds existing patterns, files, utilities, and related code.",
+      "mode": "subagent",
+      "permission": { "edit": "deny", "bash": "ask" }
+    },
+    "explore-docs": {
+      "description": "Library documentation research agent. Fetches current API docs and code examples.",
+      "mode": "subagent",
+      "permission": { "edit": "deny", "bash": "allow" }
+    },
+    "websearch": {
+      "description": "Web search agent for approaches, best practices, and gotchas.",
+      "mode": "subagent",
+      "permission": { "edit": "deny", "bash": "allow" }
+    }
+  },
+  "skills": {
+    "paths": [".opencode/skills", "/home/afreeserv/.agents/skills", "/home/afreeserv/.claude/skills"]
+  }
+}

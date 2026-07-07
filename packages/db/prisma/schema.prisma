@@ -1,0 +1,277 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum UserRole {
+  PLAYER
+  ORGANIZER
+  ADMIN
+}
+
+enum GameSessionStatus {
+  DRAFT
+  PUBLISHED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum SessionRegistrationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  WAITLISTED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum LedgerDirection {
+  CREDIT
+  DEBIT
+}
+
+enum LedgerType {
+  ENTRY_FEE
+  PRIZE
+  REFUND
+  BONUS
+}
+
+enum RoundStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+}
+
+// Models
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  phone     String?
+  name      String?
+  avatarUrl String?
+  role      UserRole @default(PLAYER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile          PlayerProfile?
+  registrations    SessionRegistration[]
+  wallet           Wallet?
+  ledgers          LedgerEntry[]
+  auditLogs        AuditLog[]
+  gameResults      GameResult[]
+  prizeDistributions PrizeDistribution[]
+
+  @@index([email])
+}
+
+model PlayerProfile {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  username  String  @unique
+  bio       String?
+  level     Int     @default(1)
+  xp        Int     @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model GameSession {
+  id            String            @id @default(cuid())
+  code          String            @unique
+  name          String
+  description   String?
+  status        GameSessionStatus @default(DRAFT)
+  maxPlayers    Int               @default(10)
+  entryFee      Float             @default(0)
+  prizePool     Float             @default(0)
+  startTime     DateTime?
+  endTime       DateTime?
+  isPublic      Boolean           @default(true)
+  createdBy     String
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  registrations  SessionRegistration[]
+  rounds         RoundInstance[]
+  gameResults    GameResult[]
+  prizeDistributions PrizeDistribution[]
+
+  @@index([code])
+  @@index([status])
+  @@index([createdBy])
+}
+
+model SessionRegistration {
+  id        String                    @id @default(cuid())
+  userId    String
+  sessionId String
+  status    SessionRegistrationStatus @default(PENDING)
+  paidAt    DateTime?
+  createdAt DateTime                  @default(now())
+  updatedAt DateTime                  @updatedAt
+
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sessionId])
+  @@index([userId])
+  @@index([sessionId])
+}
+
+model PaymentTransaction {
+  id        String        @id @default(cuid())
+  userId    String
+  sessionId String?
+  amount    Float
+  currency  String        @default("XAF")
+  status    PaymentStatus @default(PENDING)
+  provider  String?
+  reference String?
+  metadata  Json?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  ledger LedgerEntry[]
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([reference])
+}
+
+model Wallet {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  balance   Float   @default(0)
+  currency  String  @default("XAF")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ledgers LedgerEntry[]
+
+  @@index([userId])
+}
+
+model LedgerEntry {
+  id            String         @id @default(cuid())
+  walletId      String
+  userId        String
+  amount        Float
+  direction     LedgerDirection
+  type          LedgerType
+  description   String?
+  paymentId     String?
+  sessionId     String?
+  createdAt     DateTime       @default(now())
+
+  wallet  Wallet              @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment PaymentTransaction? @relation(fields: [paymentId], references: [id])
+
+  @@index([walletId])
+  @@index([userId])
+  @@index([paymentId])
+  @@index([sessionId])
+}
+
+model RoundInstance {
+  id        String       @id @default(cuid())
+  sessionId String
+  roundNum  Int
+  status    RoundStatus  @default(PENDING)
+  startTime DateTime?
+  endTime   DateTime?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  results RoundResult[]
+
+  @@unique([sessionId, roundNum])
+  @@index([sessionId])
+}
+
+model RoundResult {
+  id       String @id @default(cuid())
+  roundId  String
+  playerId String
+  score    Int    @default(0)
+  rank     Int?
+  metadata Json?
+
+  round RoundInstance @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, playerId])
+  @@index([roundId])
+  @@index([playerId])
+}
+
+model GameResult {
+  id        String  @id @default(cuid())
+  sessionId String
+  userId    String
+  finalRank Int?
+  totalScore Int   @default(0)
+  prizeWon  Float  @default(0)
+  createdAt DateTime @default(now())
+
+  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([userId])
+}
+
+model PrizeDistribution {
+  id        String  @id @default(cuid())
+  sessionId String
+  userId    String
+  amount    Float
+  rank      Int
+  paidAt    DateTime?
+  createdAt DateTime @default(now())
+
+  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  oldData   Json?
+  newData   Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([createdAt])
+}
