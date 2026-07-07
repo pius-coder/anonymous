@@ -1,3 +1,6 @@
+import { config } from "dotenv";
+import { resolve } from "path";
+config({ path: resolve("../../.env") });
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -6,6 +9,9 @@ import { requestId } from "./middleware/requestId.js";
 import { secureHeaders } from "./middleware/secureHeaders.js";
 import { bodyLimit } from "./middleware/bodyLimit.js";
 import health from "./routes/health.js";
+import publicSessions from "./routes/public/sessions.js";
+import publicSessionDetail from "./routes/public/session-detail.js";
+import share from "./routes/share.js";
 
 const app = new Hono();
 
@@ -16,6 +22,9 @@ app.use("*", secureHeaders);
 app.use("*", bodyLimit());
 
 app.route("/health", health);
+app.route("/v1/public/sessions", publicSessions);
+app.route("/v1/public/sessions", publicSessionDetail);
+app.route("/v1/share", share);
 
 const port = Number(process.env.PORT) || 3001;
 

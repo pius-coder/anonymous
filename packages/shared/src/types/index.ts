@@ -28,3 +28,21 @@ export interface UserContext {
   email: string;
   role: string;
 }
+
+export interface PublicSession {
+  code: string;
+  name: string;
+  description: string | null;
+  entryFee: number;
+  maxPlayers: number;
+  prizePool: number;
+  startTime: string | null;
+  endTime: string | null;
+  status: string;
+  isPublic: boolean;
+}
+
+export interface PublicSessionDetail extends PublicSession {
+  placesRemaining: number;
+  registrationCount: number;
+}
