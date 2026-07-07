@@ -11,6 +11,6 @@ const gameServer = new Server({
 
 console.log(`Game server starting on port ${port}`);
 
-gameServer.listen().then(() => {
+gameServer.listen(port).then(() => {
   console.log(`Game server listening on port ${port}`);
 });

@@ -11,8 +11,8 @@ const app = new Hono();
 
 app.use("*", logger());
 app.use("*", cors());
-app.use("*", requestId());
-app.use("*", secureHeaders());
+app.use("*", requestId);
+app.use("*", secureHeaders);
 app.use("*", bodyLimit());
 
 app.route("/health", health);

@@ -1,34 +1,27 @@
 {
-  "name": "anonymous",
-  "version": "0.1.0",
+  "name": "session-jeu",
   "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "next": "16.2.10",
-    "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:migrate": "turbo run db:migrate --filter=@session-jeu/db",
+    "db:seed": "turbo run db:seed --filter=@session-jeu/db",
+    "db:studio": "turbo run db:studio --filter=@session-jeu/db",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.10",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  },
-  "ignoreScripts": [
-    "sharp",
-    "unrs-resolver"
-  ],
-  "trustedDependencies": [
-    "sharp",
-    "unrs-resolver"
-  ]
+    "@eslint/js": "^9.15.0",
+    "eslint": "^10.6.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.4",
+    "turbo": "^2.10.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.15.0"
+  }
 }
