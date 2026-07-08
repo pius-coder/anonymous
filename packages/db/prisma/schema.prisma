@@ -115,6 +115,26 @@ enum DisputeWindowStatus {
   CLOSED
 }
 
+enum SupportCaseStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AdminActionApprovalStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+}
+
 enum MiniGameFamily {
   SOLO
   DUEL
@@ -163,6 +183,11 @@ model User {
   miniGameDefinitions    MiniGameDefinition[]
   disputeRequests        DisputeWindow[]       @relation("DisputeRequestedBy")
   statsSnapshot          PlayerStatsSnapshot?
+  supportCasesCreated    SupportCase[]         @relation("SupportCaseCreatedBy")
+  supportCasesForUser    SupportCase[]         @relation("SupportCaseUser")
+  incidentsCreated       IncidentLog[]         @relation("IncidentCreatedBy")
+  actionRequests         AdminActionApproval[] @relation("AdminActionRequestedBy")
+  actionApprovals        AdminActionApproval[] @relation("AdminActionApprovedBy")
 
   @@index([email])
   @@index([role])
@@ -298,6 +323,7 @@ model GameSession {
   gameEvents         GameEvent[]
   commissionRecord   CommissionRecord?
   disputeWindow      DisputeWindow?
+  incidentLogs       IncidentLog[]
 
   @@index([code])
   @@index([status])
@@ -802,6 +828,75 @@ model AuditLog {
   @@index([action])
   @@index([requestId])
   @@index([createdAt])
+}
+
+model SupportCase {
+  id          String            @id @default(cuid())
+  userId      String
+  createdById String
+  status      SupportCaseStatus @default(OPEN)
+  subject     String
+  description String?
+  resolution  String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  closedAt    DateTime?
+
+  user      User @relation("SupportCaseUser", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy User @relation("SupportCaseCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdById])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model IncidentLog {
+  id          String           @id @default(cuid())
+  createdById String
+  sessionId   String?
+  severity    IncidentSeverity @default(MEDIUM)
+  category    String
+  title       String
+  description String?
+  createdAt   DateTime         @default(now())
+  resolvedAt  DateTime?
+
+  createdBy User         @relation("IncidentCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  session   GameSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([createdById])
+  @@index([sessionId])
+  @@index([severity])
+  @@index([category])
+  @@index([createdAt])
+}
+
+model AdminActionApproval {
+  id             String                    @id @default(cuid())
+  action         String
+  entity         String
+  entityId       String?
+  status         AdminActionApprovalStatus @default(REQUESTED)
+  reason         String
+  requestedById  String
+  approvedById   String?
+  approvalReason String?
+  payload        Json?
+  beforeData     Json?
+  afterData      Json?
+  requestedAt    DateTime                  @default(now())
+  decidedAt      DateTime?
+
+  requestedBy User  @relation("AdminActionRequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
+  approvedBy  User? @relation("AdminActionApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@index([action])
+  @@index([entity, entityId])
+  @@index([status])
+  @@index([requestedById])
+  @@index([approvedById])
+  @@index([requestedAt])
 }
 
 model ShareLink {

@@ -30,6 +30,7 @@ import adminMinigames from "./routes/admin/minigames.js";
 import results from "./routes/results.js";
 import adminResults from "./routes/admin/results.js";
 import players from "./routes/players.js";
+import adminOperations from "./routes/admin/operations.js";
 
 const app = new Hono();
 
@@ -61,6 +62,7 @@ app.route("/v1/admin/minigames", adminMinigames);
 app.route("/v1", results);
 app.route("/v1/admin", adminResults);
 app.route("/v1", players);
+app.route("/v1/admin", adminOperations);
 
 const port = Number(process.env.PORT) || 3001;
 

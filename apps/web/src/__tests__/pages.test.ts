@@ -3,6 +3,7 @@ import { readFileSync } from "fs";
 
 const filesToCheck = [
   "src/app/page.tsx",
+  "src/app/admin/page.tsx",
   "src/app/catalogue/page.tsx",
   "src/app/session/[code]/page.tsx",
   "src/components/SessionCard.tsx",
@@ -35,6 +36,11 @@ describe("Page Exports", () => {
 
   it("catalogue page has default export", () => {
     const content = readFileSync("src/app/catalogue/page.tsx", "utf-8");
+    expect(content).toContain("export default");
+  });
+
+  it("admin page has default export", () => {
+    const content = readFileSync("src/app/admin/page.tsx", "utf-8");
     expect(content).toContain("export default");
   });
 

@@ -1,9 +1,11 @@
 import {
   PrismaClient,
   Prisma,
+  AdminActionApprovalStatus,
   GameSessionStatus,
   GameResultStatus,
   DisputeWindowStatus,
+  IncidentSeverity,
   LedgerDirection,
   LedgerType,
   LivePhase,
@@ -17,6 +19,7 @@ import {
   RoundStatus,
   SessionRegistrationStatus,
   SessionVisibility,
+  SupportCaseStatus,
   UserRole,
 } from "@prisma/client";
 
@@ -26,9 +29,11 @@ export const prisma = new PrismaClient({
 
 export {
   Prisma,
+  AdminActionApprovalStatus,
   GameSessionStatus,
   GameResultStatus,
   DisputeWindowStatus,
+  IncidentSeverity,
   LedgerDirection,
   LedgerType,
   LivePhase,
@@ -42,6 +47,7 @@ export {
   RoundStatus,
   SessionRegistrationStatus,
   SessionVisibility,
+  SupportCaseStatus,
   UserRole,
 };
 export default prisma;
