@@ -27,6 +27,18 @@ const dbMocks = vi.hoisted(() => ({
     gameEvent: {
       create: vi.fn(),
     },
+    gameResult: {
+      findMany: vi.fn(),
+    },
+    ledgerEntry: {
+      aggregate: vi.fn(),
+    },
+    playerStatsSnapshot: {
+      upsert: vi.fn(),
+    },
+    auditLog: {
+      create: vi.fn(),
+    },
   },
 }));
 
@@ -41,6 +53,11 @@ vi.mock("@session-jeu/db", () => ({
   },
   LedgerType: {
     PRIZE: "PRIZE",
+  },
+  GameResultStatus: {
+    WINNER: "WINNER",
+    ELIMINATED: "ELIMINATED",
+    COMPLETED: "COMPLETED",
   },
   PrizeDistributionStatus: {
     PENDING: "PENDING",
@@ -86,6 +103,20 @@ describe("credits distribution worker", () => {
       ...distribution(),
       status: "CREDITED",
     });
+    dbMocks.prisma.gameResult.findMany.mockResolvedValue([
+      { finalRank: 1, finalStatus: "WINNER" },
+    ]);
+    dbMocks.prisma.ledgerEntry.aggregate.mockResolvedValue({ _sum: { amountXaf: 1000 } });
+    dbMocks.prisma.playerStatsSnapshot.upsert.mockResolvedValue({
+      id: "stats-1",
+      userId: "winner-1",
+      sessionsPlayed: 1,
+      sessionsWon: 1,
+      winRate: 1,
+      avgFinalRank: 1,
+      creditsWonXaf: 1000,
+    });
+    dbMocks.prisma.auditLog.create.mockResolvedValue({});
   });
 
   it("credits pending distributions through an idempotent ledger key", async () => {
@@ -106,6 +137,20 @@ describe("credits distribution worker", () => {
       where: { id: "distribution-1" },
       data: expect.objectContaining({ status: "CREDITED" }),
     });
+    expect(dbMocks.prisma.playerStatsSnapshot.upsert).toHaveBeenCalledWith({
+      where: { userId: "winner-1" },
+      update: expect.objectContaining({
+        sessionsPlayed: 1,
+        sessionsWon: 1,
+        creditsWonXaf: 1000,
+      }),
+      create: expect.objectContaining({
+        userId: "winner-1",
+        sessionsPlayed: 1,
+        sessionsWon: 1,
+        creditsWonXaf: 1000,
+      }),
+    });
   });
 
   it("resumes after a partial crash without double crediting", async () => {
@@ -122,5 +167,6 @@ describe("credits distribution worker", () => {
       where: { id: "distribution-1" },
       data: expect.objectContaining({ status: "CREDITED" }),
     });
+    expect(dbMocks.prisma.playerStatsSnapshot.upsert).toHaveBeenCalled();
   });
 });

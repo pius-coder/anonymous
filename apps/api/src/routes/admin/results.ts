@@ -7,6 +7,7 @@ import {
 } from "../../auth/session.js";
 import { errorResponse, successResponse } from "../../lib/responses.js";
 import { scheduleCreditsDistribution } from "../../queues/creditsDistribution.js";
+import { recomputeSessionPlayerStats } from "../../players/playerProfile.js";
 import {
   correctionRequestSchema,
   finalizeSessionResults,
@@ -83,6 +84,7 @@ adminResults.post(
       });
     }
 
+    await recomputeSessionPlayerStats(id);
     await scheduleCreditsDistribution({ sessionId: id });
     return successResponse(
       c,
