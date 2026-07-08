@@ -91,6 +91,22 @@ enum RoundOutcomeStatus {
   ELIMINATED
 }
 
+enum MiniGameFamily {
+  SOLO
+  DUEL
+  ALLIANCE
+  TEAM
+  SURVIVAL
+  HIDDEN_ROLE
+}
+
+enum MiniGamePlayerMode {
+  SOLO
+  DUEL
+  GROUP
+  TEAM
+}
+
 // Models
 model User {
   id             String   @id @default(cuid())
@@ -120,6 +136,7 @@ model User {
   liveReservations       LiveReservation[]
   playerConnections      PlayerConnection[]
   playerActions          PlayerAction[]
+  miniGameDefinitions    MiniGameDefinition[]
 
   @@index([email])
   @@index([role])
@@ -451,26 +468,60 @@ model LedgerEntry {
 }
 
 model RoundInstance {
-  id        String      @id @default(cuid())
-  sessionId String
-  roundNum  Int
-  status    RoundStatus @default(PENDING)
-  startTime DateTime?
-  endTime   DateTime?
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id                   String      @id @default(cuid())
+  sessionId            String
+  miniGameDefinitionId String?
+  configJson           Json?
+  roundNum             Int
+  status               RoundStatus @default(PENDING)
+  startTime            DateTime?
+  endTime              DateTime?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 
-  session       GameSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  results       RoundResult[]
-  liveState     LiveSessionState[]
-  deadline      RoundDeadline?
-  playerActions PlayerAction[]
-  resolutionLog ResolutionLog?
-  outcomes      RoundOutcome[]
-  gameEvents    GameEvent[]
+  session            GameSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  results            RoundResult[]
+  liveState          LiveSessionState[]
+  deadline           RoundDeadline?
+  playerActions      PlayerAction[]
+  resolutionLog      ResolutionLog?
+  outcomes           RoundOutcome[]
+  gameEvents         GameEvent[]
+  miniGameDefinition MiniGameDefinition? @relation(fields: [miniGameDefinitionId], references: [id], onDelete: SetNull)
 
   @@unique([sessionId, roundNum])
   @@index([sessionId])
+  @@index([miniGameDefinitionId])
+}
+
+model MiniGameDefinition {
+  id                String             @id @default(cuid())
+  key               String
+  name              String
+  description       String
+  family            MiniGameFamily
+  playerMode        MiniGamePlayerMode
+  resolverId        String
+  enabled           Boolean            @default(true)
+  version           Int
+  configSchema      Json
+  defaultConfig     Json
+  allowedActions    Json
+  antiCheatPolicy   Json
+  clientStateSchema Json
+  uiCopy            Json
+  createdBy         String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  rounds  RoundInstance[]
+  creator User?           @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@unique([key, version])
+  @@index([key])
+  @@index([family])
+  @@index([enabled])
+  @@index([createdBy])
 }
 
 model RoundDeadline {

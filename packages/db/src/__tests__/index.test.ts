@@ -94,6 +94,10 @@ describe("Prisma Client", () => {
     expect(prisma.gameEvent).toBeDefined();
   });
 
+  it("should expose miniGameDefinition model", () => {
+    expect(prisma.miniGameDefinition).toBeDefined();
+  });
+
   it("should expose gameResult model", () => {
     expect(prisma.gameResult).toBeDefined();
   });
