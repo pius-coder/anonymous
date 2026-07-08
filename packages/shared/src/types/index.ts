@@ -23,11 +23,15 @@ export interface ApiResponse<T> {
   };
 }
 
+export type UserRole = "PLAYER" | "SUPPORT" | "FINANCE" | "ADMIN" | "SUPER_ADMIN";
+
 export interface UserContext {
   id: string;
   email: string;
-  role: string;
+  role: UserRole;
 }
+
+export type SessionVisibility = "PUBLIC" | "UNLISTED" | "PRIVATE";
 
 export interface PublicSession {
   code: string;
@@ -39,7 +43,7 @@ export interface PublicSession {
   startTime: string | null;
   endTime: string | null;
   status: string;
-  isPublic: boolean;
+  visibility: SessionVisibility;
 }
 
 export interface PublicSessionDetail extends PublicSession {

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { prisma, SessionRegistrationStatus } from "@session-jeu/db";
+import { prisma, SessionRegistrationStatus, SessionVisibility } from "@session-jeu/db";
 
 const sessionDetail = new Hono();
 
@@ -12,14 +12,18 @@ sessionDetail.get("/:code", async (c) => {
       _count: {
         select: {
           registrations: {
-            where: { status: { in: [SessionRegistrationStatus.PENDING, SessionRegistrationStatus.CONFIRMED] } },
+            where: {
+              status: {
+                in: [SessionRegistrationStatus.PAYMENT_PENDING, SessionRegistrationStatus.PAID],
+              },
+            },
           },
         },
       },
     },
   });
 
-  if (!session || !session.isPublic) {
+  if (!session) {
     return c.json(
       {
         success: false,
@@ -28,7 +32,20 @@ sessionDetail.get("/:code", async (c) => {
           message: "Session not found",
         },
       },
-      404
+      404,
+    );
+  }
+
+  if (session.visibility === SessionVisibility.PRIVATE) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: "SESSION_NOT_VISIBLE",
+          message: "This session requires an invitation to access",
+        },
+      },
+      404,
     );
   }
 
@@ -41,14 +58,11 @@ sessionDetail.get("/:code", async (c) => {
           message: "This session is no longer accepting registrations",
         },
       },
-      410
+      410,
     );
   }
 
-  const placesRemaining = Math.max(
-    0,
-    session.maxPlayers - session._count.registrations
-  );
+  const placesRemaining = Math.max(0, session.maxPlayers - session._count.registrations);
 
   return c.json({
     success: true,
@@ -62,7 +76,7 @@ sessionDetail.get("/:code", async (c) => {
       startTime: session.startTime?.toISOString() ?? null,
       endTime: session.endTime?.toISOString() ?? null,
       status: session.status,
-      isPublic: session.isPublic,
+      visibility: session.visibility,
       placesRemaining,
       registrationCount: session._count.registrations,
     },

@@ -13,8 +13,19 @@ vi.mock("@session-jeu/db", () => ({
       findUnique: vi.fn(),
     },
   },
-  GameSessionStatus: { PUBLISHED: "PUBLISHED", ACTIVE: "ACTIVE", DRAFT: "DRAFT", COMPLETED: "COMPLETED", CANCELLED: "CANCELLED" },
-  SessionRegistrationStatus: { PENDING: "PENDING", CONFIRMED: "CONFIRMED", CANCELLED: "CANCELLED" },
+  GameSessionStatus: {
+    PUBLISHED: "PUBLISHED",
+    ACTIVE: "ACTIVE",
+    DRAFT: "DRAFT",
+    COMPLETED: "COMPLETED",
+    CANCELLED: "CANCELLED",
+  },
+  SessionRegistrationStatus: {
+    PAYMENT_PENDING: "PAYMENT_PENDING",
+    PAID: "PAID",
+    CANCELLED: "CANCELLED",
+  },
+  SessionVisibility: { PUBLIC: "PUBLIC", UNLISTED: "UNLISTED", PRIVATE: "PRIVATE" },
 }));
 
 import { prisma } from "@session-jeu/db";
@@ -43,7 +54,7 @@ describe("GET /v1/public/sessions", () => {
         startTime: new Date("2026-07-15T20:00:00Z"),
         endTime: null,
         status: "PUBLISHED",
-        isPublic: true,
+        visibility: "PUBLIC",
         _count: { registrations: 2 },
       },
     ] as never);
@@ -55,6 +66,7 @@ describe("GET /v1/public/sessions", () => {
     expect(body.success).toBe(true);
     expect(Array.isArray(body.data)).toBe(true);
     expect(body.data).toHaveLength(1);
+    expect((body.data as Record<string, unknown>[])[0].visibility).toBe("PUBLIC");
   });
 
   it("should compute placesRemaining correctly", async () => {
@@ -70,7 +82,7 @@ describe("GET /v1/public/sessions", () => {
         startTime: null,
         endTime: null,
         status: "PUBLISHED",
-        isPublic: true,
+        visibility: "PUBLIC",
         _count: { registrations: 3 },
       },
     ] as never);
@@ -94,7 +106,7 @@ describe("GET /v1/public/sessions", () => {
         startTime: null,
         endTime: null,
         status: "PUBLISHED",
-        isPublic: true,
+        visibility: "PUBLIC",
         _count: { registrations: 10 },
       },
     ] as never);
@@ -129,7 +141,7 @@ describe("GET /v1/public/sessions", () => {
     expect(body.meta.total).toBe(0);
   });
 
-  it("should only query public sessions with valid status", async () => {
+  it("should only query PUBLIC visibility sessions with valid status", async () => {
     mockPrisma.gameSession.count.mockResolvedValue(0);
     mockPrisma.gameSession.findMany.mockResolvedValue([]);
 
@@ -138,10 +150,10 @@ describe("GET /v1/public/sessions", () => {
     expect(mockPrisma.gameSession.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          isPublic: true,
+          visibility: "PUBLIC",
           status: { in: ["PUBLISHED", "ACTIVE"] },
         }),
-      })
+      }),
     );
   });
 });

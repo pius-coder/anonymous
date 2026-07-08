@@ -1,8 +1,27 @@
-import { PrismaClient, GameSessionStatus, SessionRegistrationStatus } from "@prisma/client";
+import {
+  PrismaClient,
+  Prisma,
+  GameSessionStatus,
+  LedgerDirection,
+  LedgerType,
+  PaymentStatus,
+  SessionRegistrationStatus,
+  SessionVisibility,
+  UserRole,
+} from "@prisma/client";
 
 export const prisma = new PrismaClient({
   datasourceUrl: process.env.DATABASE_URL,
 });
 
-export { GameSessionStatus, SessionRegistrationStatus };
+export {
+  Prisma,
+  GameSessionStatus,
+  LedgerDirection,
+  LedgerType,
+  PaymentStatus,
+  SessionRegistrationStatus,
+  SessionVisibility,
+  UserRole,
+};
 export default prisma;

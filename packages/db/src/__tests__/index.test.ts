@@ -18,6 +18,18 @@ describe("Prisma Client", () => {
     expect(prisma.user).toBeDefined();
   });
 
+  it("should expose authSession model", () => {
+    expect(prisma.authSession).toBeDefined();
+  });
+
+  it("should expose passwordResetToken model", () => {
+    expect(prisma.passwordResetToken).toBeDefined();
+  });
+
+  it("should expose roleAssignment model", () => {
+    expect(prisma.roleAssignment).toBeDefined();
+  });
+
   it("should expose gameSession model", () => {
     expect(prisma.gameSession).toBeDefined();
   });
@@ -36,6 +48,10 @@ describe("Prisma Client", () => {
 
   it("should expose paymentTransaction model", () => {
     expect(prisma.paymentTransaction).toBeDefined();
+  });
+
+  it("should expose webhookEvent model", () => {
+    expect(prisma.webhookEvent).toBeDefined();
   });
 
   it("should expose roundInstance model", () => {
