@@ -86,6 +86,11 @@ enum PlayerConnectionStatus {
   RECONNECTING
 }
 
+enum RoundOutcomeStatus {
+  QUALIFIED
+  ELIMINATED
+}
+
 // Models
 model User {
   id             String   @id @default(cuid())
@@ -224,6 +229,9 @@ model GameSession {
   playerConnections  PlayerConnection[]
   playerActions      PlayerAction[]
   roundDeadlines     RoundDeadline[]
+  resolutionLogs     ResolutionLog[]
+  roundOutcomes      RoundOutcome[]
+  gameEvents         GameEvent[]
 
   @@index([code])
   @@index([status])
@@ -457,6 +465,9 @@ model RoundInstance {
   liveState     LiveSessionState[]
   deadline      RoundDeadline?
   playerActions PlayerAction[]
+  resolutionLog ResolutionLog?
+  outcomes      RoundOutcome[]
+  gameEvents    GameEvent[]
 
   @@unique([sessionId, roundNum])
   @@index([sessionId])
@@ -517,6 +528,70 @@ model RoundResult {
   @@unique([roundId, playerId])
   @@index([roundId])
   @@index([playerId])
+}
+
+model RoundOutcome {
+  id        String             @id @default(cuid())
+  roundId   String
+  sessionId String
+  userId    String
+  status    RoundOutcomeStatus
+  reason    String?
+  createdAt DateTime           @default(now())
+
+  round   RoundInstance @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  session GameSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, userId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([status])
+}
+
+model ResolutionLog {
+  id             String    @id @default(cuid())
+  roundId        String    @unique
+  sessionId      String
+  resolverId     String
+  inputHash      String
+  outputHash     String
+  inputSnapshot  Json
+  outputSnapshot Json
+  evidence       Json
+  seedLog        Json
+  createdAt      DateTime  @default(now())
+  replayedAt     DateTime?
+
+  round   RoundInstance @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  session GameSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([resolverId])
+  @@index([inputHash])
+  @@index([outputHash])
+  @@index([createdAt])
+}
+
+model GameEvent {
+  id            String    @id @default(cuid())
+  sessionId     String?
+  roundId       String?
+  eventType     String
+  aggregateType String
+  aggregateId   String
+  payload       Json
+  createdAt     DateTime  @default(now())
+  processedAt   DateTime?
+
+  session GameSession?   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  round   RoundInstance? @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([roundId])
+  @@index([eventType])
+  @@index([aggregateType, aggregateId])
+  @@index([processedAt])
+  @@index([createdAt])
 }
 
 model GameResult {

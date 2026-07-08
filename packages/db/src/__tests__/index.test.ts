@@ -82,6 +82,18 @@ describe("Prisma Client", () => {
     expect(prisma.playerAction).toBeDefined();
   });
 
+  it("should expose roundOutcome model", () => {
+    expect(prisma.roundOutcome).toBeDefined();
+  });
+
+  it("should expose resolutionLog model", () => {
+    expect(prisma.resolutionLog).toBeDefined();
+  });
+
+  it("should expose gameEvent model", () => {
+    expect(prisma.gameEvent).toBeDefined();
+  });
+
   it("should expose gameResult model", () => {
     expect(prisma.gameResult).toBeDefined();
   });

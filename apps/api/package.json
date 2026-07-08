@@ -15,6 +15,7 @@
     "@hono/node-server": "^1.13.0",
     "@hono/zod-validator": "^0.8.0",
     "@session-jeu/db": "workspace:*",
+    "@session-jeu/game-engine": "workspace:^",
     "@session-jeu/shared": "workspace:*",
     "bullmq": "^5.30.0",
     "dotenv": "^17.4.2",
