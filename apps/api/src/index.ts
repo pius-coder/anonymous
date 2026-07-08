@@ -25,6 +25,8 @@ import lobby from "./routes/lobby.js";
 import adminLobby from "./routes/admin/lobby.js";
 import live from "./routes/live.js";
 import adminLive from "./routes/admin/live.js";
+import minigames from "./routes/minigames.js";
+import adminMinigames from "./routes/admin/minigames.js";
 
 const app = new Hono();
 
@@ -51,6 +53,8 @@ app.route("/v1", lobby);
 app.route("/v1/admin", adminLobby);
 app.route("/v1/live", live);
 app.route("/v1/admin", adminLive);
+app.route("/v1/minigames", minigames);
+app.route("/v1/admin/minigames", adminMinigames);
 
 const port = Number(process.env.PORT) || 3001;
 

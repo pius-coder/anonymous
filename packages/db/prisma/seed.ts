@@ -30,6 +30,117 @@ function hashPassword(password: string) {
   return `scrypt$1$${SCRYPT_N}$${SCRYPT_R}$${SCRYPT_P}$${HASH_LENGTH}$${salt}$${hash}`;
 }
 
+const commonMiniGameAntiCheat = {
+  serverTimersOnly: true,
+  nonceRequired: true,
+  rejectAfterDeadline: true,
+  sensitiveStateKeysBlocked: ["answer", "answers", "solution", "seed", "targetValue"],
+};
+
+const soloScoreConfigSchema = {
+  type: "object",
+  required: ["durationSeconds", "winnersCount", "maxAttempts"],
+  properties: {
+    durationSeconds: { type: "integer", minimum: 10, maximum: 180 },
+    winnersCount: { type: "integer", minimum: 1, maximum: 100 },
+    maxAttempts: { type: "integer", minimum: 1, maximum: 200 },
+  },
+};
+
+const minigameDefinitions = [
+  {
+    key: "memory-sequence",
+    name: "Sequence memoire",
+    description: "Reproduire une sequence affichee par le serveur, classement par manches reussies.",
+    family: "SOLO",
+    playerMode: "SOLO",
+    resolverId: "solo-score",
+    version: 1,
+    configSchema: soloScoreConfigSchema,
+    defaultConfig: { durationSeconds: 60, winnersCount: 3, maxAttempts: 20 },
+    allowedActions: [{ type: "submit-score", maxPerWindow: 3, windowMs: 1000, requiresNonce: true }],
+    antiCheatPolicy: commonMiniGameAntiCheat,
+    clientStateSchema: { phase: "string", roundNum: "number", deadlineEpochMs: "number" },
+    uiCopy: { objective: "Memorise la suite et reproduis-la dans l'ordre." },
+  },
+  {
+    key: "rapid-calculation",
+    name: "Calcul rapide",
+    description: "Serie de calculs server-side, classement par bonnes reponses puis temps.",
+    family: "SOLO",
+    playerMode: "SOLO",
+    resolverId: "solo-score",
+    version: 1,
+    configSchema: soloScoreConfigSchema,
+    defaultConfig: { durationSeconds: 45, winnersCount: 3, maxAttempts: 30 },
+    allowedActions: [{ type: "submit-score", maxPerWindow: 4, windowMs: 1000, requiresNonce: true }],
+    antiCheatPolicy: commonMiniGameAntiCheat,
+    clientStateSchema: { phase: "string", promptId: "string", deadlineEpochMs: "number" },
+    uiCopy: { objective: "Reponds au plus grand nombre de calculs avant la fin." },
+  },
+  {
+    key: "pure-reaction-duel",
+    name: "Reaction pure duel",
+    description: "Duel de reaction apres signal serveur, faux depart penalise.",
+    family: "DUEL",
+    playerMode: "DUEL",
+    resolverId: "duel-score",
+    version: 1,
+    configSchema: {
+      type: "object",
+      required: ["durationSeconds", "roundsToWin", "falseStartPenaltyMs"],
+      properties: {
+        durationSeconds: { type: "integer", minimum: 5, maximum: 120 },
+        roundsToWin: { type: "integer", minimum: 1, maximum: 5 },
+        falseStartPenaltyMs: { type: "integer", minimum: 0, maximum: 5000 },
+      },
+    },
+    defaultConfig: { durationSeconds: 30, roundsToWin: 2, falseStartPenaltyMs: 1000 },
+    allowedActions: [{ type: "reaction-click", maxPerWindow: 2, windowMs: 1000, requiresNonce: true }],
+    antiCheatPolicy: { ...commonMiniGameAntiCheat, latencyCorrectionRequired: true },
+    clientStateSchema: { phase: "string", signalVisible: "boolean", deadlineEpochMs: "number" },
+    uiCopy: { objective: "Clique seulement apres le signal." },
+  },
+  {
+    key: "target-precision",
+    name: "Precision de tir",
+    description: "Cibles generees cote serveur, classement par touches et precision.",
+    family: "SOLO",
+    playerMode: "SOLO",
+    resolverId: "solo-score",
+    version: 1,
+    configSchema: soloScoreConfigSchema,
+    defaultConfig: { durationSeconds: 45, winnersCount: 3, maxAttempts: 40 },
+    allowedActions: [{ type: "target-hit", maxPerWindow: 8, windowMs: 1000, requiresNonce: true }],
+    antiCheatPolicy: { ...commonMiniGameAntiCheat, hitboxValidatedServerSide: true },
+    clientStateSchema: { phase: "string", visibleTargets: "array", deadlineEpochMs: "number" },
+    uiCopy: { objective: "Touche les cibles visibles, evite les clics inutiles." },
+  },
+  {
+    key: "safe-zones",
+    name: "Zones sures",
+    description: "Survie collective a zones sures, classement par statut et temps de survie.",
+    family: "SURVIVAL",
+    playerMode: "GROUP",
+    resolverId: "solo-score",
+    version: 1,
+    configSchema: {
+      type: "object",
+      required: ["durationSeconds", "winnersCount", "hazardIntervalMs"],
+      properties: {
+        durationSeconds: { type: "integer", minimum: 15, maximum: 240 },
+        winnersCount: { type: "integer", minimum: 1, maximum: 100 },
+        hazardIntervalMs: { type: "integer", minimum: 500, maximum: 10000 },
+      },
+    },
+    defaultConfig: { durationSeconds: 90, winnersCount: 5, hazardIntervalMs: 3000 },
+    allowedActions: [{ type: "move", maxPerWindow: 15, windowMs: 1000, requiresNonce: true }],
+    antiCheatPolicy: { ...commonMiniGameAntiCheat, positionValidatedServerSide: true },
+    clientStateSchema: { phase: "string", safeZones: "array", deadlineEpochMs: "number" },
+    uiCopy: { objective: "Reste dans une zone sure quand le danger tombe." },
+  },
+] as const;
+
 async function main() {
   console.log("Seeding database...");
 
@@ -195,14 +306,10 @@ async function main() {
 
   // Register players in public session to test capacity calculation
   await prisma.sessionRegistration.upsert({
-    where: {
-      userId_sessionId: {
-        userId: player.id,
-        sessionId: publicSession.id,
-      },
-    },
+    where: { id: `seed-reg-${player.id}-${publicSession.id}` },
     update: {},
     create: {
+      id: `seed-reg-${player.id}-${publicSession.id}`,
       userId: player.id,
       sessionId: publicSession.id,
       status: "PAID",
@@ -250,14 +357,10 @@ async function main() {
   });
 
   await prisma.sessionRegistration.upsert({
-    where: {
-      userId_sessionId: {
-        userId: extraPlayer1.id,
-        sessionId: publicSession.id,
-      },
-    },
+    where: { id: `seed-reg-${extraPlayer1.id}-${publicSession.id}` },
     update: {},
     create: {
+      id: `seed-reg-${extraPlayer1.id}-${publicSession.id}`,
       userId: extraPlayer1.id,
       sessionId: publicSession.id,
       status: "PAYMENT_PENDING",
@@ -267,14 +370,10 @@ async function main() {
 
   // Add a CANCELLED registration (should NOT count in placesRemaining)
   await prisma.sessionRegistration.upsert({
-    where: {
-      userId_sessionId: {
-        userId: extraPlayer2.id,
-        sessionId: publicSession.id,
-      },
-    },
+    where: { id: `seed-reg-${extraPlayer2.id}-${publicSession.id}` },
     update: {},
     create: {
+      id: `seed-reg-${extraPlayer2.id}-${publicSession.id}`,
       userId: extraPlayer2.id,
       sessionId: publicSession.id,
       status: "CANCELLED",
@@ -283,14 +382,10 @@ async function main() {
 
   // Register player in second public session
   await prisma.sessionRegistration.upsert({
-    where: {
-      userId_sessionId: {
-        userId: player.id,
-        sessionId: publicSession2.id,
-      },
-    },
+    where: { id: `seed-reg-${player.id}-${publicSession2.id}` },
     update: {},
     create: {
+      id: `seed-reg-${player.id}-${publicSession2.id}`,
       userId: player.id,
       sessionId: publicSession2.id,
       status: "PAID",
@@ -313,6 +408,37 @@ async function main() {
     },
   });
 
+  for (const definition of minigameDefinitions) {
+    await prisma.miniGameDefinition.upsert({
+      where: {
+        key_version: {
+          key: definition.key,
+          version: definition.version,
+        },
+      },
+      update: {
+        name: definition.name,
+        description: definition.description,
+        family: definition.family,
+        playerMode: definition.playerMode,
+        resolverId: definition.resolverId,
+        enabled: true,
+        configSchema: definition.configSchema,
+        defaultConfig: definition.defaultConfig,
+        allowedActions: definition.allowedActions,
+        antiCheatPolicy: definition.antiCheatPolicy,
+        clientStateSchema: definition.clientStateSchema,
+        uiCopy: definition.uiCopy,
+        createdBy: admin.id,
+      },
+      create: {
+        ...definition,
+        enabled: true,
+        createdBy: admin.id,
+      },
+    });
+  }
+
   console.log("Seed completed:");
   console.log(`  - Admin: ${admin.email}`);
   console.log(`  - Players: ${player.email}, ${extraPlayer1.email}, ${extraPlayer2.email}`);
@@ -320,6 +446,7 @@ async function main() {
   console.log(`  - Public Session 2: ${publicSession2.code} (1 active registration)`);
   console.log(`  - Unlisted Session: ${unlistedSession.code}`);
   console.log(`  - Private Session: ${privateSession.code}`);
+  console.log(`  - Mini-games: ${minigameDefinitions.map((definition) => definition.key).join(", ")}`);
 }
 
 main()
