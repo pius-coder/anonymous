@@ -1,11 +1,11 @@
 import { defineServer, defineRoom } from "colyseus";
-import { GameRoom } from "./rooms/GameRoom.js";
+import { GameSessionRoom } from "./rooms/GameSessionRoom.js";
 
 const port = Number(process.env.GAME_PORT) || 2567;
 
 const server = defineServer({
   rooms: {
-    game: defineRoom(GameRoom),
+    game_session: defineRoom(GameSessionRoom),
   },
 });
 

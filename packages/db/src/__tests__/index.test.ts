@@ -58,8 +58,28 @@ describe("Prisma Client", () => {
     expect(prisma.joinToken).toBeDefined();
   });
 
+  it("should expose liveSessionState model", () => {
+    expect(prisma.liveSessionState).toBeDefined();
+  });
+
+  it("should expose liveReservation model", () => {
+    expect(prisma.liveReservation).toBeDefined();
+  });
+
+  it("should expose playerConnection model", () => {
+    expect(prisma.playerConnection).toBeDefined();
+  });
+
   it("should expose roundInstance model", () => {
     expect(prisma.roundInstance).toBeDefined();
+  });
+
+  it("should expose roundDeadline model", () => {
+    expect(prisma.roundDeadline).toBeDefined();
+  });
+
+  it("should expose playerAction model", () => {
+    expect(prisma.playerAction).toBeDefined();
   });
 
   it("should expose gameResult model", () => {
