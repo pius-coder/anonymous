@@ -28,10 +28,12 @@ vi.mock("../../queues/paymentReconciliation.js", () => queueMocks);
 
 import { SESSION_COOKIE_NAME, hashOpaqueToken } from "../../auth/session.js";
 import type { AuthVariables } from "../../auth/session.js";
+import { requestId } from "../../middleware/requestId.js";
 import adminPayments from "../admin/payments.js";
 
 function createApp() {
   const app = new Hono<{ Variables: AuthVariables }>();
+  app.use("*", requestId);
   app.route("/v1/admin/payments", adminPayments);
   return app;
 }
@@ -68,7 +70,12 @@ describe("admin payment routes", () => {
   it("allows finance role to queue manual reconciliation", async () => {
     const res = await app.request("/v1/admin/payments/payment-1/reconcile", {
       method: "POST",
-      headers: { cookie: `${SESSION_COOKIE_NAME}=session-token` },
+      body: JSON.stringify({ reason: "manual reconciliation requested" }),
+      headers: {
+        "content-type": "application/json",
+        cookie: `${SESSION_COOKIE_NAME}=session-token`,
+        "x-request-id": "req-payment",
+      },
     });
 
     expect(res.status).toBe(200);
@@ -82,8 +89,26 @@ describe("admin payment routes", () => {
         action: "payment.reconciliation-queued",
         entity: "PaymentTransaction",
         entityId: "payment-1",
+        reason: "manual reconciliation requested",
+        requestId: "req-payment",
+        ipAddress: undefined,
+        userAgent: undefined,
       },
     });
+  });
+
+  it("requires a reason for manual reconciliation", async () => {
+    const res = await app.request("/v1/admin/payments/payment-1/reconcile", {
+      method: "POST",
+      body: JSON.stringify({}),
+      headers: {
+        "content-type": "application/json",
+        cookie: `${SESSION_COOKIE_NAME}=session-token`,
+      },
+    });
+
+    expect(res.status).toBe(400);
+    expect(queueMocks.schedulePaymentReconciliation).not.toHaveBeenCalled();
   });
 
   it("returns 404 when manual reconciliation targets an unknown payment", async () => {
@@ -91,7 +116,11 @@ describe("admin payment routes", () => {
 
     const res = await app.request("/v1/admin/payments/payment-1/reconcile", {
       method: "POST",
-      headers: { cookie: `${SESSION_COOKIE_NAME}=session-token` },
+      body: JSON.stringify({ reason: "manual reconciliation requested" }),
+      headers: {
+        "content-type": "application/json",
+        cookie: `${SESSION_COOKIE_NAME}=session-token`,
+      },
     });
 
     expect(res.status).toBe(404);
@@ -103,7 +132,11 @@ describe("admin payment routes", () => {
 
     const res = await app.request("/v1/admin/payments/payment-1/reconcile", {
       method: "POST",
-      headers: { cookie: `${SESSION_COOKIE_NAME}=session-token` },
+      body: JSON.stringify({ reason: "manual reconciliation requested" }),
+      headers: {
+        "content-type": "application/json",
+        cookie: `${SESSION_COOKIE_NAME}=session-token`,
+      },
     });
 
     expect(res.status).toBe(403);

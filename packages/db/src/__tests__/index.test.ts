@@ -122,6 +122,18 @@ describe("Prisma Client", () => {
     expect(prisma.disputeWindow).toBeDefined();
   });
 
+  it("should expose supportCase model", () => {
+    expect(prisma.supportCase).toBeDefined();
+  });
+
+  it("should expose incidentLog model", () => {
+    expect(prisma.incidentLog).toBeDefined();
+  });
+
+  it("should expose adminActionApproval model", () => {
+    expect(prisma.adminActionApproval).toBeDefined();
+  });
+
   it("should expose auditLog model", () => {
     expect(prisma.auditLog).toBeDefined();
   });
