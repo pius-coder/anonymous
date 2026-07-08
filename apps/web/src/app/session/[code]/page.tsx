@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/retroui/badge";
+import { Button } from "@/components/retroui/button";
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/retroui/card";
+import { Progress } from "@/components/retroui/progress";
+import { Separator } from "@/components/retroui/separator";
 import { CTAButton } from "@/components/CTAButton";
+import { PhaseFlowImage } from "@/components/game/generated-art";
+import { SessionConsoleSvg, WalletFlowSvg } from "@/components/game/game-visuals";
 
 async function getSession(code: string) {
   const apiBase = process.env.API_URL || "http://localhost:3001";
@@ -64,118 +67,136 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
 
   const isFull = session.placesRemaining <= 0;
   const isClosed = session.status === "COMPLETED" || session.status === "CANCELLED";
+  const registeredPlayers =
+    session.registrationCount ?? Math.max(0, session.maxPlayers - session.placesRemaining);
+  const fillPercent =
+    session.maxPlayers > 0
+      ? Math.min(100, Math.round((registeredPlayers / session.maxPlayers) * 100))
+      : 0;
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto flex items-center justify-between px-4 py-4">
-          <Link href="/">
-            <h1 className="text-xl font-bold">Session Jeu</h1>
+    <>
+      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:py-14">
+        <div className="flex flex-col justify-center">
+          <Link href="/catalogue" className="mb-5 inline-flex w-fit">
+            <Button variant="outline" size="sm">
+              &larr; Retour au catalogue
+            </Button>
           </Link>
-          <nav className="flex gap-4">
+          <div className="flex flex-wrap gap-2">
+            <Badge>{session.status}</Badge>
+            <Badge variant="outline">Code {code}</Badge>
+          </div>
+          <h1 className="mt-5 text-5xl font-black uppercase leading-none sm:text-6xl">
+            {session.name}
+          </h1>
+          {session.description && (
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-muted-foreground">
+              {session.description}
+            </p>
+          )}
+          <div className="mt-8 flex flex-wrap gap-3">
+            <CTAButton
+              label="S'inscrire à cette session"
+              href={`/auth/register?next=/session/${code}`}
+              disabled={isFull || isClosed}
+              className="h-9 px-4"
+            />
             <Link href="/catalogue">
-              <Button variant="ghost">Catalogue</Button>
+              <Button variant="outline" size="lg">
+                Autres sessions
+              </Button>
             </Link>
-          </nav>
-        </div>
-      </header>
-
-      <main className="container mx-auto max-w-3xl px-4 py-8">
-        <Link href="/catalogue" className="mb-6 inline-block">
-          <Button variant="ghost" size="sm">
-            &larr; Retour au catalogue
-          </Button>
-        </Link>
-
-        <div className="mb-6 flex items-start justify-between">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">{session.name}</h2>
-            <div className="mt-2 flex gap-2">
-              <Badge>{session.status}</Badge>
-            </div>
           </div>
         </div>
+        <SessionConsoleSvg className="border-2 border-border shadow-xl" />
+      </section>
 
-        {session.description && <p className="mb-8 text-muted-foreground">{session.description}</p>}
-
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-12 sm:px-6 lg:grid-cols-[1fr_0.78fr]">
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Détails de la session</CardTitle>
+              <CardTitle className="font-head text-2xl uppercase">Détails</CardTitle>
+              <CardAction>
+                <Badge variant="secondary">Serveur</Badge>
+              </CardAction>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Date de début</span>
-                <span>{formatDate(session.startTime)}</span>
+            <CardContent className="space-y-5">
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Début</span>
+                <span className="text-right font-medium">{formatDate(session.startTime)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Frais d&apos;inscription</span>
-                <span className="font-medium">{formatCurrency(session.entryFee)}</span>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Inscription</span>
+                <span className="font-mono font-black tabular-nums">
+                  {formatCurrency(session.entryFee)}
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Récompenses internes configurées</span>
-                <span className="font-medium">{formatCurrency(session.prizePool)}</span>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Crédits internes configurés</span>
+                <span className="font-mono font-black tabular-nums">
+                  {formatCurrency(session.prizePool)}
+                </span>
               </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Places disponibles</CardTitle>
+              <CardTitle className="font-head text-2xl uppercase">Capacité</CardTitle>
+              <CardAction>
+                <Badge variant={isFull ? "destructive" : "outline"}>
+                  {isFull ? "Complet" : `${session.placesRemaining} libre(s)`}
+                </Badge>
+              </CardAction>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-5">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Capacité maximale</span>
                 <span>{session.maxPlayers} joueurs</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Places restantes</span>
-                <span className="font-medium">
-                  {isFull ? (
-                    <span className="text-destructive">Session complète</span>
-                  ) : (
-                    `${session.placesRemaining} place(s)`
-                  )}
-                </span>
-              </div>
-              <div className="flex justify-between">
                 <span className="text-muted-foreground">Inscrits</span>
-                <span>{session.registrationCount}</span>
+                <span>{registeredPlayers}</span>
               </div>
+              <Progress value={fillPercent} aria-label="Remplissage de la session" />
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle className="font-head text-2xl uppercase">Règles essentielles</CardTitle>
+              <CardAction>
+                <Badge variant="outline">Lisible avant inscription</Badge>
+              </CardAction>
+            </CardHeader>
+            <CardContent className="grid gap-3 text-sm leading-7 text-muted-foreground md:grid-cols-2">
+              <p>&bull; Les sessions sont supervisées par serveur pour garantir l&apos;équité.</p>
+              <p>&bull; Les résultats sont auditables après validation officielle.</p>
+              <p>&bull; Le paiement doit être confirmé avant l&apos;accès à la session.</p>
+              <p>&bull; La politique d&apos;annulation doit être consultée avant inscription.</p>
             </CardContent>
           </Card>
         </div>
 
-        <Separator className="my-8" />
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Règles essentielles</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm text-muted-foreground">
-            <p>&bull; Les sessions sont supervisées par serveur pour garantir l&apos;équité.</p>
-            <p>
-              &bull; Les résultats sont auditables et ne peuvent pas être modifiés après validation.
-            </p>
-            <p>&bull; Le paiement doit être confirmé avant l&apos;accès à la session.</p>
-            <p>
-              &bull; Consultez la politique d&apos;annulation et de remboursement avant de vous
-              inscrire.
-            </p>
-          </CardContent>
-        </Card>
-
-        <div className="mt-8 flex justify-center gap-4">
-          <CTAButton
-            label="S'inscrire à cette session"
-            href={`/auth/register?next=/session/${code}`}
-            disabled={isFull || isClosed}
-          />
-          <Link href="/catalogue">
-            <Button variant="outline">Autres sessions</Button>
-          </Link>
+        <div className="space-y-6">
+          <PhaseFlowImage className="shadow-md" />
+          <WalletFlowSvg className="border-2 border-border shadow-md" />
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-head text-2xl uppercase">États préparés</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Badge>Lobby</Badge>
+              <Badge variant="secondary">Check-in</Badge>
+              <Badge variant="outline">Round</Badge>
+              <Badge variant="outline">Résultats</Badge>
+            </CardContent>
+          </Card>
         </div>
-      </main>
-    </div>
+      </section>
+
+      <Separator />
+    </>
   );
 }

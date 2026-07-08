@@ -40,7 +40,7 @@ test.describe("Feature 01 — Acquisition et catalogue public", () => {
   test("catalogue empty state affiche un message", async ({ page }) => {
     await page.goto("/catalogue");
 
-    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { name: /catalogue/i })).toBeVisible();
 
     const body = await page.locator("body").innerText();
     const emptyStates = [/aucune session/i, /disponible/i];

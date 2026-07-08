@@ -1,4 +1,6 @@
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { buttonVariants } from "@/components/retroui/button";
+import { cn } from "@/lib/utils";
 
 interface CTAButtonProps {
   label: string;
@@ -18,23 +20,31 @@ export function CTAButton({
   className,
 }: CTAButtonProps) {
   if (href) {
-    return (
-      <a href={href}>
-        <Button variant={variant} disabled={disabled} className={className}>
+    const linkClassName = cn(buttonVariants({ variant }), className);
+
+    if (disabled) {
+      return (
+        <span aria-disabled="true" className={cn(linkClassName, "pointer-events-none opacity-60")}>
           {label}
-        </Button>
-      </a>
+        </span>
+      );
+    }
+
+    return (
+      <Link href={href} className={linkClassName}>
+        {label}
+      </Link>
     );
   }
 
   return (
-    <Button
-      variant={variant}
+    <button
+      type="button"
       disabled={disabled}
       onClick={onClick}
-      className={className}
+      className={cn(buttonVariants({ variant }), className)}
     >
       {label}
-    </Button>
+    </button>
   );
 }
