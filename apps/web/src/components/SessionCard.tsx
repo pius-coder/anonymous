@@ -1,13 +1,16 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/retroui/badge";
+import { buttonVariants } from "@/components/retroui/button";
 import {
   Card,
+  CardAction,
   CardContent,
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
+} from "@/components/retroui/card";
+import { Progress } from "@/components/retroui/progress";
+import { cn } from "@/lib/utils";
 
 interface SessionCardProps {
   code: string;
@@ -74,54 +77,63 @@ export default function SessionCard({
   name,
   description,
   entryFee,
+  maxPlayers,
   startTime,
   status,
   placesRemaining,
 }: SessionCardProps) {
   const isFull = placesRemaining <= 0;
   const isClosed = status === "COMPLETED" || status === "CANCELLED";
+  const filledSeats = Math.max(0, maxPlayers - placesRemaining);
+  const fillPercent =
+    maxPlayers > 0 ? Math.min(100, Math.round((filledSeats / maxPlayers) * 100)) : 0;
 
   return (
-    <Card className="flex flex-col">
+    <Card className="relative flex min-h-full flex-col border-2 border-border bg-card shadow-lg transition-transform hover:-translate-y-1">
       <CardHeader>
-        <div className="flex items-start justify-between">
-          <CardTitle className="text-lg">{name}</CardTitle>
+        <CardTitle className="font-head text-xl uppercase">{name}</CardTitle>
+        <CardAction>
           <Badge variant={statusVariant(status)}>{statusLabel(status)}</Badge>
-        </div>
+        </CardAction>
       </CardHeader>
-      <CardContent className="flex-1">
+      <CardContent className="flex-1 space-y-5">
         {description && (
-          <p className="mb-4 line-clamp-2 text-sm text-muted-foreground">
-            {description}
-          </p>
+          <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">{description}</p>
         )}
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
+        <div className="space-y-3 text-sm">
+          <div className="flex justify-between gap-4">
             <span className="text-muted-foreground">Date</span>
-            <span>{formatDate(startTime)}</span>
+            <span className="text-right font-medium">{formatDate(startTime)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Inscription</span>
-            <span>{formatCurrency(entryFee)}</span>
+            <span className="font-mono font-black tabular-nums">{formatCurrency(entryFee)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Places restantes</span>
+            <span className="text-muted-foreground">Capacité</span>
             <span>
               {isFull ? (
                 <span className="font-medium text-destructive">Complet</span>
               ) : (
-                <span className="font-medium">{placesRemaining} place(s)</span>
+                <span className="font-medium">
+                  {filledSeats}/{maxPlayers} joueurs
+                </span>
               )}
             </span>
           </div>
+          <Progress value={fillPercent} aria-label="Remplissage de la session" />
         </div>
       </CardContent>
       <CardFooter>
-        <Link href={`/session/${code}`} className="w-full">
-          <Button className="w-full" disabled={isFull || isClosed}>
+        {isFull || isClosed ? (
+          <span className={cn(buttonVariants(), "w-full opacity-60")} aria-disabled="true">
             {isFull ? "Session complète" : isClosed ? "Session terminée" : "Voir les détails"}
-          </Button>
-        </Link>
+          </span>
+        ) : (
+          <Link href={`/session/${code}`} className={cn(buttonVariants(), "w-full")}>
+            Voir les détails
+          </Link>
+        )}
       </CardFooter>
     </Card>
   );
