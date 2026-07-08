@@ -21,6 +21,8 @@ import {
   updateAdminSessionSchema,
   versionedActionSchema,
 } from "../../admin/sessionConfig.js";
+import { checkInDeadlineFor } from "../../lobby/lobby.js";
+import { scheduleCheckInDeadline } from "../../queues/checkInDeadline.js";
 
 const adminSessions = new Hono<{ Variables: AuthVariables }>();
 
@@ -372,6 +374,11 @@ adminSessions.patch(
     }
     if (result.type === "invalid") {
       return errorResponse(c, 400, result.code, "Session config is invalid");
+    }
+
+    const checkInDeadlineAt = checkInDeadlineFor(result.session);
+    if (checkInDeadlineAt) {
+      await scheduleCheckInDeadline({ sessionId: result.session.id, checkInDeadlineAt });
     }
 
     return successResponse(c, { session: serializeSession(result.session) });

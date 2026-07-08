@@ -7,6 +7,7 @@ import {
   processPaymentReconciliation,
   type PaymentReconciliationJobData,
 } from "./paymentReconciliation.js";
+import { processCheckInDeadline, type CheckInDeadlineJobData } from "./checkInDeadline.js";
 
 const connection = {
   host: process.env.REDIS_HOST || "localhost",
@@ -22,6 +23,9 @@ const worker = new Worker(
     }
     if (job.name === "payment.reconcile") {
       return processPaymentReconciliation(job.data as PaymentReconciliationJobData);
+    }
+    if (job.name === "checkin.deadline") {
+      return processCheckInDeadline(job.data as CheckInDeadlineJobData);
     }
     return { success: true };
   },

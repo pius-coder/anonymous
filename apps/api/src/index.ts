@@ -20,6 +20,8 @@ import payments from "./routes/payments.js";
 import adminPayments from "./routes/admin/payments.js";
 import wallet from "./routes/wallet.js";
 import adminWallets from "./routes/admin/wallets.js";
+import lobby from "./routes/lobby.js";
+import adminLobby from "./routes/admin/lobby.js";
 
 const app = new Hono();
 
@@ -41,6 +43,8 @@ app.route("/v1", payments);
 app.route("/v1/admin/payments", adminPayments);
 app.route("/v1", wallet);
 app.route("/v1/admin/wallets", adminWallets);
+app.route("/v1", lobby);
+app.route("/v1/admin", adminLobby);
 
 const port = Number(process.env.PORT) || 3001;
 

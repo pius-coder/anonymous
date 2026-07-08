@@ -21,6 +21,9 @@ vi.mock("@session-jeu/db", () => ({
     CREATED: "CREATED",
     PAYMENT_PENDING: "PAYMENT_PENDING",
     PAID: "PAID",
+    CHECKED_IN: "CHECKED_IN",
+    IN_ROOM: "IN_ROOM",
+    NO_SHOW: "NO_SHOW",
     CANCELLED: "CANCELLED",
     REFUNDED: "REFUNDED",
     EXPIRED: "EXPIRED",
@@ -40,8 +43,19 @@ import { Prisma } from "@session-jeu/db";
 
 describe("session registration policy", () => {
   it("defines active and capacity-holding statuses explicitly", () => {
-    expect(activeRegistrationStatuses).toEqual(["CREATED", "PAYMENT_PENDING", "PAID"]);
-    expect(capacityHoldingRegistrationStatuses).toEqual(["PAYMENT_PENDING", "PAID"]);
+    expect(activeRegistrationStatuses).toEqual([
+      "CREATED",
+      "PAYMENT_PENDING",
+      "PAID",
+      "CHECKED_IN",
+      "IN_ROOM",
+    ]);
+    expect(capacityHoldingRegistrationStatuses).toEqual([
+      "PAYMENT_PENDING",
+      "PAID",
+      "CHECKED_IN",
+      "IN_ROOM",
+    ]);
   });
 
   it("retries serializable transaction conflicts", async () => {
