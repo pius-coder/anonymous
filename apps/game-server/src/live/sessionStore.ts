@@ -296,7 +296,32 @@ export async function submitPlayerAction(input: {
           },
         },
       });
-      if (duplicate) return { type: "duplicate" as const, action: duplicate };
+      if (duplicate) {
+        await tx.antiCheatEvent.create({
+          data: {
+            type: "DOUBLE_SUBMIT",
+            severity: "HIGH",
+            sessionId: input.sessionId,
+            roundId: liveState.currentRoundId,
+            playerActionId: duplicate.id,
+            userId: input.userId,
+            actionNonce: input.actionNonce,
+            metadata: { actionType: input.actionType },
+          },
+        });
+        await tx.riskSignal.create({
+          data: {
+            type: "ANTICHEAT",
+            severity: "HIGH",
+            userId: input.userId,
+            sessionId: input.sessionId,
+            source: "game-server",
+            reason: "DOUBLE_SUBMIT",
+            metadata: { actionNonce: input.actionNonce },
+          },
+        });
+        return { type: "duplicate" as const, action: duplicate };
+      }
 
       const deadline = await tx.roundDeadline.findUnique({
         where: { roundId: liveState.currentRoundId },
@@ -314,7 +339,51 @@ export async function submitPlayerAction(input: {
             rejectionReason: "deadline-closed",
           },
         });
+        await tx.antiCheatEvent.create({
+          data: {
+            type: "LATE_INPUT",
+            severity: "MEDIUM",
+            sessionId: input.sessionId,
+            roundId: liveState.currentRoundId,
+            playerActionId: action.id,
+            userId: input.userId,
+            actionNonce: input.actionNonce,
+            metadata: { actionType: input.actionType },
+          },
+        });
         return { type: "late" as const, action };
+      }
+
+      const recentActionCount = await tx.playerAction.count({
+        where: {
+          roundId: liveState.currentRoundId,
+          userId: input.userId,
+          createdAt: { gte: new Date(now.getTime() - 1000) },
+        },
+      });
+      if (recentActionCount >= 20) {
+        await tx.antiCheatEvent.create({
+          data: {
+            type: "AUTO_CLICK",
+            severity: "HIGH",
+            sessionId: input.sessionId,
+            roundId: liveState.currentRoundId,
+            userId: input.userId,
+            actionNonce: input.actionNonce,
+            metadata: { recentActionCount, windowMs: 1000 },
+          },
+        });
+        await tx.riskSignal.create({
+          data: {
+            type: "ANTICHEAT",
+            severity: "HIGH",
+            userId: input.userId,
+            sessionId: input.sessionId,
+            source: "game-server",
+            reason: "AUTO_CLICK",
+            metadata: { recentActionCount, windowMs: 1000 },
+          },
+        });
       }
 
       const action = await tx.playerAction.create({

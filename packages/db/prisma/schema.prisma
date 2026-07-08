@@ -167,6 +167,52 @@ enum NotificationType {
   SYSTEM
 }
 
+enum RiskSignalSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RiskSignalType {
+  AUTHORIZATION_DENIED
+  WEBHOOK_SIGNATURE_FAILURE
+  MULTI_ACCOUNT
+  DEVICE_HASH
+  PAYMENT_PATTERN
+  ANTICHEAT
+  COMPLIANCE
+}
+
+enum AntiCheatEventType {
+  DOUBLE_SUBMIT
+  AUTO_CLICK
+  LATE_INPUT
+  LATENCY_ABUSE
+  MANUAL_REVIEW
+}
+
+enum ComplianceGateType {
+  WITHDRAWAL
+  MINI_GAME_RISK
+  LEGAL_WORDING
+  PUBLIC_LAUNCH
+}
+
+enum ComplianceGateStatus {
+  BLOCKED
+  PASSED
+  WAIVED
+}
+
+enum ModerationActionType {
+  WARN_USER
+  FREEZE_WALLET
+  SUSPEND_USER
+  RESTRICT_SESSION
+  NOTE
+}
+
 enum MiniGameFamily {
   SOLO
   DUEL
@@ -225,6 +271,11 @@ model User {
   deliveryLogs           DeliveryLog[]
   consentRecords         ConsentRecord[]
   outboundMessages       OutboundMessage[]
+  riskSignals            RiskSignal[]
+  antiCheatEvents        AntiCheatEvent[]
+  moderationTargets      ModerationAction[]      @relation("ModerationTarget")
+  moderationActions      ModerationAction[]      @relation("ModerationActor")
+  complianceDecisions    ComplianceGate[]
 
   @@index([email])
   @@index([role])
@@ -363,6 +414,9 @@ model GameSession {
   incidentLogs       IncidentLog[]
   notificationJobs   NotificationJob[]
   outboundMessages   OutboundMessage[]
+  riskSignals        RiskSignal[]
+  antiCheatEvents    AntiCheatEvent[]
+  moderationActions  ModerationAction[]
 
   @@index([code])
   @@index([status])
@@ -602,6 +656,7 @@ model RoundInstance {
   outcomes           RoundOutcome[]
   gameEvents         GameEvent[]
   miniGameDefinition MiniGameDefinition? @relation(fields: [miniGameDefinitionId], references: [id], onDelete: SetNull)
+  antiCheatEvents    AntiCheatEvent[]
 
   @@unique([sessionId, roundNum])
   @@index([sessionId])
@@ -668,9 +723,10 @@ model PlayerAction {
   rejectionReason String?
   createdAt       DateTime  @default(now())
 
-  session GameSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  round   RoundInstance @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session         GameSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  round           RoundInstance    @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  antiCheatEvents AntiCheatEvent[]
 
   @@unique([roundId, userId, actionNonce])
   @@index([sessionId])
@@ -678,6 +734,33 @@ model PlayerAction {
   @@index([userId])
   @@index([acceptedAt])
   @@index([rejectedAt])
+}
+
+model AntiCheatEvent {
+  id             String             @id @default(cuid())
+  type           AntiCheatEventType
+  severity       RiskSignalSeverity @default(MEDIUM)
+  sessionId      String?
+  roundId        String?
+  playerActionId String?
+  userId         String?
+  actionNonce    String?
+  latencyMs      Int?
+  metadata       Json?
+  createdAt      DateTime           @default(now())
+
+  session      GameSession?   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  round        RoundInstance? @relation(fields: [roundId], references: [id], onDelete: SetNull)
+  playerAction PlayerAction?  @relation(fields: [playerActionId], references: [id], onDelete: SetNull)
+  user         User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([type])
+  @@index([severity])
+  @@index([sessionId])
+  @@index([roundId])
+  @@index([userId])
+  @@index([playerActionId])
+  @@index([createdAt])
 }
 
 model RoundResult {
@@ -936,6 +1019,89 @@ model AdminActionApproval {
   @@index([requestedById])
   @@index([approvedById])
   @@index([requestedAt])
+}
+
+model RiskSignal {
+  id         String             @id @default(cuid())
+  type       RiskSignalType
+  severity   RiskSignalSeverity @default(MEDIUM)
+  userId     String?
+  sessionId  String?
+  source     String
+  deviceHash String?
+  ipHash     String?
+  reason     String
+  metadata   Json?
+  createdAt  DateTime           @default(now())
+  reviewedAt DateTime?
+
+  user    User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  session GameSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([type])
+  @@index([severity])
+  @@index([userId])
+  @@index([sessionId])
+  @@index([deviceHash])
+  @@index([ipHash])
+  @@index([createdAt])
+}
+
+model RateLimitBucket {
+  id        String    @id @default(cuid())
+  scope     String
+  key       String
+  count     Int       @default(0)
+  resetAt   DateTime
+  blockedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([scope, key])
+  @@index([scope])
+  @@index([resetAt])
+  @@index([blockedAt])
+}
+
+model ComplianceGate {
+  id          String               @id @default(cuid())
+  type        ComplianceGateType
+  status      ComplianceGateStatus @default(BLOCKED)
+  scope       String
+  reason      String
+  evidence    Json?
+  decidedById String?
+  decidedAt   DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  decidedBy User? @relation(fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@unique([type, scope])
+  @@index([type])
+  @@index([status])
+  @@index([scope])
+}
+
+model ModerationAction {
+  id           String               @id @default(cuid())
+  type         ModerationActionType
+  targetUserId String?
+  sessionId    String?
+  actorId      String
+  reason       String
+  payload      Json?
+  createdAt    DateTime             @default(now())
+
+  targetUser User?        @relation("ModerationTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+  actor      User         @relation("ModerationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  session    GameSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([type])
+  @@index([targetUserId])
+  @@index([sessionId])
+  @@index([actorId])
+  @@index([createdAt])
 }
 
 model NotificationPreference {

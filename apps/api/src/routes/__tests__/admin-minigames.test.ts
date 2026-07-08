@@ -17,11 +17,24 @@ const catalogueMocks = vi.hoisted(() => ({
   validateMiniGameConfig: vi.fn(),
 }));
 
+const securityMocks = vi.hoisted(() => ({
+  assertMiniGameRiskAllowed: vi.fn(),
+}));
+
 vi.mock("@session-jeu/db", () => ({
   prisma: dbMocks.prisma,
 }));
 
 vi.mock("../../minigames/catalogue.js", () => catalogueMocks);
+vi.mock("../../security/security.js", async () => {
+  const actual = await vi.importActual<typeof import("../../security/security.js")>(
+    "../../security/security.js",
+  );
+  return {
+    ...actual,
+    assertMiniGameRiskAllowed: securityMocks.assertMiniGameRiskAllowed,
+  };
+});
 
 import { SESSION_COOKIE_NAME, hashOpaqueToken } from "../../auth/session.js";
 import type { AuthVariables } from "../../auth/session.js";
@@ -84,6 +97,7 @@ describe("admin mini-game routes", () => {
       type: "ok",
       config: { durationSeconds: 60 },
     });
+    securityMocks.assertMiniGameRiskAllowed.mockResolvedValue({ type: "ok" });
   });
 
   it("lists catalogue definitions for admins", async () => {
@@ -149,5 +163,29 @@ describe("admin mini-game routes", () => {
       key: "memory-sequence",
       config: { durationSeconds: 5, winnersCount: 3, maxAttempts: 20 },
     });
+  });
+
+  it("blocks chance-dominant game risk without compliance review", async () => {
+    securityMocks.assertMiniGameRiskAllowed.mockResolvedValueOnce({
+      type: "blocked",
+      gate: { type: "MINI_GAME_RISK", scope: "chance-dominant" },
+    });
+
+    const res = await app.request("/v1/admin/minigames/validate-config", {
+      method: "POST",
+      headers: {
+        cookie: `${SESSION_COOKIE_NAME}=session-token`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        key: "memory-sequence",
+        config: { durationSeconds: 60, winnersCount: 3, maxAttempts: 20 },
+        riskProfile: { chanceDominant: true },
+      }),
+    });
+
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.error.code).toBe("422_UNSUPPORTED_GAME_RISK");
   });
 });

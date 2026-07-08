@@ -4,6 +4,8 @@ import { prisma } from "@session-jeu/db";
 import { requireAuth } from "../auth/session.js";
 import type { AuthVariables } from "../auth/session.js";
 import { errorResponse, successResponse } from "../lib/responses.js";
+import { rateLimit } from "../middleware/rateLimit.js";
+import { createRiskSignal } from "../security/security.js";
 import {
   applyFapshiPaymentStatus,
   fapshiWebhookSchema,
@@ -23,6 +25,7 @@ const validationHook = (result: { success: boolean }, c: Parameters<typeof error
 
 payments.post(
   "/payments/fapshi/initiate",
+  rateLimit({ scope: "payment-initiate", limit: 20, windowMs: 60_000 }),
   requireAuth,
   zValidator("json", initiateFapshiSchema, validationHook),
   async (c) => {
@@ -102,6 +105,14 @@ payments.post(
     const expectedSecret = process.env.FAPSHI_WEBHOOK_SECRET;
     const providedSecret = c.req.header("x-wh-secret");
     if (!expectedSecret || providedSecret !== expectedSecret) {
+      await createRiskSignal({
+        type: "WEBHOOK_SIGNATURE_FAILURE",
+        severity: "HIGH",
+        source: "fapshi-webhook",
+        ipAddress: c.req.header("x-forwarded-for") ?? c.req.header("x-real-ip"),
+        reason: "invalid x-wh-secret",
+        metadata: { provider: "fapshi" },
+      }).catch(() => undefined);
       return errorResponse(c, 401, "INVALID_WEBHOOK_SECRET", "Invalid webhook secret");
     }
 
