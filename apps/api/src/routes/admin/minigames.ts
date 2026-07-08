@@ -11,6 +11,7 @@ import {
   setMiniGameEnabled,
   validateMiniGameConfig,
 } from "../../minigames/catalogue.js";
+import { assertMiniGameRiskAllowed, minigameRiskSchema } from "../../security/security.js";
 
 const adminMinigames = new Hono<{ Variables: AuthVariables }>();
 
@@ -20,6 +21,7 @@ const validateConfigBodySchema = z.object({
   key: z.string().min(1),
   version: z.number().int().positive().optional(),
   config: z.unknown(),
+  riskProfile: minigameRiskSchema,
 });
 
 const validationHook = (result: { success: boolean }, c: Parameters<typeof errorResponse>[0]) => {
@@ -89,6 +91,16 @@ adminMinigames.post(
     }
     if (!definition.enabled) {
       return errorResponse(c, 409, "MINIGAME_DISABLED", "Mini-game is disabled");
+    }
+    const compliance = await assertMiniGameRiskAllowed(body.riskProfile);
+    if (compliance.type === "blocked") {
+      return errorResponse(
+        c,
+        422,
+        "422_UNSUPPORTED_GAME_RISK",
+        "Chance-dominant mini-games require legal validation",
+        { gateType: compliance.gate.type, scope: compliance.gate.scope },
+      );
     }
 
     const result = validateMiniGameConfig({ key: definition.key, config: body.config });

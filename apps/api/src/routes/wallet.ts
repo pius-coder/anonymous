@@ -3,6 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { requireAuth } from "../auth/session.js";
 import type { AuthVariables } from "../auth/session.js";
 import { errorResponse, successResponse } from "../lib/responses.js";
+import { rateLimit } from "../middleware/rateLimit.js";
 import { registrationIdParamsSchema } from "../registrations/sessionRegistration.js";
 import {
   getWalletForUser,
@@ -57,6 +58,7 @@ wallet.get(
 
 wallet.post(
   "/registrations/:id/pay-with-wallet",
+  rateLimit({ scope: "wallet-payment", limit: 20, windowMs: 60_000 }),
   requireAuth,
   zValidator("param", registrationIdParamsSchema, validationHook),
   zValidator("json", payWithWalletSchema, validationHook),

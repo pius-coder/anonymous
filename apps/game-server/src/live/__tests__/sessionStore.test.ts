@@ -19,6 +19,13 @@ const dbMocks = vi.hoisted(() => {
     playerAction: {
       findUnique: vi.fn(),
       create: vi.fn(),
+      count: vi.fn(),
+    },
+    antiCheatEvent: {
+      create: vi.fn(),
+    },
+    riskSignal: {
+      create: vi.fn(),
     },
   };
 
@@ -84,6 +91,9 @@ describe("sessionStore live invariants", () => {
       currentRoundId: "round-1",
     });
     dbMocks.tx.auditLog.createMany.mockResolvedValue({ count: 2 });
+    dbMocks.tx.playerAction.count.mockResolvedValue(0);
+    dbMocks.tx.antiCheatEvent.create.mockResolvedValue({ id: "anticheat-1" });
+    dbMocks.tx.riskSignal.create.mockResolvedValue({ id: "risk-1" });
   });
 
   it("starts a round with a durable deadline and BullMQ recovery job", async () => {
@@ -139,6 +149,11 @@ describe("sessionStore live invariants", () => {
         data: expect.objectContaining({ rejectedAt: expect.any(Date) }),
       }),
     );
+    expect(dbMocks.tx.antiCheatEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ type: "LATE_INPUT", userId: "player-1" }),
+      }),
+    );
   });
 
   it("rejects replayed action nonce without creating another action", async () => {
@@ -162,5 +177,44 @@ describe("sessionStore live invariants", () => {
 
     expect(result.type).toBe("duplicate");
     expect(dbMocks.tx.playerAction.create).not.toHaveBeenCalled();
+    expect(dbMocks.tx.antiCheatEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ type: "DOUBLE_SUBMIT", severity: "HIGH" }),
+      }),
+    );
+  });
+
+  it("signals auto-click action bursts without trusting the client", async () => {
+    dbMocks.tx.liveSessionState.findUnique.mockResolvedValue({
+      currentRoundId: "round-1",
+      phase: "ROUND_ACTIVE",
+    });
+    dbMocks.tx.playerAction.findUnique.mockResolvedValue(null);
+    dbMocks.tx.roundDeadline.findUnique.mockResolvedValue({
+      roundId: "round-1",
+      deadlineAt: new Date("2026-07-08T00:00:30Z"),
+      closedAt: null,
+    });
+    dbMocks.tx.playerAction.count.mockResolvedValue(20);
+    dbMocks.tx.playerAction.create.mockResolvedValue({
+      id: "action-2",
+      acceptedAt: new Date("2026-07-08T00:00:10Z"),
+    });
+
+    const result = await submitPlayerAction({
+      sessionId: "session-1",
+      userId: "player-1",
+      actionNonce: "nonce-2",
+      actionType: "answer",
+      payload: { answer: "B" },
+      now: new Date("2026-07-08T00:00:10Z"),
+    });
+
+    expect(result.type).toBe("accepted");
+    expect(dbMocks.tx.antiCheatEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ type: "AUTO_CLICK", severity: "HIGH" }),
+      }),
+    );
   });
 });

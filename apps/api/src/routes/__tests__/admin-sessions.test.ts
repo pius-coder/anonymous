@@ -39,6 +39,10 @@ const queueMocks = vi.hoisted(() => ({
   scheduleCheckInDeadline: vi.fn(),
 }));
 
+const securityMocks = vi.hoisted(() => ({
+  assertPublicSessionCompliance: vi.fn(),
+}));
+
 vi.mock("@session-jeu/db", () => ({
   prisma: dbMocks.prisma,
   GameSessionStatus: {
@@ -59,6 +63,15 @@ vi.mock("@session-jeu/db", () => ({
 }));
 
 vi.mock("../../queues/checkInDeadline.js", () => queueMocks);
+vi.mock("../../security/security.js", async () => {
+  const actual = await vi.importActual<typeof import("../../security/security.js")>(
+    "../../security/security.js",
+  );
+  return {
+    ...actual,
+    assertPublicSessionCompliance: securityMocks.assertPublicSessionCompliance,
+  };
+});
 
 import { SESSION_COOKIE_NAME, hashOpaqueToken } from "../../auth/session.js";
 import type { AuthVariables } from "../../auth/session.js";
@@ -137,6 +150,7 @@ describe("admin session routes", () => {
     );
     dbMocks.tx.auditLog.create.mockResolvedValue({});
     dbMocks.tx.sessionRegistration.count.mockResolvedValue(0);
+    securityMocks.assertPublicSessionCompliance.mockResolvedValue({ type: "ok" });
   });
 
   it("allows admins to create DRAFT sessions and writes audit", async () => {
@@ -334,6 +348,31 @@ describe("admin session routes", () => {
         data: expect.objectContaining({ action: "session.published", reason: "ready to publish" }),
       }),
     );
+  });
+
+  it("blocks publishing when a compliance gate is active", async () => {
+    dbMocks.tx.gameSession.findUnique.mockResolvedValue(session());
+    securityMocks.assertPublicSessionCompliance.mockResolvedValueOnce({
+      type: "blocked",
+      gate: { type: "PUBLIC_LAUNCH", scope: "global" },
+    });
+
+    const res = await app.request("/v1/admin/sessions/session-1/publish", {
+      method: "POST",
+      body: JSON.stringify({
+        expectedConfigVersion: 1,
+        reason: "ready to publish",
+      }),
+      headers: {
+        "content-type": "application/json",
+        cookie: `${SESSION_COOKIE_NAME}=session-token`,
+      },
+    });
+
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("403_COMPLIANCE_GATE_BLOCKED");
+    expect(dbMocks.tx.gameSession.updateMany).not.toHaveBeenCalled();
   });
 
   it("refuses publishing invalid sessions", async () => {

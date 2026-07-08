@@ -23,6 +23,7 @@ import {
 } from "../../admin/sessionConfig.js";
 import { checkInDeadlineFor } from "../../lobby/lobby.js";
 import { scheduleCheckInDeadline } from "../../queues/checkInDeadline.js";
+import { assertPublicSessionCompliance } from "../../security/security.js";
 
 const adminSessions = new Hono<{ Variables: AuthVariables }>();
 
@@ -400,6 +401,10 @@ adminSessions.post(
       if (!existing) return { type: "not-found" as const };
       const invalidCode = validatePublishable(existing);
       if (invalidCode) return { type: "invalid" as const, code: invalidCode };
+      const compliance = await assertPublicSessionCompliance({ visibility: existing.visibility });
+      if (compliance.type === "blocked") {
+        return { type: "compliance-blocked" as const, gate: compliance.gate };
+      }
 
       const updatedCount = await tx.gameSession.updateMany({
         where: { id, configVersion: input.expectedConfigVersion },
@@ -435,6 +440,15 @@ adminSessions.post(
     }
     if (result.type === "invalid") {
       return errorResponse(c, 400, result.code, "Session config is invalid");
+    }
+    if (result.type === "compliance-blocked") {
+      return errorResponse(
+        c,
+        403,
+        "403_COMPLIANCE_GATE_BLOCKED",
+        "Compliance gate blocks public session publication",
+        { gateType: result.gate.type, scope: result.gate.scope },
+      );
     }
 
     return successResponse(c, { session: serializeSession(result.session) });

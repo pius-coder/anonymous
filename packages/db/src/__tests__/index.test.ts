@@ -158,6 +158,26 @@ describe("Prisma Client", () => {
     expect(prisma.outboundMessage).toBeDefined();
   });
 
+  it("should expose antiCheatEvent model", () => {
+    expect(prisma.antiCheatEvent).toBeDefined();
+  });
+
+  it("should expose riskSignal model", () => {
+    expect(prisma.riskSignal).toBeDefined();
+  });
+
+  it("should expose rateLimitBucket model", () => {
+    expect(prisma.rateLimitBucket).toBeDefined();
+  });
+
+  it("should expose complianceGate model", () => {
+    expect(prisma.complianceGate).toBeDefined();
+  });
+
+  it("should expose moderationAction model", () => {
+    expect(prisma.moderationAction).toBeDefined();
+  });
+
   it("should expose auditLog model", () => {
     expect(prisma.auditLog).toBeDefined();
   });
