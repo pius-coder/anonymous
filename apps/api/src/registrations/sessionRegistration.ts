@@ -1,6 +1,12 @@
 import { z } from "zod";
-import { Prisma, prisma, GameSessionStatus, SessionRegistrationStatus } from "@session-jeu/db";
+import {
+  GameSessionStatus,
+  Prisma,
+  SessionRegistrationStatus,
+  prisma,
+} from "@session-jeu/db";
 import { scheduleRegistrationExpiration } from "../queues/registrationExpiration.js";
+import { queueNotificationSafely } from "../notifications/notifications.js";
 
 export const REGISTRATION_PAYMENT_DEADLINE_MS = 15 * 60 * 1000;
 const MAX_REGISTER_RETRIES = 5;
@@ -170,6 +176,16 @@ export async function registerForSession(input: {
     await scheduleRegistrationExpiration({
       registrationId: result.registration.id,
       paymentDeadlineAt,
+    });
+    await queueNotificationSafely({
+      userId: input.userId,
+      sessionId: input.sessionId,
+      type: "REGISTRATION",
+      channel: "IN_APP",
+      title: "Inscription creee",
+      body: "Votre place est reservee en attente de paiement.",
+      idempotencyKey: `registration:${result.registration.id}:created:in-app`,
+      payload: { registrationId: result.registration.id },
     });
   }
 

@@ -1,6 +1,12 @@
 import { createHash, randomBytes } from "node:crypto";
 import { z } from "zod";
-import { GameSessionStatus, Prisma, prisma, SessionRegistrationStatus } from "@session-jeu/db";
+import {
+  GameSessionStatus,
+  Prisma,
+  SessionRegistrationStatus,
+  prisma,
+} from "@session-jeu/db";
+import { queueNotificationSafely } from "../notifications/notifications.js";
 import { withSerializableRetry } from "../registrations/sessionRegistration.js";
 import { markLobbyPresence } from "./presence.js";
 
@@ -177,7 +183,7 @@ export async function getLobbyForPlayer(input: { userId: string; sessionId: stri
 
 export async function checkInPlayer(input: { userId: string; sessionId: string; now?: Date }) {
   const now = input.now ?? new Date();
-  return withSerializableRetry(() =>
+  const result = await withSerializableRetry(() =>
     prisma.$transaction(
       async (tx) => {
         const registration = await tx.sessionRegistration.findFirst({
@@ -243,6 +249,21 @@ export async function checkInPlayer(input: { userId: string; sessionId: string; 
       },
     ),
   );
+
+  if (result.type === "ok") {
+    await queueNotificationSafely({
+      userId: input.userId,
+      sessionId: input.sessionId,
+      type: "CHECK_IN",
+      channel: "IN_APP",
+      title: "Check-in confirme",
+      body: "Votre check-in est confirme pour cette session.",
+      idempotencyKey: `registration:${result.registration.id}:checked-in:in-app`,
+      payload: { registrationId: result.registration.id },
+    });
+  }
+
+  return result;
 }
 
 export async function authorizeSessionStart(input: {

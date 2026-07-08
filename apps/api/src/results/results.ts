@@ -12,6 +12,7 @@ import {
   prisma,
 } from "@session-jeu/db";
 import { withSerializableRetry } from "../registrations/sessionRegistration.js";
+import { queueNotificationSafely } from "../notifications/notifications.js";
 
 export const DISPUTE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -207,7 +208,7 @@ export async function finalizeSessionResults(input: {
 }) {
   const now = input.now ?? new Date();
 
-  return withSerializableRetry(() =>
+  const result = await withSerializableRetry(() =>
     prisma.$transaction(
       async (tx) => {
         const existingCommission = await tx.commissionRecord.findUnique({
@@ -424,6 +425,34 @@ export async function finalizeSessionResults(input: {
       },
     ),
   );
+
+  if (result.type === "ok") {
+    const results = await prisma.gameResult.findMany({
+      where: { sessionId: input.sessionId },
+      select: { id: true, userId: true, finalRank: true, finalStatus: true, prizeWonXaf: true },
+    });
+    await Promise.all(
+      results.map((entry) =>
+        queueNotificationSafely({
+          userId: entry.userId,
+          sessionId: input.sessionId,
+          type: "RESULT",
+          channel: "IN_APP",
+          title: "Resultats disponibles",
+          body: `Votre classement final est ${entry.finalRank ?? "non classe"}.`,
+          idempotencyKey: `game-result:${entry.id}:published:in-app`,
+          payload: {
+            resultId: entry.id,
+            finalRank: entry.finalRank,
+            finalStatus: entry.finalStatus,
+            prizeWonXaf: entry.prizeWonXaf,
+          },
+        }),
+      ),
+    );
+  }
+
+  return result;
 }
 
 export function creditsDistributionJobId(sessionId: string) {

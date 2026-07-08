@@ -31,6 +31,10 @@ import results from "./routes/results.js";
 import adminResults from "./routes/admin/results.js";
 import players from "./routes/players.js";
 import adminOperations from "./routes/admin/operations.js";
+import notifications from "./routes/notifications.js";
+import adminNotifications from "./routes/admin/notifications.js";
+import internalNotifications from "./routes/internal/notifications.js";
+import whatsappWebhook from "./routes/webhooks/whatsapp.js";
 
 const app = new Hono();
 
@@ -42,11 +46,13 @@ app.use("*", bodyLimit());
 
 app.route("/health", health);
 app.route("/internal", internalRounds);
+app.route("/internal", internalNotifications);
 app.route("/v1/public/sessions", publicSessions);
 app.route("/v1/public/sessions", publicSessionDetail);
 app.route("/v1/share", share);
 app.route("/v1/auth", auth);
 app.route("/v1/me", me);
+app.route("/v1/me", notifications);
 app.route("/v1/admin/sessions", adminSessions);
 app.route("/v1", registrations);
 app.route("/v1", payments);
@@ -63,6 +69,8 @@ app.route("/v1", results);
 app.route("/v1/admin", adminResults);
 app.route("/v1", players);
 app.route("/v1/admin", adminOperations);
+app.route("/v1/admin", adminNotifications);
+app.route("/v1/webhooks", whatsappWebhook);
 
 const port = Number(process.env.PORT) || 3001;
 

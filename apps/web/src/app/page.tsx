@@ -25,6 +25,9 @@ export default function HomePage() {
             <Link href="/catalogue">
               <Button variant="ghost">Catalogue</Button>
             </Link>
+            <Link href="/notifications">
+              <Button variant="ghost">Notifications</Button>
+            </Link>
           </nav>
         </div>
       </header>

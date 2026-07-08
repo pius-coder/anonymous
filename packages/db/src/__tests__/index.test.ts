@@ -134,6 +134,30 @@ describe("Prisma Client", () => {
     expect(prisma.adminActionApproval).toBeDefined();
   });
 
+  it("should expose notificationPreference model", () => {
+    expect(prisma.notificationPreference).toBeDefined();
+  });
+
+  it("should expose messageTemplate model", () => {
+    expect(prisma.messageTemplate).toBeDefined();
+  });
+
+  it("should expose notificationJob model", () => {
+    expect(prisma.notificationJob).toBeDefined();
+  });
+
+  it("should expose deliveryLog model", () => {
+    expect(prisma.deliveryLog).toBeDefined();
+  });
+
+  it("should expose consentRecord model", () => {
+    expect(prisma.consentRecord).toBeDefined();
+  });
+
+  it("should expose outboundMessage model", () => {
+    expect(prisma.outboundMessage).toBeDefined();
+  });
+
   it("should expose auditLog model", () => {
     expect(prisma.auditLog).toBeDefined();
   });
