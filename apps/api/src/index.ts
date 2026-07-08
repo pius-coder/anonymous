@@ -9,6 +9,7 @@ import { requestId } from "./middleware/requestId.js";
 import { secureHeaders } from "./middleware/secureHeaders.js";
 import { bodyLimit } from "./middleware/bodyLimit.js";
 import health from "./routes/health.js";
+import internalRounds from "./routes/internal/rounds.js";
 import publicSessions from "./routes/public/sessions.js";
 import publicSessionDetail from "./routes/public/session-detail.js";
 import share from "./routes/share.js";
@@ -34,6 +35,7 @@ app.use("*", secureHeaders);
 app.use("*", bodyLimit());
 
 app.route("/health", health);
+app.route("/internal", internalRounds);
 app.route("/v1/public/sessions", publicSessions);
 app.route("/v1/public/sessions", publicSessionDetail);
 app.route("/v1/share", share);
