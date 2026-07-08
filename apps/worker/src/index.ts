@@ -13,6 +13,7 @@ import {
   processCreditsDistribution,
   type CreditsDistributionJobData,
 } from "./creditsDistribution.js";
+import { processNotificationSend, type NotificationSendJobData } from "./notifications.js";
 
 const connection = {
   host: process.env.REDIS_HOST || "localhost",
@@ -37,6 +38,9 @@ const worker = new Worker(
     }
     if (job.name === "credits.distribute") {
       return processCreditsDistribution(job.data as CreditsDistributionJobData);
+    }
+    if (job.name === "notification.send") {
+      return processNotificationSend(job.data as NotificationSendJobData);
     }
     return { success: true };
   },

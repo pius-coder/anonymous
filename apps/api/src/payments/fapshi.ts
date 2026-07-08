@@ -1,7 +1,14 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
-import { Prisma, prisma, PaymentStatus, SessionRegistrationStatus } from "@session-jeu/db";
+import {
+  PaymentStatus,
+  Prisma,
+  SessionRegistrationStatus,
+  prisma,
+} from "@session-jeu/db";
 import { schedulePaymentReconciliation } from "../queues/paymentReconciliation.js";
+import { scheduleNotificationReminder } from "../queues/notificationReminders.js";
+import { queueNotificationSafely } from "../notifications/notifications.js";
 import {
   FAPSHI_MIN_AMOUNT_XAF,
   FAPSHI_PROVIDER,
@@ -197,7 +204,7 @@ export async function applyFapshiPaymentStatus(input: {
   now?: Date;
 }) {
   const now = input.now ?? new Date();
-  return prisma.$transaction(
+  const result = await prisma.$transaction(
     async (tx) => {
       const eventKey = input.eventKey ?? fapshiWebhookEventKey(input.payload);
       const existingEvent = await tx.webhookEvent.findUnique({ where: { eventKey } });
@@ -294,4 +301,61 @@ export async function applyFapshiPaymentStatus(input: {
       timeout: 10000,
     },
   );
+
+  if (
+    result.type === "processed" &&
+    result.payment.status === PaymentStatus.SUCCESSFUL &&
+    result.registrationPaid
+  ) {
+    try {
+      await queueNotificationSafely({
+        userId: result.payment.userId,
+        sessionId: result.payment.sessionId ?? undefined,
+        type: "PAYMENT",
+        channel: "IN_APP",
+        title: "Paiement confirme",
+        body: "Votre paiement est confirme. Vous pourrez faire le check-in avant le debut.",
+        idempotencyKey: `payment:${result.payment.id}:successful:in-app`,
+        payload: {
+          paymentId: result.payment.id,
+          registrationId: result.payment.registrationId,
+        },
+      });
+
+      if (result.payment.sessionId) {
+        const session = await prisma.gameSession.findUnique({
+          where: { id: result.payment.sessionId },
+          select: { id: true, name: true, startTime: true },
+        });
+        if (session?.startTime) {
+          const scheduledFor = new Date(
+            Math.max(now.getTime(), session.startTime.getTime() - 600_000),
+          );
+          const queued = await queueNotificationSafely({
+            userId: result.payment.userId,
+            sessionId: session.id,
+            type: "REMINDER",
+            channel: "IN_APP",
+            title: "Rappel check-in",
+            body: `Pensez au check-in pour ${session.name}.`,
+            idempotencyKey: `session:${session.id}:user:${result.payment.userId}:checkin-reminder:in-app`,
+            scheduledFor,
+            payload: { sessionId: session.id },
+          });
+          if (queued.type === "queued") {
+            await scheduleNotificationReminder({
+              notificationJobId: queued.job.id,
+              sessionId: session.id,
+              type: `checkin:${result.payment.userId}`,
+              scheduledFor,
+            });
+          }
+        }
+      }
+    } catch {
+      // Notification side effects are non-blocking for payment processing.
+    }
+  }
+
+  return result;
 }
