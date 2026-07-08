@@ -26,6 +26,8 @@ enum GameSessionStatus {
   DRAFT
   PUBLISHED
   ACTIVE
+  WAITING_START
+  LIVE
   COMPLETED
   CANCELLED
 }
@@ -34,6 +36,9 @@ enum SessionRegistrationStatus {
   CREATED
   PAYMENT_PENDING
   PAID
+  CHECKED_IN
+  IN_ROOM
+  NO_SHOW
   CANCELLED
   REFUNDED
   EXPIRED
@@ -91,6 +96,7 @@ model User {
   auditLogs              AuditLog[]
   gameResults            GameResult[]
   prizeDistributions     PrizeDistribution[]
+  joinTokens             JoinToken[]
 
   @@index([email])
   @@index([role])
@@ -194,6 +200,7 @@ model GameSession {
   gameResults        GameResult[]
   prizeDistributions PrizeDistribution[]
   shareLinks         ShareLink[]
+  joinTokens         JoinToken[]
 
   @@index([code])
   @@index([status])
@@ -208,19 +215,45 @@ model SessionRegistration {
   status             SessionRegistrationStatus @default(CREATED)
   paymentDeadlineAt  DateTime?
   paidAt             DateTime?
+  checkedInAt        DateTime?
+  inRoomAt           DateTime?
+  noShowAt           DateTime?
   cancelledAt        DateTime?
   cancellationReason String?
   createdAt          DateTime                  @default(now())
   updatedAt          DateTime                  @updatedAt
 
-  user    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  session GameSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  payment PaymentTransaction?
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session    GameSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  payment    PaymentTransaction?
+  joinTokens JoinToken[]
 
   @@index([userId])
   @@index([sessionId])
   @@index([sessionId, status])
   @@index([status, paymentDeadlineAt])
+  @@index([status, checkedInAt])
+}
+
+model JoinToken {
+  id             String    @id @default(cuid())
+  tokenHash      String    @unique
+  userId         String
+  sessionId      String
+  registrationId String
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session      GameSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  registration SessionRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([registrationId])
+  @@index([expiresAt])
+  @@index([consumedAt])
 }
 
 model PaymentTransaction {

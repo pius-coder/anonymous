@@ -21,11 +21,15 @@ export const activeRegistrationStatuses = [
   SessionRegistrationStatus.CREATED,
   SessionRegistrationStatus.PAYMENT_PENDING,
   SessionRegistrationStatus.PAID,
+  SessionRegistrationStatus.CHECKED_IN,
+  SessionRegistrationStatus.IN_ROOM,
 ] as const;
 
 export const capacityHoldingRegistrationStatuses = [
   SessionRegistrationStatus.PAYMENT_PENDING,
   SessionRegistrationStatus.PAID,
+  SessionRegistrationStatus.CHECKED_IN,
+  SessionRegistrationStatus.IN_ROOM,
 ] as const;
 
 export type RegisterSessionResult =

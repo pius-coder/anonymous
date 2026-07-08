@@ -54,6 +54,10 @@ describe("Prisma Client", () => {
     expect(prisma.webhookEvent).toBeDefined();
   });
 
+  it("should expose joinToken model", () => {
+    expect(prisma.joinToken).toBeDefined();
+  });
+
   it("should expose roundInstance model", () => {
     expect(prisma.roundInstance).toBeDefined();
   });
