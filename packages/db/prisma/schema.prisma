@@ -71,6 +71,21 @@ enum RoundStatus {
   COMPLETED
 }
 
+enum LivePhase {
+  LOBBY
+  BRIEFING
+  ROUND_ACTIVE
+  RESOLVING
+  RESULTS
+  PAUSED
+}
+
+enum PlayerConnectionStatus {
+  CONNECTED
+  DISCONNECTED
+  RECONNECTING
+}
+
 // Models
 model User {
   id             String   @id @default(cuid())
@@ -97,6 +112,9 @@ model User {
   gameResults            GameResult[]
   prizeDistributions     PrizeDistribution[]
   joinTokens             JoinToken[]
+  liveReservations       LiveReservation[]
+  playerConnections      PlayerConnection[]
+  playerActions          PlayerAction[]
 
   @@index([email])
   @@index([role])
@@ -201,6 +219,11 @@ model GameSession {
   prizeDistributions PrizeDistribution[]
   shareLinks         ShareLink[]
   joinTokens         JoinToken[]
+  liveState          LiveSessionState?
+  liveReservations   LiveReservation[]
+  playerConnections  PlayerConnection[]
+  playerActions      PlayerAction[]
+  roundDeadlines     RoundDeadline[]
 
   @@index([code])
   @@index([status])
@@ -223,10 +246,11 @@ model SessionRegistration {
   createdAt          DateTime                  @default(now())
   updatedAt          DateTime                  @updatedAt
 
-  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  session    GameSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  payment    PaymentTransaction?
-  joinTokens JoinToken[]
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session          GameSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  payment          PaymentTransaction?
+  joinTokens       JoinToken[]
+  liveReservations LiveReservation[]
 
   @@index([userId])
   @@index([sessionId])
@@ -254,6 +278,74 @@ model JoinToken {
   @@index([registrationId])
   @@index([expiresAt])
   @@index([consumedAt])
+}
+
+model LiveSessionState {
+  id             String     @id @default(cuid())
+  sessionId      String     @unique
+  roomId         String?
+  phase          LivePhase  @default(LOBBY)
+  previousPhase  LivePhase?
+  currentRoundId String?
+  phaseStartedAt DateTime?
+  pausedAt       DateTime?
+  pauseReason    String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  session      GameSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  currentRound RoundInstance? @relation(fields: [currentRoundId], references: [id], onDelete: SetNull)
+
+  @@index([phase])
+  @@index([roomId])
+  @@index([currentRoundId])
+}
+
+model LiveReservation {
+  id             String    @id @default(cuid())
+  tokenHash      String    @unique
+  userId         String
+  sessionId      String
+  registrationId String
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session      GameSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  registration SessionRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([registrationId])
+  @@index([expiresAt])
+  @@index([consumedAt])
+}
+
+model PlayerConnection {
+  id                String                 @id @default(cuid())
+  sessionId         String
+  userId            String
+  registrationId    String?
+  roomId            String?
+  colyseusSessionId String?
+  status            PlayerConnectionStatus @default(CONNECTED)
+  connectedAt       DateTime?
+  disconnectedAt    DateTime?
+  reconnectUntil    DateTime?
+  lastSeenAt        DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, userId])
+  @@index([sessionId, status])
+  @@index([userId])
+  @@index([roomId])
+  @@index([colyseusSessionId])
+  @@index([reconnectUntil])
 }
 
 model PaymentTransaction {
@@ -360,11 +452,56 @@ model RoundInstance {
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
-  session GameSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  results RoundResult[]
+  session       GameSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  results       RoundResult[]
+  liveState     LiveSessionState[]
+  deadline      RoundDeadline?
+  playerActions PlayerAction[]
 
   @@unique([sessionId, roundNum])
   @@index([sessionId])
+}
+
+model RoundDeadline {
+  id         String    @id @default(cuid())
+  sessionId  String
+  roundId    String    @unique
+  deadlineAt DateTime
+  closedAt   DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  session GameSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  round   RoundInstance @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([deadlineAt])
+  @@index([closedAt])
+}
+
+model PlayerAction {
+  id              String    @id @default(cuid())
+  sessionId       String
+  roundId         String
+  userId          String
+  actionNonce     String
+  actionType      String
+  payload         Json
+  acceptedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime  @default(now())
+
+  session GameSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  round   RoundInstance @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, userId, actionNonce])
+  @@index([sessionId])
+  @@index([roundId])
+  @@index([userId])
+  @@index([acceptedAt])
+  @@index([rejectedAt])
 }
 
 model RoundResult {
