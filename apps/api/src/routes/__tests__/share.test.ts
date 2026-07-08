@@ -3,9 +3,21 @@ import { Hono } from "hono";
 
 vi.mock("@session-jeu/db", () => ({
   prisma: {
-    gameSession: {
+    shareLink: {
       findUnique: vi.fn(),
+      update: vi.fn(),
     },
+    auditLog: {
+      create: vi.fn(),
+    },
+    $transaction: vi.fn((queries: unknown[]) => Promise.resolve(queries.map(() => ({})))),
+  },
+  GameSessionStatus: {
+    DRAFT: "DRAFT",
+    PUBLISHED: "PUBLISHED",
+    ACTIVE: "ACTIVE",
+    COMPLETED: "COMPLETED",
+    CANCELLED: "CANCELLED",
   },
 }));
 
@@ -23,18 +35,25 @@ describe("GET /v1/share/:token", () => {
   });
 
   it("should redirect to session detail for valid token", async () => {
-    mockPrisma.gameSession.findUnique.mockResolvedValue({
-      code: "TEST-001",
-      isPublic: true,
+    mockPrisma.shareLink.findUnique.mockResolvedValue({
+      id: "link-1",
+      sessionId: "session-1",
+      clickCount: 0,
+      session: {
+        code: "TEST-001",
+        visibility: "PUBLIC",
+        status: "PUBLISHED",
+      },
     });
 
-    const res = await app.request("/v1/share/TEST-001");
+    const res = await app.request("/v1/share/valid-token");
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("/session/TEST-001");
+    expect(mockPrisma.$transaction).toHaveBeenCalled();
   });
 
   it("should return 404 for invalid token", async () => {
-    mockPrisma.gameSession.findUnique.mockResolvedValue(null);
+    mockPrisma.shareLink.findUnique.mockResolvedValue(null);
 
     const res = await app.request("/v1/share/INVALID");
     expect(res.status).toBe(404);
@@ -44,14 +63,68 @@ describe("GET /v1/share/:token", () => {
     expect(body.error.code).toBe("LINK_NOT_FOUND");
   });
 
-  it("should redirect for private sessions too (link resolves)", async () => {
-    mockPrisma.gameSession.findUnique.mockResolvedValue({
-      code: "PRIVATE-001",
-      isPublic: false,
+  it("should return 403 for private session", async () => {
+    mockPrisma.shareLink.findUnique.mockResolvedValue({
+      id: "link-2",
+      sessionId: "session-2",
+      clickCount: 0,
+      session: {
+        code: "PRIVATE-001",
+        visibility: "PRIVATE",
+        status: "PUBLISHED",
+      },
     });
 
-    const res = await app.request("/v1/share/PRIVATE-001");
+    const res = await app.request("/v1/share/private-token");
+    expect(res.status).toBe(403);
+  });
+
+  it("should return 410 for completed session", async () => {
+    mockPrisma.shareLink.findUnique.mockResolvedValue({
+      id: "link-3",
+      sessionId: "session-3",
+      clickCount: 0,
+      session: {
+        code: "COMPLETED-001",
+        visibility: "PUBLIC",
+        status: "COMPLETED",
+      },
+    });
+
+    const res = await app.request("/v1/share/completed-token");
+    expect(res.status).toBe(410);
+  });
+
+  it("should return 410 for cancelled session", async () => {
+    mockPrisma.shareLink.findUnique.mockResolvedValue({
+      id: "link-4",
+      sessionId: "session-4",
+      clickCount: 0,
+      session: {
+        code: "CANCELLED-001",
+        visibility: "UNLISTED",
+        status: "CANCELLED",
+      },
+    });
+
+    const res = await app.request("/v1/share/cancelled-token");
+    expect(res.status).toBe(410);
+  });
+
+  it("should redirect for unlisted session", async () => {
+    mockPrisma.shareLink.findUnique.mockResolvedValue({
+      id: "link-5",
+      sessionId: "session-5",
+      clickCount: 0,
+      session: {
+        code: "UNLISTED-001",
+        visibility: "UNLISTED",
+        status: "PUBLISHED",
+      },
+    });
+
+    const res = await app.request("/v1/share/unlisted-token");
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe("/session/PRIVATE-001");
+    expect(res.headers.get("location")).toBe("/session/UNLISTED-001");
   });
 });

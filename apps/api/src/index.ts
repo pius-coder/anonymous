@@ -12,6 +12,14 @@ import health from "./routes/health.js";
 import publicSessions from "./routes/public/sessions.js";
 import publicSessionDetail from "./routes/public/session-detail.js";
 import share from "./routes/share.js";
+import auth from "./routes/auth.js";
+import me from "./routes/me.js";
+import adminSessions from "./routes/admin/sessions.js";
+import registrations from "./routes/registrations.js";
+import payments from "./routes/payments.js";
+import adminPayments from "./routes/admin/payments.js";
+import wallet from "./routes/wallet.js";
+import adminWallets from "./routes/admin/wallets.js";
 
 const app = new Hono();
 
@@ -25,6 +33,14 @@ app.route("/health", health);
 app.route("/v1/public/sessions", publicSessions);
 app.route("/v1/public/sessions", publicSessionDetail);
 app.route("/v1/share", share);
+app.route("/v1/auth", auth);
+app.route("/v1/me", me);
+app.route("/v1/admin/sessions", adminSessions);
+app.route("/v1", registrations);
+app.route("/v1", payments);
+app.route("/v1/admin/payments", adminPayments);
+app.route("/v1", wallet);
+app.route("/v1/admin/wallets", adminWallets);
 
 const port = Number(process.env.PORT) || 3001;
 

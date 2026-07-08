@@ -6,6 +6,8 @@ Regles simples pour tout agent qui travaille dans ce repo.
 
 Ne jamais implementer au feeling. Toujours verifier avec les fichiers du projet, la documentation actuelle et les commandes CLI avant de modifier le code.
 
+Si une instruction est ambigue, ne pas choisir l option la plus rapide. L agent doit transformer l ambiguite en decision explicite, documentee dans la reponse, puis verifier cette decision avec les PRD, le plan et les tests.
+
 ## Workflow obligatoire
 
 1. Lire la fiche de plan dans `docs/plan/`.
@@ -42,8 +44,38 @@ Ne jamais implementer au feeling. Toujours verifier avec les fichiers du projet,
 - Ne pas installer une dependance sans verifier sa version, ses peer dependencies et son usage officiel.
 - Ne pas ignorer une erreur de build, typecheck, lint ou test.
 - Ne pas declarer une feature terminee si les tests obligatoires de la fiche `docs/plan/` ne sont pas valides.
+- Ne pas declarer une feature terminee si `pnpm typecheck`, `pnpm lint`, `pnpm test` et `pnpm build` ne passent pas.
 - Ne pas toucher aux features hors scope sauf dependance minimale documentee.
 - Ne pas exposer secrets, cles API, mots de passe ou donnees sensibles.
+- Ne pas remplacer un concept metier par un raccourci technique. Exemple : ne pas remplacer `PUBLIC/UNLISTED/PRIVATE` par un simple booleen si le PRD demande trois etats.
+- Ne pas ajouter un champ Prisma sans migration correspondante.
+- Ne pas modifier `schema.prisma` sans verifier que la migration SQL ou la migration Prisma existe et se lance depuis une DB vide.
+
+## Regles anti-ambiguite
+
+Quand une feature touche l UI, l agent doit definir explicitement :
+
+- les pages exactes ;
+- les routes exactes ;
+- les textes interdits ;
+- les CTA exacts ;
+- les etats vides/erreur/loading ;
+- le comportement mobile minimal ;
+- les tests UI/E2E associes.
+
+Quand une feature touche la DB, l agent doit definir explicitement :
+
+- les modeles modifies ;
+- les enums modifies ;
+- la migration attendue ;
+- les seeds modifies ;
+- les tests DB ou integration qui prouvent que la migration fonctionne.
+
+Quand une feature touche API + UI, l agent doit verifier que :
+
+- le contrat de reponse API correspond aux types utilises par l UI ;
+- les erreurs API sont gerees cote UI ;
+- les tests couvrent au moins un parcours complet.
 
 ## Regles CLI
 
@@ -112,6 +144,7 @@ Une tache est terminee seulement si :
 - les docs actuelles des librairies ont ete consultees ;
 - le code est implemente dans le scope ;
 - les tests obligatoires sont ajoutes ou mis a jour ;
-- les commandes de validation passent ;
+- les commandes `pnpm typecheck`, `pnpm lint`, `pnpm test` et `pnpm build` passent ;
+- les migrations DB sont coherentes avec `schema.prisma` ;
+- aucun test obligatoire de la fiche `docs/plan/` n est manquant ;
 - la reponse finale liste fichiers modifies, commandes executees et resultats.
-

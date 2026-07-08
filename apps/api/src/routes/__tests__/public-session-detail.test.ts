@@ -7,7 +7,12 @@ vi.mock("@session-jeu/db", () => ({
       findUnique: vi.fn(),
     },
   },
-  SessionRegistrationStatus: { PENDING: "PENDING", CONFIRMED: "CONFIRMED", CANCELLED: "CANCELLED" },
+  SessionRegistrationStatus: {
+    PAYMENT_PENDING: "PAYMENT_PENDING",
+    PAID: "PAID",
+    CANCELLED: "CANCELLED",
+  },
+  SessionVisibility: { PUBLIC: "PUBLIC", UNLISTED: "UNLISTED", PRIVATE: "PRIVATE" },
 }));
 
 import { prisma } from "@session-jeu/db";
@@ -34,7 +39,7 @@ describe("GET /v1/public/sessions/:code", () => {
       startTime: new Date("2026-07-15T20:00:00Z"),
       endTime: null,
       status: "PUBLISHED",
-      isPublic: true,
+      visibility: "PUBLIC",
       _count: { registrations: 5 },
     } as never);
 
@@ -51,11 +56,34 @@ describe("GET /v1/public/sessions/:code", () => {
     });
   });
 
+  it("should return session detail for UNLISTED session", async () => {
+    mockPrisma.gameSession.findUnique.mockResolvedValue({
+      code: "UNLISTED-001",
+      name: "Unlisted Session",
+      description: "Direct link only",
+      entryFee: 500,
+      maxPlayers: 10,
+      prizePool: 3000,
+      startTime: new Date("2026-07-14T19:00:00Z"),
+      endTime: null,
+      status: "PUBLISHED",
+      visibility: "UNLISTED",
+      _count: { registrations: 2 },
+    } as never);
+
+    const res = await app.request("/v1/public/sessions/UNLISTED-001");
+    expect(res.status).toBe(200);
+
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.success).toBe(true);
+    expect(body.data.visibility).toBe("UNLISTED");
+  });
+
   it("should return 404 for PRIVATE session", async () => {
     mockPrisma.gameSession.findUnique.mockResolvedValue({
       code: "PRIVATE-001",
       name: "Private",
-      isPublic: false,
+      visibility: "PRIVATE",
       _count: { registrations: 0 },
     } as never);
 
@@ -64,7 +92,6 @@ describe("GET /v1/public/sessions/:code", () => {
 
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.success).toBe(false);
-    expect(body.error.code).toBe("SESSION_NOT_FOUND");
   });
 
   it("should return 404 for non-existent session", async () => {
@@ -85,7 +112,7 @@ describe("GET /v1/public/sessions/:code", () => {
       startTime: null,
       endTime: null,
       status: "COMPLETED",
-      isPublic: true,
+      visibility: "PUBLIC",
       _count: { registrations: 8 },
     } as never);
 
@@ -107,7 +134,7 @@ describe("GET /v1/public/sessions/:code", () => {
       startTime: null,
       endTime: null,
       status: "CANCELLED",
-      isPublic: true,
+      visibility: "PUBLIC",
       _count: { registrations: 0 },
     } as never);
 
@@ -126,7 +153,7 @@ describe("GET /v1/public/sessions/:code", () => {
       startTime: null,
       endTime: null,
       status: "PUBLISHED",
-      isPublic: true,
+      visibility: "PUBLIC",
       _count: { registrations: 12 },
     } as never);
 

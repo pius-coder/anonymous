@@ -10,8 +10,16 @@ datasource db {
 // Enums
 enum UserRole {
   PLAYER
-  ORGANIZER
+  SUPPORT
+  FINANCE
   ADMIN
+  SUPER_ADMIN
+}
+
+enum SessionVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
 }
 
 enum GameSessionStatus {
@@ -23,16 +31,19 @@ enum GameSessionStatus {
 }
 
 enum SessionRegistrationStatus {
-  PENDING
-  CONFIRMED
+  CREATED
+  PAYMENT_PENDING
+  PAID
   CANCELLED
-  WAITLISTED
+  REFUNDED
+  EXPIRED
 }
 
 enum PaymentStatus {
   PENDING
-  COMPLETED
+  SUCCESSFUL
   FAILED
+  EXPIRED
   REFUNDED
 }
 
@@ -46,6 +57,7 @@ enum LedgerType {
   PRIZE
   REFUND
   BONUS
+  ADJUSTMENT
 }
 
 enum RoundStatus {
@@ -56,33 +68,42 @@ enum RoundStatus {
 
 // Models
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  phone     String?
-  name      String?
-  avatarUrl String?
-  role      UserRole @default(PLAYER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(cuid())
+  email          String   @unique
+  phone          String?  @unique
+  passwordHash   String
+  name           String?
+  avatarUrl      String?
+  role           UserRole @default(PLAYER)
+  isActive       Boolean  @default(true)
+  sessionVersion Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  profile          PlayerProfile?
-  registrations    SessionRegistration[]
-  wallet           Wallet?
-  ledgers          LedgerEntry[]
-  auditLogs        AuditLog[]
-  gameResults      GameResult[]
-  prizeDistributions PrizeDistribution[]
+  profile                PlayerProfile?
+  authSessions           AuthSession[]
+  passwordResetTokens    PasswordResetToken[]
+  roleAssignments        RoleAssignment[]      @relation("RoleAssignments")
+  grantedRoleAssignments RoleAssignment[]      @relation("RoleGrantedBy")
+  registrations          SessionRegistration[]
+  wallet                 Wallet?
+  ledgers                LedgerEntry[]
+  auditLogs              AuditLog[]
+  gameResults            GameResult[]
+  prizeDistributions     PrizeDistribution[]
 
   @@index([email])
+  @@index([role])
+  @@index([isActive])
 }
 
 model PlayerProfile {
-  id        String  @id @default(cuid())
-  userId    String  @unique
-  username  String  @unique
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  username  String   @unique
   bio       String?
-  level     Int     @default(1)
-  xp        Int     @default(0)
+  level     Int      @default(1)
+  xp        Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -91,76 +112,176 @@ model PlayerProfile {
   @@index([userId])
 }
 
-model GameSession {
-  id            String            @id @default(cuid())
-  code          String            @unique
-  name          String
-  description   String?
-  status        GameSessionStatus @default(DRAFT)
-  maxPlayers    Int               @default(10)
-  entryFee      Float             @default(0)
-  prizePool     Float             @default(0)
-  startTime     DateTime?
-  endTime       DateTime?
-  isPublic      Boolean           @default(true)
-  createdBy     String
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+model AuthSession {
+  id             String    @id @default(cuid())
+  userId         String
+  tokenHash      String    @unique
+  sessionVersion Int
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime  @default(now())
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  lastSeenAt     DateTime?
 
-  registrations  SessionRegistration[]
-  rounds         RoundInstance[]
-  gameResults    GameResult[]
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([usedAt])
+}
+
+model RoleAssignment {
+  id          String    @id @default(cuid())
+  userId      String
+  role        UserRole
+  grantedById String?
+  reason      String?
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
+
+  user      User  @relation("RoleAssignments", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy User? @relation("RoleGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, role])
+  @@index([grantedById])
+  @@index([revokedAt])
+}
+
+model GameSession {
+  id                   String            @id @default(cuid())
+  code                 String            @unique
+  name                 String
+  description          String?
+  status               GameSessionStatus @default(DRAFT)
+  minPlayers           Int               @default(2)
+  maxPlayers           Int               @default(10)
+  entryFee             Float             @default(0)
+  entryFeeXaf          Int               @default(0)
+  visibility           SessionVisibility @default(PUBLIC)
+  prizePool            Float             @default(0)
+  prizePoolBps         Int               @default(6000)
+  winnerSplitBps       Json
+  providerFeeBps       Int               @default(300)
+  configVersion        Int               @default(1)
+  startTime            DateTime?
+  endTime              DateTime?
+  registrationClosesAt DateTime?
+  publishedAt          DateTime?
+  cancelledAt          DateTime?
+  cancellationReason   String?
+  createdBy            String
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  registrations      SessionRegistration[]
+  rounds             RoundInstance[]
+  gameResults        GameResult[]
   prizeDistributions PrizeDistribution[]
+  shareLinks         ShareLink[]
 
   @@index([code])
   @@index([status])
   @@index([createdBy])
+  @@index([configVersion])
 }
 
 model SessionRegistration {
-  id        String                    @id @default(cuid())
-  userId    String
-  sessionId String
-  status    SessionRegistrationStatus @default(PENDING)
-  paidAt    DateTime?
-  createdAt DateTime                  @default(now())
-  updatedAt DateTime                  @updatedAt
+  id                 String                    @id @default(cuid())
+  userId             String
+  sessionId          String
+  status             SessionRegistrationStatus @default(CREATED)
+  paymentDeadlineAt  DateTime?
+  paidAt             DateTime?
+  cancelledAt        DateTime?
+  cancellationReason String?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
 
-  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session GameSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  payment PaymentTransaction?
 
-  @@unique([userId, sessionId])
   @@index([userId])
   @@index([sessionId])
+  @@index([sessionId, status])
+  @@index([status, paymentDeadlineAt])
 }
 
 model PaymentTransaction {
-  id        String        @id @default(cuid())
-  userId    String
-  sessionId String?
-  amount    Float
-  currency  String        @default("XAF")
-  status    PaymentStatus @default(PENDING)
-  provider  String?
-  reference String?
-  metadata  Json?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id                 String        @id @default(cuid())
+  userId             String
+  sessionId          String?
+  registrationId     String?       @unique
+  amount             Float
+  amountXaf          Int
+  currency           String        @default("XAF")
+  status             PaymentStatus @default(PENDING)
+  provider           String?
+  providerExternalId String?       @unique
+  providerTransId    String?       @unique
+  providerStatus     String?
+  checkoutUrl        String?
+  reference          String?
+  webhookReceivedAt  DateTime?
+  metadata           Json?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
-  ledger LedgerEntry[]
+  registration  SessionRegistration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  ledger        LedgerEntry[]
+  webhookEvents WebhookEvent[]
 
   @@index([userId])
   @@index([sessionId])
+  @@index([registrationId])
+  @@index([provider, status])
   @@index([reference])
 }
 
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  provider    String
+  eventKey    String    @unique
+  paymentId   String?
+  transId     String?
+  status      String?
+  payload     Json
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+
+  payment PaymentTransaction? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([provider])
+  @@index([paymentId])
+  @@index([transId])
+  @@index([receivedAt])
+}
+
 model Wallet {
-  id        String  @id @default(cuid())
-  userId    String  @unique
-  balance   Float   @default(0)
-  currency  String  @default("XAF")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  balanceXaf Int      @default(0)
+  currency   String   @default("XAF")
+  isFrozen   Boolean  @default(false)
+  version    Int      @default(1)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   ledgers LedgerEntry[]
@@ -169,16 +290,20 @@ model Wallet {
 }
 
 model LedgerEntry {
-  id            String         @id @default(cuid())
-  walletId      String
-  userId        String
-  amount        Float
-  direction     LedgerDirection
-  type          LedgerType
-  description   String?
-  paymentId     String?
-  sessionId     String?
-  createdAt     DateTime       @default(now())
+  id              String          @id @default(cuid())
+  walletId        String
+  userId          String
+  amountXaf       Int
+  balanceAfterXaf Int
+  direction       LedgerDirection
+  type            LedgerType
+  description     String?
+  referenceType   String?
+  referenceId     String?
+  idempotencyKey  String          @unique
+  paymentId       String?
+  sessionId       String?
+  createdAt       DateTime        @default(now())
 
   wallet  Wallet              @relation(fields: [walletId], references: [id], onDelete: Cascade)
   user    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -188,19 +313,21 @@ model LedgerEntry {
   @@index([userId])
   @@index([paymentId])
   @@index([sessionId])
+  @@index([referenceType, referenceId])
+  @@index([createdAt])
 }
 
 model RoundInstance {
-  id        String       @id @default(cuid())
+  id        String      @id @default(cuid())
   sessionId String
   roundNum  Int
-  status    RoundStatus  @default(PENDING)
+  status    RoundStatus @default(PENDING)
   startTime DateTime?
   endTime   DateTime?
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
 
-  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session GameSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   results RoundResult[]
 
   @@unique([sessionId, roundNum])
@@ -223,13 +350,13 @@ model RoundResult {
 }
 
 model GameResult {
-  id        String  @id @default(cuid())
-  sessionId String
-  userId    String
-  finalRank Int?
-  totalScore Int   @default(0)
-  prizeWon  Float  @default(0)
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  sessionId  String
+  userId     String
+  finalRank  Int?
+  totalScore Int      @default(0)
+  prizeWon   Float    @default(0)
+  createdAt  DateTime @default(now())
 
   session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -240,13 +367,13 @@ model GameResult {
 }
 
 model PrizeDistribution {
-  id        String  @id @default(cuid())
+  id        String    @id @default(cuid())
   sessionId String
   userId    String
   amount    Float
   rank      Int
   paidAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -264,6 +391,8 @@ model AuditLog {
   entityId  String?
   oldData   Json?
   newData   Json?
+  reason    String?
+  requestId String?
   ipAddress String?
   userAgent String?
   createdAt DateTime @default(now())
@@ -273,5 +402,21 @@ model AuditLog {
   @@index([userId])
   @@index([entity, entityId])
   @@index([action])
+  @@index([requestId])
   @@index([createdAt])
+}
+
+model ShareLink {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  sessionId  String
+  createdBy  String?
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime?
+  clickCount Int       @default(0)
+
+  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([sessionId])
 }

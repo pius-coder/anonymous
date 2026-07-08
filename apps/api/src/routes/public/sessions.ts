@@ -1,7 +1,12 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
-import { prisma, GameSessionStatus, SessionRegistrationStatus } from "@session-jeu/db";
+import {
+  prisma,
+  GameSessionStatus,
+  SessionRegistrationStatus,
+  SessionVisibility,
+} from "@session-jeu/db";
 import { PAGINATION_DEFAULTS } from "@session-jeu/shared";
 
 const sessions = new Hono();
@@ -21,7 +26,7 @@ sessions.get("/", zValidator("query", querySchema), async (c) => {
   const skip = (page - 1) * limit;
 
   const where = {
-    isPublic: true,
+    visibility: SessionVisibility.PUBLIC,
     status: { in: [GameSessionStatus.PUBLISHED, GameSessionStatus.ACTIVE] },
   };
 
@@ -36,7 +41,11 @@ sessions.get("/", zValidator("query", querySchema), async (c) => {
         _count: {
           select: {
             registrations: {
-              where: { status: { in: [SessionRegistrationStatus.PENDING, SessionRegistrationStatus.CONFIRMED] } },
+              where: {
+                status: {
+                  in: [SessionRegistrationStatus.PAYMENT_PENDING, SessionRegistrationStatus.PAID],
+                },
+              },
             },
           },
         },
@@ -54,7 +63,7 @@ sessions.get("/", zValidator("query", querySchema), async (c) => {
     startTime: s.startTime?.toISOString() ?? null,
     endTime: s.endTime?.toISOString() ?? null,
     status: s.status,
-    isPublic: s.isPublic,
+    visibility: s.visibility,
     placesRemaining: Math.max(0, s.maxPlayers - s._count.registrations),
   }));
 

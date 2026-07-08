@@ -56,11 +56,7 @@ export async function generateMetadata({
   };
 }
 
-export default async function SessionDetailPage({
-  params,
-}: {
-  params: Promise<{ code: string }>;
-}) {
+export default async function SessionDetailPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const session = await getSession(code);
 
@@ -100,9 +96,7 @@ export default async function SessionDetailPage({
           </div>
         </div>
 
-        {session.description && (
-          <p className="mb-8 text-muted-foreground">{session.description}</p>
-        )}
+        {session.description && <p className="mb-8 text-muted-foreground">{session.description}</p>}
 
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
@@ -119,7 +113,7 @@ export default async function SessionDetailPage({
                 <span className="font-medium">{formatCurrency(session.entryFee)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Prize pool</span>
+                <span className="text-muted-foreground">Récompenses internes configurées</span>
                 <span className="font-medium">{formatCurrency(session.prizePool)}</span>
               </div>
             </CardContent>
@@ -159,21 +153,14 @@ export default async function SessionDetailPage({
             <CardTitle>Règles essentielles</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
+            <p>&bull; Les sessions sont supervisées par serveur pour garantir l&apos;équité.</p>
             <p>
-              &bull; Les sessions sont supervisées par serveur pour garantir
-              l&apos;équité.
+              &bull; Les résultats sont auditables et ne peuvent pas être modifiés après validation.
             </p>
+            <p>&bull; Le paiement doit être confirmé avant l&apos;accès à la session.</p>
             <p>
-              &bull; Les résultats sont auditableset ne peuvent pas être
-              modifiés après validation.
-            </p>
-            <p>
-              &bull; Le paiement doit être confirmé avant l&apos;accès à la
-              session.
-            </p>
-            <p>
-              &bull; Consultez la politique d&apos;annulation et de
-              remboursement avant de vous inscrire.
+              &bull; Consultez la politique d&apos;annulation et de remboursement avant de vous
+              inscrire.
             </p>
           </CardContent>
         </Card>
@@ -181,7 +168,7 @@ export default async function SessionDetailPage({
         <div className="mt-8 flex justify-center gap-4">
           <CTAButton
             label="S'inscrire à cette session"
-            href="#"
+            href={`/auth/register?next=/session/${code}`}
             disabled={isFull || isClosed}
           />
           <Link href="/catalogue">

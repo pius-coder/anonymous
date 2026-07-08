@@ -34,8 +34,5 @@ coverage/
 # Turbo
 .turbo/
 
-# Prisma
-packages/db/prisma/migrations/
-
 # Logs
 *.log
