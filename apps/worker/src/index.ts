@@ -9,6 +9,10 @@ import {
 } from "./paymentReconciliation.js";
 import { processCheckInDeadline, type CheckInDeadlineJobData } from "./checkInDeadline.js";
 import { processRoundDeadline, type RoundDeadlineJobData } from "./roundDeadline.js";
+import {
+  processCreditsDistribution,
+  type CreditsDistributionJobData,
+} from "./creditsDistribution.js";
 
 const connection = {
   host: process.env.REDIS_HOST || "localhost",
@@ -30,6 +34,9 @@ const worker = new Worker(
     }
     if (job.name === "round.deadline") {
       return processRoundDeadline(job.data as RoundDeadlineJobData);
+    }
+    if (job.name === "credits.distribute") {
+      return processCreditsDistribution(job.data as CreditsDistributionJobData);
     }
     return { success: true };
   },
