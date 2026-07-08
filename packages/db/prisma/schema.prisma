@@ -91,6 +91,30 @@ enum RoundOutcomeStatus {
   ELIMINATED
 }
 
+enum GameResultStatus {
+  WINNER
+  ELIMINATED
+  COMPLETED
+}
+
+enum PrizeDistributionStatus {
+  PENDING
+  CREDITED
+  FAILED
+}
+
+enum RoundingRemainderPolicy {
+  FIRST_WINNER
+  PLATFORM_COMMISSION
+}
+
+enum DisputeWindowStatus {
+  OPEN
+  CORRECTION_REQUESTED
+  RESOLVED
+  CLOSED
+}
+
 enum MiniGameFamily {
   SOLO
   DUEL
@@ -137,6 +161,7 @@ model User {
   playerConnections      PlayerConnection[]
   playerActions          PlayerAction[]
   miniGameDefinitions    MiniGameDefinition[]
+  disputeRequests        DisputeWindow[]       @relation("DisputeRequestedBy")
 
   @@index([email])
   @@index([role])
@@ -249,6 +274,8 @@ model GameSession {
   resolutionLogs     ResolutionLog[]
   roundOutcomes      RoundOutcome[]
   gameEvents         GameEvent[]
+  commissionRecord   CommissionRecord?
+  disputeWindow      DisputeWindow?
 
   @@index([code])
   @@index([status])
@@ -646,13 +673,18 @@ model GameEvent {
 }
 
 model GameResult {
-  id         String   @id @default(cuid())
-  sessionId  String
-  userId     String
-  finalRank  Int?
-  totalScore Int      @default(0)
-  prizeWon   Float    @default(0)
-  createdAt  DateTime @default(now())
+  id             String           @id @default(cuid())
+  sessionId      String
+  userId         String
+  finalRank      Int?
+  totalScore     Int              @default(0)
+  finalStatus    GameResultStatus @default(COMPLETED)
+  prizeWon       Float            @default(0)
+  prizeWonXaf    Int              @default(0)
+  idempotencyKey String           @unique
+  finalizedAt    DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -660,16 +692,23 @@ model GameResult {
   @@unique([sessionId, userId])
   @@index([sessionId])
   @@index([userId])
+  @@index([finalStatus])
+  @@index([finalizedAt])
 }
 
 model PrizeDistribution {
-  id        String    @id @default(cuid())
-  sessionId String
-  userId    String
-  amount    Float
-  rank      Int
-  paidAt    DateTime?
-  createdAt DateTime  @default(now())
+  id             String                  @id @default(cuid())
+  sessionId      String
+  userId         String
+  amount         Float
+  amountXaf      Int
+  rank           Int
+  status         PrizeDistributionStatus @default(PENDING)
+  idempotencyKey String                  @unique
+  paidAt         DateTime?
+  creditedAt     DateTime?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
 
   session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -677,6 +716,47 @@ model PrizeDistribution {
   @@unique([sessionId, userId])
   @@index([sessionId])
   @@index([userId])
+  @@index([status])
+  @@index([creditedAt])
+}
+
+model CommissionRecord {
+  id                        String                  @id @default(cuid())
+  sessionId                 String                  @unique
+  grossCollectionXaf        Int
+  providerFeesXaf           Int
+  netCollectionXaf          Int
+  prizePoolXaf              Int
+  organizationCommissionXaf Int
+  roundingRemainderXaf      Int                     @default(0)
+  roundingRemainderPolicy   RoundingRemainderPolicy @default(FIRST_WINNER)
+  idempotencyKey            String                  @unique
+  createdAt                 DateTime                @default(now())
+
+  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+}
+
+model DisputeWindow {
+  id            String              @id @default(cuid())
+  sessionId     String              @unique
+  status        DisputeWindowStatus @default(OPEN)
+  opensAt       DateTime
+  closesAt      DateTime
+  requestedById String?
+  requestReason String?
+  requestedAt   DateTime?
+  resolvedAt    DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  session     GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  requestedBy User?       @relation("DisputeRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([closesAt])
+  @@index([requestedById])
 }
 
 model AuditLog {

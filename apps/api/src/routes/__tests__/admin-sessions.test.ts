@@ -35,6 +35,10 @@ const dbMocks = vi.hoisted(() => {
   };
 });
 
+const queueMocks = vi.hoisted(() => ({
+  scheduleCheckInDeadline: vi.fn(),
+}));
+
 vi.mock("@session-jeu/db", () => ({
   prisma: dbMocks.prisma,
   GameSessionStatus: {
@@ -53,6 +57,8 @@ vi.mock("@session-jeu/db", () => ({
     EXPIRED: "EXPIRED",
   },
 }));
+
+vi.mock("../../queues/checkInDeadline.js", () => queueMocks);
 
 import { SESSION_COOKIE_NAME, hashOpaqueToken } from "../../auth/session.js";
 import type { AuthVariables } from "../../auth/session.js";

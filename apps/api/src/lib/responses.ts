@@ -4,7 +4,7 @@ type ErrorDetails = Record<string, string[]> | Record<string, unknown>;
 
 export function errorResponse(
   c: Context,
-  status: 400 | 401 | 403 | 404 | 409 | 410 | 423 | 429 | 502,
+  status: 400 | 401 | 403 | 404 | 409 | 410 | 422 | 423 | 429 | 502,
   code: string,
   message: string,
   details?: ErrorDetails,

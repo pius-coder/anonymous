@@ -102,6 +102,18 @@ describe("Prisma Client", () => {
     expect(prisma.gameResult).toBeDefined();
   });
 
+  it("should expose prizeDistribution model", () => {
+    expect(prisma.prizeDistribution).toBeDefined();
+  });
+
+  it("should expose commissionRecord model", () => {
+    expect(prisma.commissionRecord).toBeDefined();
+  });
+
+  it("should expose disputeWindow model", () => {
+    expect(prisma.disputeWindow).toBeDefined();
+  });
+
   it("should expose auditLog model", () => {
     expect(prisma.auditLog).toBeDefined();
   });
