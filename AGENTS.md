@@ -37,6 +37,49 @@ Si une instruction est ambigue, ne pas choisir l option la plus rapide. L agent 
 7. Implementer seulement apres ces verifications.
 8. Lancer les validations CLI avant de terminer.
 
+## Workflow autonome APEX obligatoire
+
+Pour toute implementation de feature ou correction importante, utiliser APEX en mode autonome complet :
+
+- Flags par defaut obligatoires : `-a -b -pr -s -t -x`.
+- Ne pas utiliser `-e` / economy mode par defaut. L economy mode est interdit sauf demande explicite du user.
+- Toujours travailler sur une branche non-main. Ne jamais commit directement sur `main`.
+- Toujours utiliser `gh` pour le cycle PR : creation, verification, checks, mergeabilite et merge.
+- Ne pas attendre que le user dise `continue` si la suite est claire dans `docs/plan/` et `docs/prd/features/`.
+
+Rythme strict a repeter feature par feature :
+
+1. Depuis `main`, executer `git pull --ff-only`.
+2. Creer une branche dediee avec APEX `-b`.
+3. Lire les docs locales requises et les docs actuelles via `ctx7`, `curl` ou `fetch`.
+4. Implementer uniquement la feature courante dans le scope de sa fiche.
+5. Ajouter ou mettre a jour les tests obligatoires de la fiche.
+6. Executer et faire passer au minimum :
+   - `pnpm typecheck`
+   - `pnpm lint`
+   - `pnpm test`
+   - `pnpm build`
+7. Corriger en boucle jusqu a ce que toutes les validations passent.
+8. Commit et push la branche.
+9. Ouvrir une PR avec `gh pr create`.
+10. Verifier la PR avec `gh pr view`, `gh pr checks` et les informations de mergeabilite.
+11. Si la PR est mergeable et que les checks sont verts, merger avec `gh pr merge`.
+12. Revenir sur `main`, executer `git pull --ff-only`, puis passer a la feature suivante.
+
+Ne jamais devaluer ou jeter le travail existant :
+
+- Ne pas supprimer ou reecrire une implementation valide pour aller plus vite.
+- Ne pas ignorer une feature deja partiellement implementee ; l analyser, la stabiliser et la completer.
+- Ne pas contourner les tests, les migrations ou les checks PR.
+- Si un blocage externe empeche le merge ou la validation, le documenter clairement dans la reponse et dans les notes APEX.
+
+Source de verite :
+
+- Les fiches `docs/plan/` et `docs/prd/features/` sont prioritaires.
+- Les documents source dans `docs/` fixent les decisions produit et metier.
+- La documentation externe doit venir de `ctx7` ou de sources officielles recuperees par `curl` / `fetch`.
+- Ne pas utiliser des suppositions ou souvenirs de librairies comme source de verite.
+
 ## Interdictions
 
 - Ne pas coder a partir de memoire.
