@@ -1,4 +1,5 @@
 import {
+  GameResultStatus,
   LedgerDirection,
   LedgerType,
   Prisma,
@@ -10,6 +11,75 @@ export type CreditsDistributionJobData = {
   sessionId?: string;
 };
 
+function calculateStats(input: {
+  gameResults: Array<{ finalRank: number | null; finalStatus: string }>;
+  creditsWonXaf: number;
+}) {
+  const playedStatuses = new Set<string>([
+    GameResultStatus.WINNER,
+    GameResultStatus.ELIMINATED,
+    GameResultStatus.COMPLETED,
+  ]);
+  const playedResults = input.gameResults.filter((result) =>
+    playedStatuses.has(result.finalStatus),
+  );
+  const rankedResults = playedResults.filter(
+    (result): result is { finalRank: number; finalStatus: string } =>
+      Number.isInteger(result.finalRank),
+  );
+  const sessionsPlayed = playedResults.length;
+  const sessionsWon = playedResults.filter(
+    (result) => result.finalStatus === GameResultStatus.WINNER,
+  ).length;
+
+  return {
+    sessionsPlayed,
+    sessionsWon,
+    winRate: sessionsWon / Math.max(1, sessionsPlayed),
+    avgFinalRank:
+      rankedResults.length > 0
+        ? rankedResults.reduce((sum, result) => sum + result.finalRank, 0) / rankedResults.length
+        : null,
+    creditsWonXaf: input.creditsWonXaf,
+  };
+}
+
+async function recomputePlayerStatsSnapshot(userId: string, now: Date) {
+  const [gameResults, prizeLedger] = await Promise.all([
+    prisma.gameResult.findMany({
+      where: { userId },
+      select: { finalRank: true, finalStatus: true },
+    }),
+    prisma.ledgerEntry.aggregate({
+      where: {
+        userId,
+        direction: LedgerDirection.CREDIT,
+        type: LedgerType.PRIZE,
+      },
+      _sum: { amountXaf: true },
+    }),
+  ]);
+  const stats = calculateStats({
+    gameResults,
+    creditsWonXaf: prizeLedger._sum.amountXaf ?? 0,
+  });
+  const snapshot = await prisma.playerStatsSnapshot.upsert({
+    where: { userId },
+    update: { ...stats, computedAt: now },
+    create: { userId, ...stats, computedAt: now },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: "stats.recomputed",
+      entity: "PlayerStatsSnapshot",
+      entityId: snapshot.id,
+      newData: stats,
+    },
+  });
+}
+
 async function creditOneDistribution(input: { distributionId: string; now: Date }) {
   return prisma.$transaction(
     async (tx) => {
@@ -18,7 +88,7 @@ async function creditOneDistribution(input: { distributionId: string; now: Date 
       });
       if (!distribution) return { type: "not-found" as const };
       if (distribution.status === PrizeDistributionStatus.CREDITED) {
-        return { type: "already-credited" as const };
+        return { type: "already-credited" as const, userId: distribution.userId };
       }
 
       const existingLedger = await tx.ledgerEntry.findUnique({
@@ -33,7 +103,7 @@ async function creditOneDistribution(input: { distributionId: string; now: Date 
             creditedAt: distribution.creditedAt ?? input.now,
           },
         });
-        return { type: "idempotent" as const };
+        return { type: "idempotent" as const, userId: distribution.userId };
       }
 
       const wallet = await tx.wallet.upsert({
@@ -97,7 +167,7 @@ async function creditOneDistribution(input: { distributionId: string; now: Date 
         },
       });
 
-      return { type: "credited" as const };
+      return { type: "credited" as const, userId: distribution.userId };
     },
     {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
@@ -126,12 +196,22 @@ export async function processCreditsDistribution(
   let credited = 0;
   let skipped = 0;
   let failed = 0;
+  const creditedUserIds = new Set<string>();
 
   for (const distribution of distributions) {
     const result = await creditOneDistribution({ distributionId: distribution.id, now });
-    if (result.type === "credited" || result.type === "idempotent") credited += 1;
-    else if (result.type === "wallet-frozen") failed += 1;
-    else skipped += 1;
+    if (result.type === "credited" || result.type === "idempotent") {
+      credited += 1;
+      creditedUserIds.add(result.userId);
+    } else if (result.type === "wallet-frozen") {
+      failed += 1;
+    } else {
+      skipped += 1;
+    }
+  }
+
+  for (const userId of creditedUserIds) {
+    await recomputePlayerStatsSnapshot(userId, now);
   }
 
   if (credited > 0) {

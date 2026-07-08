@@ -162,6 +162,7 @@ model User {
   playerActions          PlayerAction[]
   miniGameDefinitions    MiniGameDefinition[]
   disputeRequests        DisputeWindow[]       @relation("DisputeRequestedBy")
+  statsSnapshot          PlayerStatsSnapshot?
 
   @@index([email])
   @@index([role])
@@ -169,18 +170,39 @@ model User {
 }
 
 model PlayerProfile {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  username  String   @unique
-  bio       String?
-  level     Int      @default(1)
-  xp        Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  username    String   @unique
+  bio         String?
+  avatarUrl   String?
+  preferences Json?
+  isPublic    Boolean  @default(false)
+  level       Int      @default(1)
+  xp          Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model PlayerStatsSnapshot {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  sessionsPlayed Int      @default(0)
+  sessionsWon    Int      @default(0)
+  winRate        Float    @default(0)
+  avgFinalRank   Float?
+  creditsWonXaf  Int      @default(0)
+  computedAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionsWon])
+  @@index([computedAt])
 }
 
 model AuthSession {

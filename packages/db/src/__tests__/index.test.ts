@@ -18,6 +18,14 @@ describe("Prisma Client", () => {
     expect(prisma.user).toBeDefined();
   });
 
+  it("should expose playerProfile model", () => {
+    expect(prisma.playerProfile).toBeDefined();
+  });
+
+  it("should expose playerStatsSnapshot model", () => {
+    expect(prisma.playerStatsSnapshot).toBeDefined();
+  });
+
   it("should expose authSession model", () => {
     expect(prisma.authSession).toBeDefined();
   });

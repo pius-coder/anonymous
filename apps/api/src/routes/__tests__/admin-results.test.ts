@@ -20,6 +20,10 @@ const queueMocks = vi.hoisted(() => ({
   scheduleCreditsDistribution: vi.fn(),
 }));
 
+const playerMocks = vi.hoisted(() => ({
+  recomputeSessionPlayerStats: vi.fn(),
+}));
+
 vi.mock("@session-jeu/db", () => ({
   prisma: dbMocks.prisma,
   Prisma: {
@@ -75,6 +79,8 @@ vi.mock("../../results/results.js", async () => {
 });
 
 vi.mock("../../queues/creditsDistribution.js", () => queueMocks);
+
+vi.mock("../../players/playerProfile.js", () => playerMocks);
 
 import { SESSION_COOKIE_NAME, hashOpaqueToken } from "../../auth/session.js";
 import type { AuthVariables } from "../../auth/session.js";
@@ -134,6 +140,7 @@ describe("admin results routes", () => {
         requestedAt: new Date("2026-07-08T00:00:00Z"),
       },
     });
+    playerMocks.recomputeSessionPlayerStats.mockResolvedValue([]);
   });
 
   it("finalizes a session and schedules credit distribution", async () => {
@@ -154,6 +161,7 @@ describe("admin results routes", () => {
       remainderPolicy: "FIRST_WINNER",
       reason: "session completed",
     });
+    expect(playerMocks.recomputeSessionPlayerStats).toHaveBeenCalledWith("session-1");
     expect(queueMocks.scheduleCreditsDistribution).toHaveBeenCalledWith({ sessionId: "session-1" });
   });
 
@@ -170,6 +178,7 @@ describe("admin results routes", () => {
     });
 
     expect(res.status).toBe(422);
+    expect(playerMocks.recomputeSessionPlayerStats).not.toHaveBeenCalled();
     expect(queueMocks.scheduleCreditsDistribution).not.toHaveBeenCalled();
   });
 
