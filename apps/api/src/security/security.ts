@@ -148,6 +148,34 @@ export async function listComplianceGates() {
   }));
 }
 
+export async function setComplianceGateStatus(input: {
+  gateId: string;
+  status: "PASSED" | "WAIVED" | "BLOCKED";
+  decidedById: string;
+  evidence?: unknown;
+  reason?: string;
+}) {
+  const gate = await prisma.complianceGate.update({
+    where: { id: input.gateId },
+    data: {
+      status: input.status,
+      decidedById: input.decidedById,
+      decidedAt: new Date(),
+      reason: input.reason ?? undefined,
+      evidence:
+        input.evidence === undefined ? undefined : (input.evidence as Prisma.InputJsonObject),
+    },
+  });
+  return {
+    id: gate.id,
+    type: gate.type,
+    scope: gate.scope,
+    status: gate.status,
+    reason: gate.reason,
+    decidedAt: gate.decidedAt?.toISOString() ?? null,
+  };
+}
+
 export async function assertPublicSessionCompliance(input: { visibility: string }) {
   if (input.visibility === "PRIVATE") return { type: "ok" as const };
   await ensureDefaultComplianceGates();

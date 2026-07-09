@@ -17,6 +17,9 @@ const dbMocks = vi.hoisted(() => {
       findUnique: vi.fn(),
       update: vi.fn(),
     },
+    paymentTransaction: {
+      create: vi.fn(),
+    },
     auditLog: {
       create: vi.fn(),
     },
@@ -58,6 +61,9 @@ vi.mock("@session-jeu/db", () => ({
     PAYMENT_PENDING: "PAYMENT_PENDING",
     PAID: "PAID",
     EXPIRED: "EXPIRED",
+  },
+  PaymentStatus: {
+    SUCCESSFUL: "SUCCESSFUL",
   },
 }));
 
@@ -138,6 +144,10 @@ describe("wallet business logic", () => {
     dbMocks.tx.sessionRegistration.update.mockResolvedValue(
       registration({ status: "PAID", paidAt: new Date("2026-07-08T00:00:00Z") }),
     );
+    dbMocks.tx.paymentTransaction.create.mockResolvedValue({
+      id: "payment-1",
+      status: "SUCCESSFUL",
+    });
     dbMocks.tx.auditLog.create.mockResolvedValue({});
   });
 
@@ -175,6 +185,18 @@ describe("wallet business logic", () => {
     );
     expect(dbMocks.tx.sessionRegistration.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: "PAID" }) }),
+    );
+    expect(dbMocks.tx.paymentTransaction.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          userId: "player-1",
+          sessionId: "session-1",
+          registrationId: "registration-1",
+          amountXaf: 1000,
+          status: "SUCCESSFUL",
+          provider: "WALLET",
+        }),
+      }),
     );
   });
 

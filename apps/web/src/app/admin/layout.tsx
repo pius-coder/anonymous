@@ -1,13 +1,10 @@
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { AdminShell } from "./admin-shell";
-import type { SidebarItem } from "./admin-shell";
+import { AdminShell, type SidebarItem } from "./admin-shell";
 
 type MeResponse = { success: boolean; data?: { user: { id: string; role: string; email: string; name: string | null } } };
 
-export type UserRole = "ADMIN" | "SUPER_ADMIN" | "FINANCE" | "SUPPORT";
-
-export const SIDEBAR_ITEMS: SidebarItem[] = [
+const SIDEBAR_ITEMS: SidebarItem[] = [
   { label: "Dashboard", href: "/admin", icon: "LayoutDashboard", roles: ["ADMIN", "SUPER_ADMIN", "FINANCE", "SUPPORT"] },
   { label: "Sessions", href: "/admin/sessions", icon: "Gamepad2", roles: ["ADMIN", "SUPER_ADMIN"], viewRoles: ["FINANCE", "SUPPORT"] },
   { label: "Live control", href: "/admin/live", icon: "Radio", roles: ["ADMIN", "SUPER_ADMIN"], viewRoles: ["SUPPORT"] },
@@ -15,10 +12,11 @@ export const SIDEBAR_ITEMS: SidebarItem[] = [
   { label: "Wallets", href: "/admin/wallets", icon: "Wallet", roles: ["SUPER_ADMIN", "FINANCE"], viewRoles: ["SUPPORT"] },
   { label: "Utilisateurs", href: "/admin/users", icon: "Users", roles: ["ADMIN", "SUPER_ADMIN", "SUPPORT"], viewRoles: ["FINANCE"] },
   { label: "Mini-jeux", href: "/admin/minigames", icon: "Blocks", roles: ["ADMIN", "SUPER_ADMIN"] },
+  { label: "Conformité", href: "/admin/compliance", icon: "ShieldCheck", roles: ["ADMIN", "SUPER_ADMIN"], viewRoles: ["FINANCE", "SUPPORT"] },
   { label: "Audit logs", href: "/admin/audit", icon: "ScrollText", roles: ["ADMIN", "SUPER_ADMIN", "FINANCE", "SUPPORT"] },
 ];
 
-export function filterSidebarItems(role: string, items: SidebarItem[]): SidebarItem[] {
+function filterSidebarItems(role: string, items: SidebarItem[]): SidebarItem[] {
   return items.filter((item) => {
     if (item.roles.some((r) => r === role)) return true;
     if (item.viewRoles?.some((r) => r === role)) return true;

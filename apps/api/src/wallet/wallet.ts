@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   LedgerDirection,
   LedgerType,
+  PaymentStatus,
   Prisma,
   prisma,
   SessionRegistrationStatus,
@@ -278,6 +279,19 @@ export async function payRegistrationWithWallet(input: {
           },
         });
 
+        const paymentTransaction = await tx.paymentTransaction.create({
+          data: {
+            userId: input.userId,
+            sessionId: registration.sessionId,
+            registrationId: registration.id,
+            amount: amountXaf,
+            amountXaf,
+            currency: "XAF",
+            status: PaymentStatus.SUCCESSFUL,
+            provider: "WALLET",
+          },
+        });
+
         await tx.auditLog.create({
           data: {
             userId: input.userId,
@@ -298,6 +312,7 @@ export async function payRegistrationWithWallet(input: {
           wallet: updatedWallet,
           ledger,
           registration: updatedRegistration,
+          paymentTransaction,
         };
       },
       {

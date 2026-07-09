@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { randomBytes } from "node:crypto";
-import { prisma, GameSessionStatus, SessionRegistrationStatus } from "@session-jeu/db";
+import { prisma, GameSessionStatus, SessionRegistrationStatus, Prisma } from "@session-jeu/db";
 import {
   requireAuth,
   requireRole,
@@ -24,10 +24,29 @@ import {
 import { checkInDeadlineFor } from "../../lobby/lobby.js";
 import { scheduleCheckInDeadline } from "../../queues/checkInDeadline.js";
 import { assertPublicSessionCompliance } from "../../security/security.js";
+import { z } from "zod";
 
 const adminSessions = new Hono<{ Variables: AuthVariables }>();
 
 const adminOnly = [requireAuth, requireRole("ADMIN", "SUPER_ADMIN")] as const;
+
+const adminRead = [requireAuth, requireRole("ADMIN", "SUPER_ADMIN", "FINANCE", "SUPPORT")] as const;
+
+const listQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  status: z
+    .enum([
+      "DRAFT",
+      "PUBLISHED",
+      "ACTIVE",
+      "WAITING_START",
+      "LIVE",
+      "COMPLETED",
+      "CANCELLED",
+    ])
+    .optional(),
+});
 
 const validationHook = (result: { success: boolean }, c: Parameters<typeof errorResponse>[0]) => {
   if (!result.success) {
@@ -211,6 +230,152 @@ adminSessions.post(
     });
 
     return successResponse(c, { session: serializeSession(session) }, 201);
+  },
+);
+
+adminSessions.get(
+  "/",
+  ...adminRead,
+  zValidator("query", listQuerySchema, validationHook),
+  async (c) => {
+    const { page, limit, status } = c.req.valid("query");
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.GameSessionWhereInput = {};
+    if (status) where.status = status as GameSessionStatus;
+
+    const [total, sessions] = await Promise.all([
+      prisma.gameSession.count({ where }),
+      prisma.gameSession.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+        include: {
+          _count: {
+            select: {
+              registrations: {
+                where: { status: { in: [SessionRegistrationStatus.PAYMENT_PENDING, SessionRegistrationStatus.PAID] } },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const data = sessions.map((s) => ({
+      ...serializeSession(s),
+      paidRegistrationsCount: s._count.registrations,
+    }));
+
+    return successResponse(c, {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  },
+);
+
+adminSessions.get(
+  "/:id",
+  ...adminRead,
+  zValidator("param", adminSessionParamsSchema, validationHook),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const session = await prisma.gameSession.findUnique({
+      where: { id },
+      include: {
+        registrations: {
+          include: {
+            user: { select: { id: true, email: true, name: true, role: true } },
+            payment: { select: { id: true, status: true, amountXaf: true, providerTransId: true, createdAt: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
+        rounds: {
+          orderBy: { roundNum: "asc" },
+          include: { miniGameDefinition: { select: { id: true, name: true } } },
+        },
+        liveState: true,
+        gameResults: { orderBy: { finalRank: "asc" } },
+        commissionRecord: true,
+        disputeWindow: true,
+      },
+    });
+    if (!session) {
+      return errorResponse(c, 404, "SESSION_NOT_FOUND", "Session not found");
+    }
+
+    return successResponse(c, {
+      session: {
+        ...serializeSession(session),
+        registrations: session.registrations.map((r) => ({
+          id: r.id,
+          status: r.status,
+          user: r.user,
+          payment: r.payment,
+          checkedInAt: r.checkedInAt?.toISOString() ?? null,
+          inRoomAt: r.inRoomAt?.toISOString() ?? null,
+          noShowAt: r.noShowAt?.toISOString() ?? null,
+          cancelledAt: r.cancelledAt?.toISOString() ?? null,
+        })),
+        rounds: session.rounds.map((r) => ({
+          id: r.id,
+          order: r.roundNum,
+          miniGameId: r.miniGameDefinitionId ?? "",
+          miniGameName: r.miniGameDefinition?.name ?? "Mini-jeu",
+          configJson: r.configJson,
+          durationMs:
+            r.startTime && r.endTime ? r.endTime.getTime() - r.startTime.getTime() : 0,
+          policy: null,
+        })),
+        liveState: session.liveState
+          ? {
+              id: session.liveState.id,
+              sessionId: session.liveState.sessionId,
+              phase: session.liveState.phase,
+              previousPhase: session.liveState.previousPhase,
+              currentRoundId: session.liveState.currentRoundId,
+              phaseStartedAt: session.liveState.phaseStartedAt?.toISOString() ?? null,
+              pausedAt: session.liveState.pausedAt?.toISOString() ?? null,
+              pauseReason: session.liveState.pauseReason,
+            }
+          : null,
+        results: session.gameResults.map((r) => ({
+          id: r.id,
+          userId: r.userId,
+          finalRank: r.finalRank,
+          finalStatus: r.finalStatus,
+          prizeWonXaf: r.prizeWonXaf,
+        })),
+        commissionRecord: session.commissionRecord
+          ? {
+              id: session.commissionRecord.id,
+              sessionId: session.commissionRecord.sessionId,
+              grossCollectionXaf: session.commissionRecord.grossCollectionXaf,
+              providerFeesXaf: session.commissionRecord.providerFeesXaf,
+              netCollectionXaf: session.commissionRecord.netCollectionXaf,
+              prizePoolXaf: session.commissionRecord.prizePoolXaf,
+              organizationCommissionXaf: session.commissionRecord.organizationCommissionXaf,
+              roundingRemainderXaf: session.commissionRecord.roundingRemainderXaf,
+              createdAt: session.commissionRecord.createdAt.toISOString(),
+            }
+          : null,
+        disputeWindow: session.disputeWindow
+          ? {
+              id: session.disputeWindow.id,
+              status: session.disputeWindow.status,
+              reason: session.disputeWindow.requestReason,
+              requestedById: session.disputeWindow.requestedById,
+              requestedAt: session.disputeWindow.requestedAt?.toISOString() ?? null,
+            }
+          : null,
+      },
+    });
   },
 );
 
