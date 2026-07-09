@@ -2,13 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const dbMocks = vi.hoisted(() => {
   const tx = {
-    roundInstance: {
-      upsert: vi.fn(),
+    liveReservation: {
+      findUnique: vi.fn(),
+      update: vi.fn(),
+    },
+    gameSession: {
       findUnique: vi.fn(),
     },
-    roundDeadline: {
+    playerConnection: {
       upsert: vi.fn(),
-      findUnique: vi.fn(),
+      updateMany: vi.fn(),
     },
     liveSessionState: {
       upsert: vi.fn(),
@@ -16,6 +19,15 @@ const dbMocks = vi.hoisted(() => {
     },
     auditLog: {
       createMany: vi.fn(),
+      create: vi.fn(),
+    },
+    roundInstance: {
+      upsert: vi.fn(),
+      findUnique: vi.fn(),
+    },
+    roundDeadline: {
+      upsert: vi.fn(),
+      findUnique: vi.fn(),
     },
     playerAction: {
       findUnique: vi.fn(),
@@ -75,7 +87,7 @@ vi.mock("@session-jeu/db", () => ({
 
 vi.mock("../roundDeadlineQueue.js", () => queueMocks);
 
-import { startRound, submitPlayerAction } from "../sessionStore.js";
+import { consumeLiveReservation, startRound, submitPlayerAction } from "../sessionStore.js";
 
 describe("sessionStore live invariants", () => {
   beforeEach(() => {
@@ -234,5 +246,147 @@ describe("sessionStore live invariants", () => {
         data: expect.objectContaining({ type: "AUTO_CLICK", severity: "HIGH" }),
       }),
     );
+  });
+
+  describe("consumeLiveReservation", () => {
+    const BASE_NOW = new Date("2026-07-08T00:00:00Z");
+
+    function baseSetup() {
+      dbMocks.tx.liveReservation.findUnique.mockResolvedValue({
+        id: "res-1",
+        sessionId: "session-1",
+        userId: "player-1",
+        registrationId: "reg-1",
+        tokenHash: "any-hash",
+        expiresAt: new Date("2026-07-08T00:01:00Z"),
+        consumedAt: null,
+      });
+      dbMocks.tx.gameSession.findUnique.mockResolvedValue({
+        id: "session-1",
+        status: "LIVE",
+      });
+      dbMocks.tx.playerConnection.upsert.mockResolvedValue({
+        id: "pc-1",
+        sessionId: "session-1",
+        userId: "player-1",
+      });
+      dbMocks.tx.liveSessionState.upsert.mockResolvedValue({
+        id: "ls-1",
+        sessionId: "session-1",
+        phase: "BRIEFING",
+      });
+      dbMocks.tx.auditLog.create.mockResolvedValue({ id: "audit-1" });
+      dbMocks.tx.liveReservation.update.mockResolvedValue({ id: "res-1", consumedAt: BASE_NOW });
+      vi.mocked(dbMocks.prisma.$transaction).mockImplementation(
+        async (...args: unknown[]) => (args[0] as (tx: typeof dbMocks.tx) => unknown)(dbMocks.tx),
+      );
+    }
+
+    it("consumes a valid reservation and returns ok", async () => {
+      baseSetup();
+
+      const result = await consumeLiveReservation({
+        sessionId: "session-1",
+        reservationToken: "test-token",
+        roomId: "room-1",
+        colyseusSessionId: "coly-1",
+        now: BASE_NOW,
+      });
+
+      expect(result.type).toBe("ok");
+      if (result.type === "ok") {
+        expect(result.auth).toEqual({ userId: "player-1", registrationId: "reg-1" });
+      }
+      expect(dbMocks.tx.playerConnection.upsert).toHaveBeenCalledOnce();
+      expect(dbMocks.tx.liveSessionState.upsert).toHaveBeenCalledOnce();
+      expect(dbMocks.tx.auditLog.create).toHaveBeenCalledOnce();
+    });
+
+    it("retries on P2034 write conflict and succeeds", async () => {
+      baseSetup();
+
+      const p2034 = Object.assign(new Error("write conflict"), { code: "P2034" });
+      vi.mocked(dbMocks.prisma.$transaction)
+        .mockRejectedValueOnce(p2034)
+        .mockImplementationOnce(
+          async (...args: unknown[]) => (args[0] as (tx: typeof dbMocks.tx) => unknown)(dbMocks.tx),
+        );
+
+      const result = await consumeLiveReservation({
+        sessionId: "session-1",
+        reservationToken: "test-token",
+        roomId: "room-1",
+        colyseusSessionId: "coly-1",
+        now: BASE_NOW,
+      });
+
+      expect(result.type).toBe("ok");
+      expect(dbMocks.prisma.$transaction).toHaveBeenCalledTimes(2);
+    });
+
+    it("rejects expired reservation", async () => {
+      baseSetup();
+      dbMocks.tx.liveReservation.findUnique.mockResolvedValue({
+        id: "res-expired",
+        sessionId: "session-1",
+        userId: "player-1",
+        registrationId: "reg-1",
+        tokenHash: "any-hash",
+        expiresAt: new Date("2026-07-07T23:59:00Z"),
+        consumedAt: null,
+      });
+
+      const result = await consumeLiveReservation({
+        sessionId: "session-1",
+        reservationToken: "expired-token",
+        roomId: "room-1",
+        colyseusSessionId: "coly-1",
+        now: BASE_NOW,
+      });
+
+      expect(result.type).toBe("expired-reservation");
+      expect(dbMocks.tx.playerConnection.upsert).not.toHaveBeenCalled();
+    });
+
+    it("rejects already consumed reservation", async () => {
+      baseSetup();
+      dbMocks.tx.liveReservation.findUnique.mockResolvedValue({
+        id: "res-used",
+        sessionId: "session-1",
+        userId: "player-1",
+        registrationId: "reg-1",
+        tokenHash: "any-hash",
+        expiresAt: new Date("2026-07-08T00:01:00Z"),
+        consumedAt: new Date("2026-07-08T00:00:10Z"),
+      });
+
+      const result = await consumeLiveReservation({
+        sessionId: "session-1",
+        reservationToken: "used-token",
+        roomId: "room-1",
+        colyseusSessionId: "coly-1",
+        now: BASE_NOW,
+      });
+
+      expect(result.type).toBe("used-reservation");
+    });
+
+    it("rejects when session is not LIVE", async () => {
+      baseSetup();
+      dbMocks.tx.gameSession.findUnique.mockResolvedValue({
+        id: "session-1",
+        status: "PUBLISHED",
+      });
+
+      const result = await consumeLiveReservation({
+        sessionId: "session-1",
+        reservationToken: "test-token",
+        roomId: "room-1",
+        colyseusSessionId: "coly-1",
+        now: BASE_NOW,
+      });
+
+      expect(result.type).toBe("session-not-live");
+    });
   });
 });

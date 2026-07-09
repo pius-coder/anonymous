@@ -1,3 +1,7 @@
+import { config } from "dotenv";
+import { resolve } from "path";
+config({ path: resolve("../../.env") });
+
 import { Worker } from "bullmq";
 import {
   processRegistrationExpiration,

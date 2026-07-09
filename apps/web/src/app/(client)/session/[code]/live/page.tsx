@@ -44,8 +44,9 @@ export default function LivePage() {
     }
   }, [lastMessage, params.code, router]);
 
-  const you = snap?.players.find((p: LivePlayer) => p.userId === user?.id);
-  const opponent = snap?.players.find((p: LivePlayer) => p.userId !== user?.id);
+  const playerList = snap?.players.filter(Boolean) ?? [];
+  const you = playerList.find((p: LivePlayer) => p.userId === user?.id);
+  const opponent = playerList.find((p: LivePlayer) => p.userId !== user?.id);
   const score = useMemo(() => ({ you: 0, opp: 0 }), []);
 
   const sequenceData = lastMessage?.type === "sequence.show" ? (lastMessage.data as { steps: number[] }) : null;
@@ -55,7 +56,7 @@ export default function LivePage() {
       : null;
   const publicState = roundGame?.publicState ?? {};
   const spectator = eliminated || you?.isEliminated;
-  const livePlayers = (snap?.players ?? []).map((player) => ({
+  const livePlayers = playerList.map((player) => ({
     userId: player.userId,
     displayName: player.displayName,
     name: player.displayName,
@@ -98,7 +99,7 @@ export default function LivePage() {
         <TrustBridgeGame
           routes={(publicState.routes as Array<{ id: string; label: string; risk: string }> | undefined) ?? undefined}
           pairs={(publicState.pairs as Array<{ userId: string; pairId: string }> | undefined) ?? []}
-          players={snap?.players ?? []}
+          players={playerList}
           youUserId={user?.id ?? ""}
           onChoose={(routeId) => sendAction("route-choice", { routeId })}
           readOnly={spectator}
@@ -133,7 +134,7 @@ export default function LivePage() {
     if (roundGame?.key === "silent-vote") {
       return (
         <SilentVoteGame
-          candidates={(publicState.candidates as Array<{ userId: string; displayName: string; hasVoted?: boolean }> | undefined) ?? (snap?.players ?? [])}
+          candidates={(publicState.candidates as Array<{ userId: string; displayName: string; hasVoted?: boolean }> | undefined) ?? playerList}
           voteRound={(publicState.voteRound as number | undefined) ?? (snap?.roundNum ?? 1)}
           youUserId={user?.id ?? ""}
           onVote={(targetUserId) => sendAction("silent-vote", { targetUserId })}

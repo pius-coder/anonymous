@@ -113,9 +113,17 @@ export function useGameRoom(sessionId: string) {
             currentGameName?: string;
             players: Map<string, LivePlayer> | LivePlayer[];
           };
-          const players = state.players
-            ? Array.from(state.players instanceof Map ? state.players.values() : state.players)
-            : [];
+          const raw = state.players as Record<string, LivePlayer | null> | LivePlayer[] | Map<string, LivePlayer>;
+          const players: LivePlayer[] = [];
+          if (raw) {
+            if (typeof (raw as Map<string, LivePlayer>).forEach === "function") {
+              (raw as Map<string, LivePlayer>).forEach((p) => { if (p) players.push(p); });
+            } else if (Array.isArray(raw)) {
+              for (const p of raw) { if (p) players.push(p); }
+            } else {
+              for (const p of Object.values(raw)) { if (p) players.push(p); }
+            }
+          }
           setSnap({
             phase: state.phase,
             roundNum: state.roundNum,
@@ -124,7 +132,7 @@ export function useGameRoom(sessionId: string) {
             currentGameKey: state.currentGameKey,
             currentGameFamily: state.currentGameFamily,
             currentGameName: state.currentGameName,
-            players: players as LivePlayer[],
+            players,
           });
         });
 

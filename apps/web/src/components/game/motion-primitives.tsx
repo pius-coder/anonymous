@@ -70,6 +70,7 @@ export function CountdownRing({
           strokeWidth="10"
           strokeLinecap="square"
           strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: dashOffset }}
           transition={{ duration: reduceMotion ? 0 : 0.2 }}
         />

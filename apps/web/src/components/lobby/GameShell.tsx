@@ -44,8 +44,8 @@ export function GameShell({
       {/* Bande joueurs */}
       <footer className="border-t-2 border-border bg-card/80 px-3 py-2 backdrop-blur">
         <div className="flex gap-2 overflow-x-auto">
-          {snap?.players.map((p: LivePlayer) => (
-            <PlayerChip key={p.userId} player={p} />
+          {snap?.players.map((p: LivePlayer, i: number) => (
+            <PlayerChip key={p.userId || `p-${i}`} player={p} />
           ))}
         </div>
       </footer>
