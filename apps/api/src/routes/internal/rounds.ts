@@ -11,8 +11,8 @@ const roundParamsSchema = z.object({
 });
 
 const finalizeRoundBodySchema = z.object({
-  family: z.enum(["solo-score", "duel-score"]).default("solo-score"),
-  winnersCount: z.number().int().min(1).max(100).default(1),
+  family: z.enum(["solo-score", "duel-score"]).optional(),
+  winnersCount: z.number().int().min(1).max(100).optional(),
   missingActionScore: z.number().int().optional(),
 });
 
@@ -39,11 +39,13 @@ internalRounds.post(
     const body = c.req.valid("json");
     const result = await finalizeRound({
       roundId: id,
-      config: {
-        family: body.family,
-        winnersCount: body.winnersCount,
-        missingActionScore: body.missingActionScore,
-      },
+      ...(body.family || body.winnersCount != null ? {
+        config: {
+          family: body.family ?? "solo-score",
+          winnersCount: body.winnersCount ?? 1,
+          missingActionScore: body.missingActionScore,
+        },
+      } : {}),
     });
 
     if (result.type === "not-found") {

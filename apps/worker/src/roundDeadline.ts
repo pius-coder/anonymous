@@ -1,10 +1,42 @@
 import { LivePhase, prisma, RoundStatus } from "@session-jeu/db";
+import { publishRoundResolved } from "./redisNotify.js";
 
 export type RoundDeadlineJobData = {
   sessionId: string;
   roundId: string;
   deadlineAt: string;
 };
+
+const API_BASE_URL = process.env.INTERNAL_API_URL || "http://localhost:3001";
+const API_KEY = process.env.INTERNAL_API_KEY || "";
+
+async function callFinalizeRound(roundId: string) {
+  const url = `${API_BASE_URL}/internal/rounds/${roundId}/finalize`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(API_KEY ? { "x-internal-api-key": API_KEY } : {}),
+    },
+    body: "{}",
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`API finalize failed: ${res.status} ${body}`);
+  }
+  return res.json() as Promise<{
+    status: string;
+    resolutionLogId: string;
+    outputHash: string;
+    output?: {
+      scores: Record<string, number>;
+      ranks: Record<string, number>;
+      qualifiedIds: string[];
+      eliminatedIds: string[];
+      tieGroups: string[][];
+    };
+  }>;
+}
 
 export async function processRoundDeadline(data: RoundDeadlineJobData, now = new Date()) {
   if (!data.sessionId || !data.roundId || !data.deadlineAt) {
@@ -64,9 +96,29 @@ export async function processRoundDeadline(data: RoundDeadlineJobData, now = new
     }),
   ]);
 
-  return {
-    processed: true,
-    roundId: updatedRound.id,
-    status: updatedRound.status,
-  };
+  try {
+    const finalized = await callFinalizeRound(data.roundId);
+    if (finalized.output) {
+      await publishRoundResolved({
+        sessionId: data.sessionId,
+        roundId: data.roundId,
+        ...finalized.output,
+      });
+    }
+    return {
+      processed: true,
+      roundId: updatedRound.id,
+      status: updatedRound.status,
+      finalized: finalized.status,
+      resolutionLogId: finalized.resolutionLogId,
+    };
+  } catch (error) {
+    console.error(`Finalization failed for round ${data.roundId}:`, error);
+    return {
+      processed: true,
+      roundId: updatedRound.id,
+      status: updatedRound.status,
+      finalized: "errored",
+    };
+  }
 }

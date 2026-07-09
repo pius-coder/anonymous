@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@session-jeu/db": "workspace:*",
-    "bullmq": "^5.30.0"
+    "bullmq": "^5.30.0",
+    "ioredis": "^5.4.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

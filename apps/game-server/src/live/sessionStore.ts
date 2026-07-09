@@ -174,6 +174,7 @@ export async function startRound(input: {
   const now = input.now ?? new Date();
   const durationMs = input.durationMs ?? DEFAULT_ROUND_DURATION_MS;
   const deadlineAt = new Date(now.getTime() + durationMs);
+  const seed = createHash("sha256").update(`${input.sessionId}:${input.roundNum}:game-seed`).digest("hex");
 
   const result = await prisma.$transaction(
     async (tx) => {
@@ -189,11 +190,13 @@ export async function startRound(input: {
           roundNum: input.roundNum,
           status: RoundStatus.ACTIVE,
           startTime: now,
+          configJson: { seed },
         },
         update: {
           status: RoundStatus.ACTIVE,
           startTime: now,
           endTime: null,
+          configJson: { seed },
         },
       });
 
@@ -285,6 +288,32 @@ export async function submitPlayerAction(input: {
       if (liveState.phase === LivePhase.PAUSED) return { type: "paused" as const };
       if (liveState.phase !== LivePhase.ROUND_ACTIVE) {
         return { type: "round-not-active" as const };
+      }
+
+      const eliminated = await tx.roundOutcome.findFirst({
+        where: {
+          sessionId: input.sessionId,
+          userId: input.userId,
+          status: "ELIMINATED",
+        },
+      });
+      if (eliminated) return { type: "eliminated" as const };
+
+      const round = await tx.roundInstance.findUnique({
+        where: { id: liveState.currentRoundId },
+        select: { miniGameDefinitionId: true },
+      });
+      if (round?.miniGameDefinitionId) {
+        const definition = await tx.miniGameDefinition.findUnique({
+          where: { id: round.miniGameDefinitionId },
+          select: { allowedActions: true },
+        });
+        if (definition) {
+          const allowedActions = definition.allowedActions as unknown as Array<{ type: string }> | undefined;
+          if (allowedActions && !allowedActions.some((a) => a.type === input.actionType)) {
+            return { type: "action-not-allowed" as const };
+          }
+        }
       }
 
       const duplicate = await tx.playerAction.findUnique({

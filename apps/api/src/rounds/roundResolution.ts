@@ -1,10 +1,12 @@
 import {
+  getRuntime,
   hashResolution,
   resolveRound,
   type PlayerAction,
   type ResolverConfig,
   type ResolverInput,
   type ResolverOutput,
+  type RuntimeResolverInput,
 } from "@session-jeu/game-engine";
 import {
   Prisma,
@@ -17,7 +19,7 @@ import { withSerializableRetry } from "../registrations/sessionRegistration.js";
 
 export type FinalizeRoundInput = {
   roundId: string;
-  config: ResolverConfig;
+  config?: ResolverConfig;
 };
 
 function asActionPayload(payload: Prisma.JsonValue): PlayerAction["payload"] {
@@ -175,14 +177,68 @@ export async function finalizeRound(input: FinalizeRoundInput) {
           return { type: "invalid-input" as const, reason: "no-participants" };
         }
 
-        const resolverInput = buildResolverInput({
-          round,
-          participants: participants.map((participant) => participant.userId),
-          actions: round.playerActions,
-          config: input.config,
-        });
-        const output = resolveRound(resolverInput);
-        const inputHash = hashResolution(resolverInput);
+        let output: ResolverOutput;
+        let inputHash: string;
+        let inputSnapshot: Prisma.InputJsonValue;
+
+        const participantIds = participants.map((p) => p.userId).sort();
+
+        if (round.miniGameDefinitionId) {
+          const definition = await tx.miniGameDefinition.findUnique({
+            where: { id: round.miniGameDefinitionId },
+          });
+          if (definition) {
+            const runtime = getRuntime(definition.key);
+            if (runtime) {
+              const actions = round.playerActions
+                .filter((a) => a.acceptedAt)
+                .map((a) => ({
+                  playerId: a.userId,
+                  actionNonce: a.actionNonce,
+                  submittedAt: (a.acceptedAt ?? a.createdAt).toISOString(),
+                  payload: asActionPayload(a.payload),
+                }))
+                .sort((a, b) =>
+                  `${a.playerId}:${a.actionNonce}`.localeCompare(`${b.playerId}:${b.actionNonce}`),
+                );
+
+              const runtimeInput: RuntimeResolverInput = {
+                roundId: round.id,
+                participants: participantIds,
+                actions,
+                config: {
+                  ...(definition.defaultConfig as Record<string, unknown>),
+                  ...((round.configJson as Record<string, unknown>) ?? {}),
+                },
+                seed: ((round.configJson as Record<string, unknown>)?.seed as string) ?? round.id,
+              };
+              output = runtime.resolve(runtimeInput);
+              inputHash = hashResolution(runtimeInput);
+              inputSnapshot = runtimeInput as unknown as Prisma.InputJsonValue;
+            } else {
+              const config = input.config ?? {
+                family: (definition.resolverId as "solo-score" | "duel-score") ?? "solo-score",
+                winnersCount:
+                  ((definition.defaultConfig as Record<string, unknown>)?.winnersCount as number) ?? 1,
+              };
+              const ri = buildResolverInput({ round, participants: participantIds, actions: round.playerActions, config });
+              output = resolveRound(ri);
+              inputHash = hashResolution(ri);
+              inputSnapshot = ri as unknown as Prisma.InputJsonValue;
+            }
+          } else {
+            const ri = buildResolverInput({ round, participants: participantIds, actions: round.playerActions, config: input.config ?? { family: "solo-score", winnersCount: 1 } });
+            output = resolveRound(ri);
+            inputHash = hashResolution(ri);
+            inputSnapshot = ri as unknown as Prisma.InputJsonValue;
+          }
+        } else {
+          const ri = buildResolverInput({ round, participants: participantIds, actions: round.playerActions, config: input.config ?? { family: "solo-score", winnersCount: 1 } });
+          output = resolveRound(ri);
+          inputHash = hashResolution(ri);
+          inputSnapshot = ri as unknown as Prisma.InputJsonValue;
+        }
+
         const outputHash = hashResolution(output);
 
         await tx.roundResult.createMany({
@@ -209,7 +265,7 @@ export async function finalizeRound(input: FinalizeRoundInput) {
             resolverId: output.resolverId,
             inputHash,
             outputHash,
-            inputSnapshot: resolverInput as unknown as Prisma.InputJsonValue,
+            inputSnapshot,
             outputSnapshot: output as unknown as Prisma.InputJsonValue,
             evidence: output.evidence as unknown as Prisma.InputJsonValue,
             seedLog: output.seedLog as unknown as Prisma.InputJsonValue,

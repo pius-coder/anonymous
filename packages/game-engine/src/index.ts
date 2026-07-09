@@ -184,3 +184,6 @@ export function resolveRound(input: ResolverInput) {
   if (input.config.family === "duel-score") return resolveDuelScoreRound(input);
   throw new Error(`Unsupported resolver family: ${input.config.family}`);
 }
+
+export { getRuntime, RUNTIMES } from "./runtimes/index.js";
+export type { GameRuntime, RuntimeResolverInput } from "./runtimes/types.js";
