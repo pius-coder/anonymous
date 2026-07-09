@@ -56,6 +56,42 @@ export type ResolverOutput = {
   seedLog: ResolutionEvidence[];
 };
 
+export type EliminationPolicy =
+  | { type: "KEEP_TOP_N"; n: number }
+  | { type: "ELIMINATE_BOTTOM_N"; n: number }
+  | { type: "ELIMINATE_BOTTOM_PERCENT"; bps: number }
+  | { type: "DUEL_WINNER_ADVANCES" }
+  | { type: "SURVIVAL_UNTIL_QUOTA"; quota: number }
+  | { type: "NO_ELIMINATION" };
+
+export function simulateProgram(start: number, policies: EliminationPolicy[]): number[] {
+  const steps: number[] = [start];
+  let remaining = start;
+  for (const policy of policies) {
+    switch (policy.type) {
+      case "KEEP_TOP_N":
+        remaining = Math.min(remaining, policy.n);
+        break;
+      case "ELIMINATE_BOTTOM_N":
+        remaining = Math.max(1, remaining - policy.n);
+        break;
+      case "ELIMINATE_BOTTOM_PERCENT":
+        remaining = Math.max(1, remaining - Math.floor((remaining * policy.bps) / 10000));
+        break;
+      case "DUEL_WINNER_ADVANCES":
+        remaining = Math.floor(remaining / 2);
+        break;
+      case "SURVIVAL_UNTIL_QUOTA":
+        remaining = Math.min(remaining, policy.quota);
+        break;
+      case "NO_ELIMINATION":
+        break;
+    }
+    steps.push(remaining);
+  }
+  return steps;
+}
+
 export function stableStringify(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map((item) => stableStringify(item)).join(",")}]`;
