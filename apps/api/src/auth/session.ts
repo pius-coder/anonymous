@@ -6,7 +6,10 @@ import { errorResponse } from "../lib/responses.js";
 
 export type UserRoleValue = "PLAYER" | "SUPPORT" | "FINANCE" | "ADMIN" | "SUPER_ADMIN";
 
-export const SESSION_COOKIE_NAME = "__Host-session";
+export const ALLOW_INSECURE_AUTH_COOKIE = process.env.ALLOW_INSECURE_AUTH_COOKIE === "true";
+// Production-ready default: Secure + __Host- cookie. Local HTTP development must
+// opt out explicitly with ALLOW_INSECURE_AUTH_COOKIE=true.
+export const SESSION_COOKIE_NAME = ALLOW_INSECURE_AUTH_COOKIE ? "session" : "__Host-session";
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
 
@@ -65,7 +68,7 @@ export function getRequestId(c: Context) {
 export function setSessionCookie(c: Context, token: string, expiresAt: Date) {
   setCookie(c, SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: true,
+    secure: !ALLOW_INSECURE_AUTH_COOKIE,
     sameSite: "Lax",
     path: "/",
     expires: expiresAt,
@@ -76,7 +79,7 @@ export function setSessionCookie(c: Context, token: string, expiresAt: Date) {
 export function clearSessionCookie(c: Context) {
   deleteCookie(c, SESSION_COOKIE_NAME, {
     path: "/",
-    secure: true,
+    secure: !ALLOW_INSECURE_AUTH_COOKIE,
     sameSite: "Lax",
   });
 }

@@ -87,7 +87,12 @@ payments.get(
   async (c) => {
     const user = c.get("user");
     const { id } = c.req.valid("param");
-    const payment = await prisma.paymentTransaction.findUnique({ where: { id } });
+    const payment = await prisma.paymentTransaction.findFirst({
+      where: {
+        OR: [{ id }, { registrationId: id }],
+      },
+      orderBy: { createdAt: "desc" },
+    });
 
     if (!payment) return errorResponse(c, 404, "PAYMENT_NOT_FOUND", "Payment not found");
     if (payment.userId !== user.id) {

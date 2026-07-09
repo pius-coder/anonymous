@@ -32,6 +32,7 @@ const dbMocks = vi.hoisted(() => {
       findFirst: vi.fn(),
     },
     miniGameDefinition: {
+      findFirst: vi.fn(),
       findUnique: vi.fn(),
     },
   };
@@ -103,6 +104,13 @@ describe("sessionStore live invariants", () => {
     dbMocks.tx.riskSignal.create.mockResolvedValue({ id: "risk-1" });
     dbMocks.tx.roundOutcome.findFirst.mockResolvedValue(null);
     dbMocks.tx.roundInstance.findUnique.mockResolvedValue({ miniGameDefinitionId: null });
+    dbMocks.tx.miniGameDefinition.findFirst.mockResolvedValue({
+      id: "minigame-1",
+      key: "memory-sequence",
+      family: "MEMORY",
+      name: "Memory Sequence",
+      defaultConfig: { sequenceLength: 3 },
+    });
     dbMocks.tx.miniGameDefinition.findUnique.mockResolvedValue(null);
   });
 

@@ -100,7 +100,9 @@ export async function createLiveReservation(input: {
             id: joinToken.registrationId,
             userId: input.userId,
             sessionId: input.sessionId,
-            status: SessionRegistrationStatus.CHECKED_IN,
+            status: {
+              in: [SessionRegistrationStatus.CHECKED_IN, SessionRegistrationStatus.IN_ROOM],
+            },
           },
           include: {
             session: {

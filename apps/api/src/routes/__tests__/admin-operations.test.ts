@@ -23,7 +23,7 @@ const dbMocks = vi.hoisted(() => ({
     wallet: { count: vi.fn() },
     ledgerEntry: { aggregate: vi.fn() },
     auditLog: { findMany: vi.fn() },
-    user: { findUnique: vi.fn() },
+    user: { count: vi.fn(), findMany: vi.fn(), findUnique: vi.fn() },
   },
 }));
 
@@ -188,6 +188,11 @@ describe("admin operations routes", () => {
     dbMocks.prisma.incidentLog.count.mockResolvedValue(3);
     dbMocks.prisma.supportCase.count.mockResolvedValue(4);
     dbMocks.prisma.adminActionApproval.count.mockResolvedValue(5);
+    dbMocks.prisma.user.count
+      .mockResolvedValueOnce(3)
+      .mockResolvedValueOnce(3)
+      .mockResolvedValueOnce(2)
+      .mockResolvedValueOnce(1);
     dbMocks.prisma.paymentTransaction.count
       .mockResolvedValueOnce(6)
       .mockResolvedValueOnce(20)
@@ -208,6 +213,20 @@ describe("admin operations routes", () => {
         oldData: { secret: "hidden" },
         newData: { status: "CANCELLED" },
         createdAt: new Date("2026-07-08T10:00:00Z"),
+      },
+    ]);
+    dbMocks.prisma.user.findMany.mockResolvedValue([
+      {
+        id: "player-1",
+        email: "player@example.com",
+        phone: "+237600000000",
+        name: "Player",
+        role: "PLAYER",
+        isActive: true,
+        createdAt: new Date("2026-07-08T10:00:00Z"),
+        profile: { username: "playerone", avatarUrl: null },
+        wallet: { balanceXaf: 1000, currency: "XAF", isFrozen: false },
+        _count: { registrations: 1, supportCasesForUser: 1 },
       },
     ]);
     dbMocks.prisma.user.findUnique.mockResolvedValue(supportUser());
@@ -261,7 +280,35 @@ describe("admin operations routes", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data.dashboard.sessions.total).toBe(12);
+    expect(body.data.dashboard.users.total).toBe(3);
+    expect(body.data.dashboard.users.players).toBe(2);
     expect(body.data.dashboard.finance.payments.successful).toBe(20);
+  });
+
+  it("lists registered users for support views", async () => {
+    const res = await app.request("/v1/admin/support/users?q=player&role=PLAYER", {
+      headers: { cookie: `${SESSION_COOKIE_NAME}=session-token` },
+    });
+
+    expect(res.status).toBe(200);
+    expect(dbMocks.prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          role: "PLAYER",
+          OR: expect.any(Array),
+        }),
+      }),
+    );
+    const body = await res.json();
+    expect(body.data.data[0]).toMatchObject({
+      id: "player-1",
+      email: "player@example.com",
+      role: "PLAYER",
+      registrationsCount: 1,
+      supportCasesCount: 1,
+    });
+    expect(JSON.stringify(body)).not.toContain("passwordHash");
+    expect(JSON.stringify(body)).not.toContain("providerTransId");
   });
 
   it("limits support dashboard finance scope", async () => {

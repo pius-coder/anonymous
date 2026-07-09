@@ -7,6 +7,9 @@ const dbMocks = vi.hoisted(() => ({
       findUnique: vi.fn(),
       update: vi.fn(),
     },
+    gameSession: {
+      findFirst: vi.fn(),
+    },
   },
 }));
 
@@ -116,11 +119,15 @@ describe("lobby routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dbMocks.prisma.authSession.findUnique.mockResolvedValue(validAuthSession());
+    dbMocks.prisma.gameSession.findFirst.mockResolvedValue({
+      id: "session-1",
+      code: "SESSION-1",
+    });
     lobbyMocks.getLobbyForPlayer.mockResolvedValue({
       type: "ok",
       session: session(),
       registration: registration(),
-      presence: { available: true, count: 1, ttlSeconds: 60 },
+      presence: { available: true, count: 1, ttlSeconds: 60, paid: 1, checkedIn: 0, inRoom: 0 },
     });
     lobbyMocks.checkInPlayer.mockResolvedValue({
       type: "ok",
@@ -148,6 +155,23 @@ describe("lobby routes", () => {
     });
 
     expect(res.status).toBe(200);
+    expect(lobbyMocks.getLobbyForPlayer).toHaveBeenCalledWith({
+      userId: "player-1",
+      sessionId: "session-1",
+    });
+  });
+
+  it("resolves public session code before loading lobby", async () => {
+    const res = await app.request("/v1/sessions/SESSION-1/lobby", {
+      headers: { cookie: `${SESSION_COOKIE_NAME}=session-token` },
+    });
+
+    expect(res.status).toBe(200);
+    expect(dbMocks.prisma.gameSession.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { OR: [{ id: "SESSION-1" }, { code: "SESSION-1" }] },
+      }),
+    );
     expect(lobbyMocks.getLobbyForPlayer).toHaveBeenCalledWith({
       userId: "player-1",
       sessionId: "session-1",
@@ -201,5 +225,17 @@ describe("lobby routes", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { data: { joinToken: { token: string } } };
     expect(body.data.joinToken.token).toBe("join-token");
+  });
+
+  it("rejects join token before the session is live", async () => {
+    lobbyMocks.issueJoinToken.mockResolvedValueOnce({ type: "session-not-live" });
+
+    const res = await app.request("/v1/sessions/session-1/join-token", {
+      headers: { cookie: `${SESSION_COOKIE_NAME}=session-token` },
+    });
+
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("SESSION_NOT_LIVE");
   });
 });

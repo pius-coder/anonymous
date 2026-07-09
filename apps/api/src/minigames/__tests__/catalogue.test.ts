@@ -6,15 +6,22 @@ import {
 } from "../catalogue.js";
 
 describe("mini-game catalogue", () => {
-  it("defines the five MVP mini-games with resolvers and action policies", () => {
-    expect(MVP_MINIGAME_DEFINITIONS).toHaveLength(5);
-    expect(MVP_MINIGAME_DEFINITIONS.map((definition) => definition.key)).toEqual([
-      "memory-sequence",
-      "rapid-calculation",
-      "pure-reaction-duel",
-      "target-precision",
-      "safe-zones",
-    ]);
+  it("defines six mini-games for each catalogue family", () => {
+    expect(MVP_MINIGAME_DEFINITIONS).toHaveLength(36);
+    expect(new Set(MVP_MINIGAME_DEFINITIONS.map((definition) => definition.key)).size).toBe(36);
+
+    const byFamily = MVP_MINIGAME_DEFINITIONS.reduce<Record<string, number>>((acc, definition) => {
+      acc[definition.family] = (acc[definition.family] ?? 0) + 1;
+      return acc;
+    }, {});
+    expect(byFamily).toEqual({
+      ALLIANCE: 6,
+      DUEL: 6,
+      HIDDEN_ROLE: 6,
+      SOLO: 6,
+      SURVIVAL: 6,
+      TEAM: 6,
+    });
 
     for (const definition of MVP_MINIGAME_DEFINITIONS) {
       expect(["solo-score", "duel-score"]).toContain(definition.resolverId);
@@ -27,8 +34,20 @@ describe("mini-game catalogue", () => {
   it("validates per-mini-game configuration", () => {
     expect(
       validateMiniGameConfig({
-        key: "memory-sequence",
-        config: { durationSeconds: 60, winnersCount: 3, maxAttempts: 20 },
+        key: "trust-bridge",
+        config: { durationSeconds: 90, winnersCount: 6, teamSize: 3, maxAttempts: 30 },
+      }),
+    ).toMatchObject({ type: "ok" });
+
+    expect(
+      validateMiniGameConfig({
+        key: "signal-detective",
+        config: {
+          durationSeconds: 120,
+          winnersCount: 6,
+          discussionSeconds: 45,
+          accusationsPerPlayer: 1,
+        },
       }),
     ).toMatchObject({ type: "ok" });
 

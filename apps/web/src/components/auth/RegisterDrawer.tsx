@@ -24,6 +24,7 @@ export type RegisterSessionInput = {
   code: string;
   title: string;
   entryFeeXaf: number;
+  status?: string;
 };
 
 type Wallet = { balanceXaf: number; currency: string; isFrozen: boolean };
@@ -104,7 +105,7 @@ export function RegisterDrawer({
   const handleConfirm = async () => {
     setPending(true);
     setError(null);
-    const reg = await startRegister();
+    const reg = existingReg?.status === "PAYMENT_PENDING" ? existingReg : await startRegister();
     if (!reg || "code" in reg) {
       setPending(false);
       if (reg && reg.code === "ALREADY_REGISTERED") {
@@ -180,7 +181,7 @@ export function RegisterDrawer({
         </div>
       ) : checking ? (
         <p className="text-sm text-muted-foreground">Vérification…</p>
-      ) : existingReg ? (
+      ) : existingReg && existingReg.status !== "PAYMENT_PENDING" ? (
         <div className="grid gap-3 text-center">
           <p className="font-head text-2xl font-black uppercase text-[--arena-green]">Déjà inscrit</p>
           <p className="text-sm text-muted-foreground">

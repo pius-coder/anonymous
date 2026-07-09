@@ -27,6 +27,7 @@ const dbMocks = vi.hoisted(() => {
       $transaction: vi.fn(),
       sessionRegistration: {
         findFirst: vi.fn(),
+        count: vi.fn(),
       },
       joinToken: {
         create: vi.fn(),
@@ -147,9 +148,10 @@ describe("lobby business logic", () => {
     dbMocks.prisma.sessionRegistration.findFirst.mockResolvedValue(
       registration({
         status: "CHECKED_IN",
-        session: { id: "session-1", status: "ACTIVE" },
+        session: { id: "session-1", status: "LIVE" },
       }),
     );
+    dbMocks.prisma.sessionRegistration.count.mockResolvedValue(1);
     dbMocks.prisma.joinToken.create.mockResolvedValue(joinToken());
     dbMocks.prisma.auditLog.create.mockResolvedValue({});
     presenceMocks.markLobbyPresence.mockResolvedValue({
@@ -227,6 +229,41 @@ describe("lobby business logic", () => {
         }),
       }),
     );
+  });
+
+  it("refuses join token before the session is live", async () => {
+    dbMocks.prisma.sessionRegistration.findFirst.mockResolvedValue(
+      registration({
+        status: "CHECKED_IN",
+        session: { id: "session-1", status: "ACTIVE" },
+      }),
+    );
+
+    const result = await issueJoinToken({
+      userId: "player-1",
+      sessionId: "session-1",
+      now: new Date("2026-07-08T00:00:00Z"),
+    });
+
+    expect(result.type).toBe("session-not-live");
+    expect(dbMocks.prisma.joinToken.create).not.toHaveBeenCalled();
+  });
+
+  it("issues a join token for a player already in room", async () => {
+    dbMocks.prisma.sessionRegistration.findFirst.mockResolvedValue(
+      registration({
+        status: "IN_ROOM",
+        session: { id: "session-1", status: "LIVE" },
+      }),
+    );
+
+    const result = await issueJoinToken({
+      userId: "player-1",
+      sessionId: "session-1",
+      now: new Date("2026-07-08T00:00:00Z"),
+    });
+
+    expect(result.type).toBe("ok");
   });
 
   it("consumes a join token once", async () => {

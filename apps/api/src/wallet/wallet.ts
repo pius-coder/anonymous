@@ -247,6 +247,19 @@ export async function payRegistrationWithWallet(input: {
         if (wallet.balanceXaf < amountXaf) return { type: "insufficient-funds" as const };
 
         const nextBalanceXaf = wallet.balanceXaf - amountXaf;
+        const paymentTransaction = await tx.paymentTransaction.create({
+          data: {
+            userId: input.userId,
+            sessionId: registration.sessionId,
+            registrationId: registration.id,
+            amount: amountXaf,
+            amountXaf,
+            currency: "XAF",
+            status: PaymentStatus.SUCCESSFUL,
+            provider: "WALLET",
+          },
+        });
+
         const ledger = await tx.ledgerEntry.create({
           data: {
             walletId: wallet.id,
@@ -259,6 +272,7 @@ export async function payRegistrationWithWallet(input: {
             referenceType: "SessionRegistration",
             referenceId: registration.id,
             idempotencyKey: input.idempotencyKey,
+            paymentId: paymentTransaction.id,
             sessionId: registration.sessionId,
           },
         });
@@ -276,19 +290,6 @@ export async function payRegistrationWithWallet(input: {
           data: {
             status: SessionRegistrationStatus.PAID,
             paidAt: now,
-          },
-        });
-
-        const paymentTransaction = await tx.paymentTransaction.create({
-          data: {
-            userId: input.userId,
-            sessionId: registration.sessionId,
-            registrationId: registration.id,
-            amount: amountXaf,
-            amountXaf,
-            currency: "XAF",
-            status: PaymentStatus.SUCCESSFUL,
-            provider: "WALLET",
           },
         });
 

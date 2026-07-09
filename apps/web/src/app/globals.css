@@ -2,8 +2,6 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
   --font-head: var(
     --font-display,
@@ -74,95 +72,81 @@
 }
 
 :root {
-  --background: #fff7e8;
-  --foreground: #000;
-  --card: #fff;
-  --card-foreground: #000;
-  --popover: #fff;
-  --popover-foreground: #000;
-  --primary: #ffdc58;
-  --primary-hover: #ffd12e;
-  --primary-foreground: #000;
-  --secondary: #000;
-  --secondary-foreground: #fff;
-  --muted: #efe7d6;
-  --muted-foreground: #6b6355;
-  --accent: #ffe7a3;
-  --accent-foreground: #000;
-  --destructive: #e63946;
-  --destructive-foreground: #fff;
-  --border: #000;
-  --input: #fff;
-  --ring: #000;
-  --chart-1: #ffdc58;
-  --chart-2: #ffe7a3;
-  --chart-3: #e63946;
-  --chart-4: #000;
-  --chart-5: #6b6355;
-  --arena-pink: #ff4d8d;
-  --arena-blue: #69e1ff;
-  --arena-green: #98f56c;
-  --arena-ink: #151515;
-  --radius: 0;
-  --sidebar: #efe7d6;
-  --sidebar-foreground: #000;
-  --sidebar-primary: #ffdc58;
-  --sidebar-primary-foreground: #000;
-  --sidebar-accent: #ffe7a3;
-  --sidebar-accent-foreground: #000;
-  --sidebar-border: #000;
-  --sidebar-ring: #000;
-}
+  /* ===== Palette Squid Game — theme unique sombre ===== */
+  /* Fond : noir bleute profond (dortoir/arene) */
+  --background: #0e0f13;
+  --foreground: #f4f1ea;
 
-.dark {
-  --background: #1a1815;
-  --foreground: #f5f0e6;
-  --card: #262320;
-  --card-foreground: #f5f0e6;
-  --popover: #262320;
-  --popover-foreground: #f5f0e6;
-  --primary: #ffdc58;
-  --primary-hover: #ffd12e;
-  --primary-foreground: #000;
-  --secondary: #3a352f;
-  --secondary-foreground: #f5f0e6;
-  --muted: #2e2a24;
-  --muted-foreground: #b3ac9e;
-  --accent: #38342b;
-  --accent-foreground: #f5f0e6;
-  --destructive: #ff6b6b;
-  --destructive-foreground: #1a1815;
-  --border: #000;
-  --input: #262320;
-  --ring: #ffdc58;
-  --chart-1: #ffdc58;
-  --chart-2: #ffe7a3;
-  --chart-3: #ff6b6b;
-  --chart-4: #f5f0e6;
-  --chart-5: #b3ac9e;
-  --arena-pink: #ff6aa1;
-  --arena-blue: #8ee9ff;
-  --arena-green: #b4ff82;
-  --arena-ink: #090909;
-  --sidebar: #1a1815;
-  --sidebar-foreground: #f5f0e6;
-  --sidebar-primary: #ffdc58;
-  --sidebar-primary-foreground: #000;
-  --sidebar-accent: #38342b;
-  --sidebar-accent-foreground: #f5f0e6;
-  --sidebar-border: #000;
-  --sidebar-ring: #ffdc58;
+  /* Cartes : ardoise sombre, bordures noires epaisses conservees */
+  --card: #181a20;
+  --card-foreground: #f4f1ea;
+  --popover: #181a20;
+  --popover-foreground: #f4f1ea;
+
+  /* PRIMARY = rose garde Squid Game */
+  --primary: #ed1b76;
+  --primary-hover: #ff2d87;
+  --primary-foreground: #ffffff;
+
+  /* SECONDARY = teal joueurs */
+  --secondary: #0f9b8e;
+  --secondary-foreground: #ffffff;
+
+  --muted: #22242c;
+  --muted-foreground: #9a978c;
+
+  /* ACCENT = teal sombre (survet des joueurs) */
+  --accent: #037a76;
+  --accent-foreground: #ffffff;
+
+  /* DESTRUCTIVE = rouge elimination (alerte rouge) */
+  --destructive: #e63946;
+  --destructive-foreground: #ffffff;
+
+  --border: #000000;
+  --input: #181a20;
+  --ring: #ed1b76;
+
+  --chart-1: #ed1b76;
+  --chart-2: #0f9b8e;
+  --chart-3: #e63946;
+  --chart-4: #f4f1ea;
+  --chart-5: #9a978c;
+
+  /* Tokens arene (utilises par les mini-jeux) */
+  --arena-pink: #ed1b76;
+  --arena-teal: #0f9b8e;
+  --arena-green: #98f56c;
+  --arena-gold: #ffd12e; /* cagnotte / victoire */
+  --arena-danger: #e63946; /* signal danger, 1-2-3 soleil */
+  --arena-safe: #2ec27e; /* signal safe */
+  --arena-ink: #08090c;
+
+  --radius: 0;
+
+  --sidebar: #12141a;
+  --sidebar-foreground: #f4f1ea;
+  --sidebar-primary: #ed1b76;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #22242c;
+  --sidebar-accent-foreground: #f4f1ea;
+  --sidebar-border: #000000;
+  --sidebar-ring: #ed1b76;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  html,
   body {
     @apply bg-background text-foreground;
+    min-height: 100%;
+    color-scheme: dark;
   }
   html {
     @apply font-sans;
+    background: var(--background);
   }
   h1,
   h2,
@@ -197,29 +181,78 @@
   }
 }
 
-@keyframes sparkle-pop {
+/* Pulsation danger : bordure/fond rouge qui bat (phase danger, deadline < 5s) */
+@keyframes danger-pulse {
   0%,
   100% {
-    transform: translateY(0) rotate(0deg);
-    opacity: 0.75;
+    box-shadow: 0 0 0 0 rgb(230 57 70 / 0.7);
   }
   50% {
-    transform: translateY(-4px) rotate(8deg);
-    opacity: 1;
+    box-shadow: 0 0 0 12px rgb(230 57 70 / 0);
+  }
+}
+
+/* Flash plein ecran a l'elimination */
+@keyframes red-flash {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Tremblement (mauvaise reponse, rejet) */
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
   }
 }
 
 @utility animate-marquee {
   animation: marquee 30s linear infinite;
 }
-
 @utility animate-scanline {
   animation: scanline 4.5s linear infinite;
+}
+@utility animate-danger-pulse {
+  animation: danger-pulse 1s ease-out infinite;
+}
+@utility animate-red-flash {
+  animation: red-flash 600ms ease-out forwards;
+}
+@utility animate-shake {
+  animation: shake 350ms ease-in-out;
 }
 
 @utility game-surface {
   background:
-    linear-gradient(90deg, rgb(0 0 0 / 0.05) 1px, transparent 1px),
-    linear-gradient(rgb(0 0 0 / 0.05) 1px, transparent 1px), var(--background);
+    linear-gradient(90deg, rgb(244 241 234 / 0.04) 1px, transparent 1px),
+    linear-gradient(rgb(244 241 234 / 0.04) 1px, transparent 1px), var(--background);
   background-size: 22px 22px;
+}
+
+/* Motif formes Squid Game ○△□ en filigrane (hero, briefing) */
+@utility shapes-watermark {
+  background-image: radial-gradient(
+    circle at 20% 30%,
+    rgb(237 27 118 / 0.06) 0 40px,
+    transparent 41px
+  );
 }

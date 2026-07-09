@@ -1,0 +1,2390 @@
+===== A. WORKER : que fait round.deadline apres fermeture ? =====
+apps/worker/src/checkInDeadline.ts
+apps/worker/src/creditsDistribution.ts
+apps/worker/src/index.ts
+apps/worker/src/notifications.ts
+apps/worker/src/paymentReconciliation.ts
+apps/worker/src/registrationExpiration.ts
+apps/worker/src/roundDeadline.ts
+apps/worker/src/__tests__/checkInDeadline.test.ts
+apps/worker/src/__tests__/creditsDistribution.test.ts
+apps/worker/src/__tests__/index.test.ts
+apps/worker/src/__tests__/notifications.test.ts
+apps/worker/src/__tests__/paymentReconciliation.test.ts
+apps/worker/src/__tests__/registrationExpiration.test.ts
+apps/worker/src/__tests__/roundDeadline.test.ts
+--- contenu des processors ---
+----- FILE: apps/worker/src/notifications.ts -----
+import {
+  DeliveryStatus,
+  GameSessionStatus,
+  NotificationChannel,
+  NotificationJobStatus,
+  prisma,
+} from "@session-jeu/db";
+
+export type NotificationSendJobData = {
+  notificationJobId?: string;
+  sessionId?: string;
+  type?: string;
+  scheduledFor?: string;
+};
+
+export async function processNotificationSend(data: NotificationSendJobData, now = new Date()) {
+  if (!data.notificationJobId) {
+    throw new Error("notificationJobId is required");
+  }
+
+  const job = await prisma.notificationJob.findUnique({
+    where: { id: data.notificationJobId },
+  });
+  if (!job) return { sent: false, reason: "notification-not-found" };
+  if (job.status === NotificationJobStatus.CANCELLED) {
+    return { sent: false, reason: "notification-cancelled" };
+  }
+
+  if (job.sessionId) {
+    const session = await prisma.gameSession.findUnique({
+      where: { id: job.sessionId },
+      select: { status: true },
+    });
+    if (session?.status === GameSessionStatus.CANCELLED) {
+      await prisma.notificationJob.update({
+        where: { id: job.id },
+        data: { status: NotificationJobStatus.CANCELLED },
+      });
+      return { sent: false, reason: "session-cancelled" };
+    }
+  }
+
+  if (job.channel === NotificationChannel.WHATSAPP) {
+    const preference = job.userId
+      ? await prisma.notificationPreference.findUnique({ where: { userId: job.userId } })
+      : null;
+
+    if (!preference?.whatsappOptIn || !preference.whatsappPhone) {
+      await prisma.$transaction([
+        prisma.notificationJob.update({
+          where: { id: job.id },
+          data: { status: NotificationJobStatus.SKIPPED, sentAt: now },
+        }),
+        prisma.deliveryLog.create({
+          data: {
+            notificationJobId: job.id,
+            userId: job.userId,
+            channel: NotificationChannel.WHATSAPP,
+            status: DeliveryStatus.SKIPPED,
+            errorCode: "403_OPT_IN_REQUIRED",
+            errorMessage: "WhatsApp opt-in is required",
+          },
+        }),
+      ]);
+      return { sent: false, reason: "opt-in-required" };
+    }
+
+    await prisma.$transaction([
+      prisma.notificationJob.update({
+        where: { id: job.id },
+        data: {
+          status: NotificationJobStatus.FAILED,
+          failedAt: now,
+          error: "whatsapp-unavailable",
+        },
+      }),
+      prisma.deliveryLog.create({
+        data: {
+          notificationJobId: job.id,
+          userId: job.userId,
+          channel: NotificationChannel.WHATSAPP,
+          status: DeliveryStatus.FAILED,
+          provider: "whatsapp",
+          errorCode: "502_WHATSAPP_UNAVAILABLE",
+          errorMessage: "WhatsApp gateway is optional and unavailable",
+        },
+      }),
+    ]);
+    return { sent: false, reason: "whatsapp-unavailable" };
+  }
+
+  await prisma.$transaction([
+    prisma.notificationJob.update({
+      where: { id: job.id },
+      data: { status: NotificationJobStatus.SENT, sentAt: now },
+    }),
+    prisma.deliveryLog.create({
+      data: {
+        notificationJobId: job.id,
+        userId: job.userId,
+        channel: NotificationChannel.IN_APP,
+        status: DeliveryStatus.SENT,
+      },
+    }),
+  ]);
+
+  return { sent: true, notificationJobId: job.id };
+}
+----- FILE: apps/worker/src/paymentReconciliation.ts -----
+import { Prisma, prisma, PaymentStatus, SessionRegistrationStatus } from "@session-jeu/db";
+
+type FapshiProviderStatus = "CREATED" | "PENDING" | "SUCCESSFUL" | "FAILED" | "EXPIRED";
+
+type FapshiStatusResponse = {
+  transId: string;
+  status: FapshiProviderStatus;
+  amount?: number;
+  externalId?: string;
+  [key: string]: unknown;
+};
+
+export type PaymentReconciliationJobData = {
+  paymentId?: string;
+};
+
+class FapshiProviderError extends Error {}
+
+function getFapshiBaseUrl() {
+  if (process.env.FAPSHI_BASE_URL) return process.env.FAPSHI_BASE_URL;
+  return process.env.FAPSHI_ENV === "live"
+    ? "https://live.fapshi.com"
+    : "https://sandbox.fapshi.com";
+}
+
+function getFapshiCredentials() {
+  const apiuser = process.env.FAPSHI_API_USER;
+  const apikey = process.env.FAPSHI_API_KEY;
+  if (!apiuser || !apikey) {
+    throw new FapshiProviderError("Fapshi credentials are not configured");
+  }
+  return { apiuser, apikey };
+}
+
+function mapFapshiStatus(status: FapshiProviderStatus) {
+  if (status === "SUCCESSFUL") return PaymentStatus.SUCCESSFUL;
+  if (status === "FAILED") return PaymentStatus.FAILED;
+  if (status === "EXPIRED") return PaymentStatus.EXPIRED;
+  return PaymentStatus.PENDING;
+}
+
+async function getFapshiPaymentStatus(transId: string) {
+  const { apiuser, apikey } = getFapshiCredentials();
+  const res = await fetch(`${getFapshiBaseUrl()}/payment-status/${encodeURIComponent(transId)}`, {
+    headers: { apiuser, apikey },
+  });
+  const body = (await res.json().catch(() => ({}))) as FapshiStatusResponse & { message?: string };
+  if (!res.ok) {
+    throw new FapshiProviderError(body.message ?? "Fapshi status request failed");
+  }
+  return body;
+}
+
+export async function processPaymentReconciliation(
+  data: PaymentReconciliationJobData,
+  now = new Date(),
+) {
+  if (!data.paymentId) {
+    throw new Error("paymentId is required");
+  }
+
+  const payment = await prisma.paymentTransaction.findUnique({
+    where: { id: data.paymentId },
+    include: { registration: true },
+  });
+
+  if (!payment) return { reconciled: false, reason: "payment-not-found" };
+  if (!payment.providerTransId) return { reconciled: false, reason: "missing-provider-trans-id" };
+  if (payment.status !== PaymentStatus.PENDING) {
+    return { reconciled: false, reason: "payment-terminal" };
+  }
+
+  const provider = await getFapshiPaymentStatus(payment.providerTransId);
+  const nextStatus = mapFapshiStatus(provider.status);
+
+  const updated = await prisma.paymentTransaction.update({
+    where: { id: payment.id },
+    data: {
+      status: nextStatus,
+      providerStatus: provider.status,
+      metadata: provider as Prisma.InputJsonValue,
+      webhookReceivedAt: provider.status === "SUCCESSFUL" ? now : payment.webhookReceivedAt,
+    },
+  });
+
+  let registrationPaid = false;
+  if (
+    provider.status === "SUCCESSFUL" &&
+    payment.registration?.status === SessionRegistrationStatus.PAYMENT_PENDING
+  ) {
+    await prisma.sessionRegistration.update({
+      where: { id: payment.registration.id },
+      data: {
+        status: SessionRegistrationStatus.PAID,
+        paidAt: now,
+      },
+    });
+    registrationPaid = true;
+  }
+
+  await prisma.auditLog.create({
+    data: {
+      userId: payment.userId,
+      action: "payment.reconciled",
+      entity: "PaymentTransaction",
+      entityId: payment.id,
+      newData: {
+        status: updated.status,
+        providerStatus: provider.status,
+        registrationPaid,
+      },
+    },
+  });
+
+  return { reconciled: true, paymentId: payment.id, status: updated.status, registrationPaid };
+}
+----- FILE: apps/worker/src/registrationExpiration.ts -----
+import { prisma, SessionRegistrationStatus } from "@session-jeu/db";
+
+export type RegistrationExpirationJobData = {
+  registrationId?: string;
+  paymentDeadlineAt?: string;
+};
+
+export async function processRegistrationExpiration(
+  data: RegistrationExpirationJobData,
+  now = new Date(),
+) {
+  if (!data.registrationId) {
+    throw new Error("registrationId is required");
+  }
+
+  const registration = await prisma.sessionRegistration.findUnique({
+    where: { id: data.registrationId },
+  });
+
+  if (!registration || registration.status !== SessionRegistrationStatus.PAYMENT_PENDING) {
+    return { expired: false, reason: "not-pending" };
+  }
+
+  if (!registration.paymentDeadlineAt || registration.paymentDeadlineAt > now) {
+    return { expired: false, reason: "deadline-not-reached" };
+  }
+
+  const updated = await prisma.sessionRegistration.updateMany({
+    where: {
+      id: registration.id,
+      status: SessionRegistrationStatus.PAYMENT_PENDING,
+    },
+    data: {
+      status: SessionRegistrationStatus.EXPIRED,
+      cancelledAt: now,
+      cancellationReason: "payment-deadline-expired",
+    },
+  });
+
+  if (updated.count !== 1) {
+    return { expired: false, reason: "concurrent-update" };
+  }
+
+  await prisma.auditLog.create({
+    data: {
+      userId: registration.userId,
+      action: "registration.expired",
+      entity: "SessionRegistration",
+      entityId: registration.id,
+      oldData: {
+        status: registration.status,
+        paymentDeadlineAt: registration.paymentDeadlineAt.toISOString(),
+      },
+      newData: {
+        status: SessionRegistrationStatus.EXPIRED,
+        cancelledAt: now.toISOString(),
+      },
+    },
+  });
+
+  return { expired: true, registrationId: registration.id };
+}
+----- FILE: apps/worker/src/checkInDeadline.ts -----
+import { prisma, SessionRegistrationStatus } from "@session-jeu/db";
+
+export type CheckInDeadlineJobData = {
+  sessionId?: string;
+  checkInDeadlineAt?: string;
+};
+
+export async function processCheckInDeadline(data: CheckInDeadlineJobData, now = new Date()) {
+  if (!data.sessionId) {
+    throw new Error("sessionId is required");
+  }
+  if (!data.checkInDeadlineAt) {
+    throw new Error("checkInDeadlineAt is required");
+  }
+
+  const checkInDeadlineAt = new Date(data.checkInDeadlineAt);
+  if (checkInDeadlineAt > now) {
+    return { processed: false, reason: "deadline-not-reached" };
+  }
+
+  const paidRegistrations = await prisma.sessionRegistration.findMany({
+    where: {
+      sessionId: data.sessionId,
+      status: SessionRegistrationStatus.PAID,
+    },
+  });
+
+  if (paidRegistrations.length === 0) {
+    return { processed: true, noShowCount: 0 };
+  }
+
+  const updated = await prisma.sessionRegistration.updateMany({
+    where: {
+      sessionId: data.sessionId,
+      status: SessionRegistrationStatus.PAID,
+    },
+    data: {
+      status: SessionRegistrationStatus.NO_SHOW,
+      noShowAt: now,
+      cancellationReason: "check-in-deadline-missed",
+    },
+  });
+
+  await Promise.all(
+    paidRegistrations.map((registration) =>
+      prisma.auditLog.create({
+        data: {
+          userId: registration.userId,
+          action: "checkin.deadline-reached",
+          entity: "SessionRegistration",
+          entityId: registration.id,
+          oldData: {
+            status: registration.status,
+          },
+          newData: {
+            status: SessionRegistrationStatus.NO_SHOW,
+            noShowAt: now.toISOString(),
+          },
+        },
+      }),
+    ),
+  );
+
+  return { processed: true, noShowCount: updated.count };
+}
+----- FILE: apps/worker/src/index.ts -----
+import { Worker } from "bullmq";
+import {
+  processRegistrationExpiration,
+  type RegistrationExpirationJobData,
+} from "./registrationExpiration.js";
+import {
+  processPaymentReconciliation,
+  type PaymentReconciliationJobData,
+} from "./paymentReconciliation.js";
+import { processCheckInDeadline, type CheckInDeadlineJobData } from "./checkInDeadline.js";
+import { processRoundDeadline, type RoundDeadlineJobData } from "./roundDeadline.js";
+import {
+  processCreditsDistribution,
+  type CreditsDistributionJobData,
+} from "./creditsDistribution.js";
+import { processNotificationSend, type NotificationSendJobData } from "./notifications.js";
+
+const connection = {
+  host: process.env.REDIS_HOST || "localhost",
+  port: Number(process.env.REDIS_PORT) || 6379,
+};
+
+const worker = new Worker(
+  "session-jeu",
+  async (job) => {
+    console.log(`Processing job ${job.id} of type ${job.name}`);
+    if (job.name === "registration.expire") {
+      return processRegistrationExpiration(job.data as RegistrationExpirationJobData);
+    }
+    if (job.name === "payment.reconcile") {
+      return processPaymentReconciliation(job.data as PaymentReconciliationJobData);
+    }
+    if (job.name === "checkin.deadline") {
+      return processCheckInDeadline(job.data as CheckInDeadlineJobData);
+    }
+    if (job.name === "round.deadline") {
+      return processRoundDeadline(job.data as RoundDeadlineJobData);
+    }
+    if (job.name === "credits.distribute") {
+      return processCreditsDistribution(job.data as CreditsDistributionJobData);
+    }
+    if (job.name === "notification.send") {
+      return processNotificationSend(job.data as NotificationSendJobData);
+    }
+    return { success: true };
+  },
+  { connection },
+);
+
+worker.on("completed", (job) => {
+  console.log(`Job ${job.id} has been completed`);
+});
+
+worker.on("failed", (job, err) => {
+  console.error(`Job ${job?.id} has failed with ${err.message}`);
+});
+
+console.log("Worker started and listening for jobs...");
+----- FILE: apps/worker/src/roundDeadline.ts -----
+import { LivePhase, prisma, RoundStatus } from "@session-jeu/db";
+
+export type RoundDeadlineJobData = {
+  sessionId: string;
+  roundId: string;
+  deadlineAt: string;
+};
+
+export async function processRoundDeadline(data: RoundDeadlineJobData, now = new Date()) {
+  if (!data.sessionId || !data.roundId || !data.deadlineAt) {
+    throw new Error("Invalid round deadline job data");
+  }
+
+  const deadlineAt = new Date(data.deadlineAt);
+  if (Number.isNaN(deadlineAt.getTime())) {
+    throw new Error("Invalid round deadline timestamp");
+  }
+  if (deadlineAt > now) {
+    return { processed: false, reason: "deadline-not-reached" as const };
+  }
+
+  const deadline = await prisma.roundDeadline.findUnique({
+    where: { roundId: data.roundId },
+    include: { round: true },
+  });
+
+  if (!deadline || deadline.closedAt) {
+    return { processed: false, reason: "already-closed" as const };
+  }
+
+  const [, updatedRound] = await prisma.$transaction([
+    prisma.roundDeadline.update({
+      where: { id: deadline.id },
+      data: { closedAt: now },
+    }),
+    prisma.roundInstance.update({
+      where: { id: data.roundId },
+      data: {
+        status: RoundStatus.COMPLETED,
+        endTime: now,
+      },
+    }),
+    prisma.liveSessionState.updateMany({
+      where: {
+        sessionId: data.sessionId,
+        currentRoundId: data.roundId,
+      },
+      data: {
+        phase: LivePhase.RESOLVING,
+        phaseStartedAt: now,
+      },
+    }),
+    prisma.auditLog.create({
+      data: {
+        action: "round.deadline-closed",
+        entity: "RoundInstance",
+        entityId: data.roundId,
+        newData: {
+          sessionId: data.sessionId,
+          deadlineAt: deadline.deadlineAt.toISOString(),
+          closedAt: now.toISOString(),
+        },
+      },
+    }),
+  ]);
+
+  return {
+    processed: true,
+    roundId: updatedRound.id,
+    status: updatedRound.status,
+  };
+}
+----- FILE: apps/worker/src/creditsDistribution.ts -----
+import {
+  GameResultStatus,
+  LedgerDirection,
+  LedgerType,
+  Prisma,
+  PrizeDistributionStatus,
+  prisma,
+} from "@session-jeu/db";
+
+export type CreditsDistributionJobData = {
+  sessionId?: string;
+};
+
+function calculateStats(input: {
+  gameResults: Array<{ finalRank: number | null; finalStatus: string }>;
+  creditsWonXaf: number;
+}) {
+  const playedStatuses = new Set<string>([
+    GameResultStatus.WINNER,
+    GameResultStatus.ELIMINATED,
+    GameResultStatus.COMPLETED,
+  ]);
+  const playedResults = input.gameResults.filter((result) =>
+    playedStatuses.has(result.finalStatus),
+  );
+  const rankedResults = playedResults.filter(
+    (result): result is { finalRank: number; finalStatus: string } =>
+      Number.isInteger(result.finalRank),
+  );
+  const sessionsPlayed = playedResults.length;
+  const sessionsWon = playedResults.filter(
+    (result) => result.finalStatus === GameResultStatus.WINNER,
+  ).length;
+
+  return {
+    sessionsPlayed,
+    sessionsWon,
+    winRate: sessionsWon / Math.max(1, sessionsPlayed),
+    avgFinalRank:
+      rankedResults.length > 0
+        ? rankedResults.reduce((sum, result) => sum + result.finalRank, 0) / rankedResults.length
+        : null,
+    creditsWonXaf: input.creditsWonXaf,
+  };
+}
+
+async function recomputePlayerStatsSnapshot(userId: string, now: Date) {
+  const [gameResults, prizeLedger] = await Promise.all([
+    prisma.gameResult.findMany({
+      where: { userId },
+      select: { finalRank: true, finalStatus: true },
+    }),
+    prisma.ledgerEntry.aggregate({
+      where: {
+        userId,
+        direction: LedgerDirection.CREDIT,
+        type: LedgerType.PRIZE,
+      },
+      _sum: { amountXaf: true },
+    }),
+  ]);
+  const stats = calculateStats({
+    gameResults,
+    creditsWonXaf: prizeLedger._sum.amountXaf ?? 0,
+  });
+  const snapshot = await prisma.playerStatsSnapshot.upsert({
+    where: { userId },
+    update: { ...stats, computedAt: now },
+    create: { userId, ...stats, computedAt: now },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      action: "stats.recomputed",
+      entity: "PlayerStatsSnapshot",
+      entityId: snapshot.id,
+      newData: stats,
+    },
+  });
+}
+
+async function creditOneDistribution(input: { distributionId: string; now: Date }) {
+  return prisma.$transaction(
+    async (tx) => {
+      const distribution = await tx.prizeDistribution.findUnique({
+        where: { id: input.distributionId },
+      });
+      if (!distribution) return { type: "not-found" as const };
+      if (distribution.status === PrizeDistributionStatus.CREDITED) {
+        return { type: "already-credited" as const, userId: distribution.userId };
+      }
+
+      const existingLedger = await tx.ledgerEntry.findUnique({
+        where: { idempotencyKey: distribution.idempotencyKey },
+      });
+      if (existingLedger) {
+        await tx.prizeDistribution.update({
+          where: { id: distribution.id },
+          data: {
+            status: PrizeDistributionStatus.CREDITED,
+            paidAt: distribution.paidAt ?? input.now,
+            creditedAt: distribution.creditedAt ?? input.now,
+          },
+        });
+        return { type: "idempotent" as const, userId: distribution.userId };
+      }
+
+      const wallet = await tx.wallet.upsert({
+        where: { userId: distribution.userId },
+        update: {},
+        create: { userId: distribution.userId, balanceXaf: 0, currency: "XAF" },
+      });
+      if (wallet.isFrozen) {
+        await tx.prizeDistribution.update({
+          where: { id: distribution.id },
+          data: { status: PrizeDistributionStatus.FAILED },
+        });
+        return { type: "wallet-frozen" as const };
+      }
+
+      const nextBalanceXaf = wallet.balanceXaf + distribution.amountXaf;
+      const ledger = await tx.ledgerEntry.create({
+        data: {
+          walletId: wallet.id,
+          userId: distribution.userId,
+          amountXaf: distribution.amountXaf,
+          balanceAfterXaf: nextBalanceXaf,
+          direction: LedgerDirection.CREDIT,
+          type: LedgerType.PRIZE,
+          description: "Prize credit from finalized session",
+          referenceType: "PrizeDistribution",
+          referenceId: distribution.id,
+          idempotencyKey: distribution.idempotencyKey,
+          sessionId: distribution.sessionId,
+        },
+      });
+
+      await tx.wallet.update({
+        where: { id: wallet.id },
+        data: {
+          balanceXaf: nextBalanceXaf,
+          version: { increment: 1 },
+        },
+      });
+
+      await tx.prizeDistribution.update({
+        where: { id: distribution.id },
+        data: {
+          status: PrizeDistributionStatus.CREDITED,
+          paidAt: input.now,
+          creditedAt: input.now,
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: distribution.userId,
+          action: "wallet.prize-credited",
+          entity: "PrizeDistribution",
+          entityId: distribution.id,
+          newData: {
+            ledgerId: ledger.id,
+            amountXaf: distribution.amountXaf,
+            sessionId: distribution.sessionId,
+          },
+        },
+      });
+
+      return { type: "credited" as const, userId: distribution.userId };
+    },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      maxWait: 5000,
+      timeout: 10000,
+    },
+  );
+}
+
+export async function processCreditsDistribution(
+  data: CreditsDistributionJobData,
+  now = new Date(),
+) {
+  if (!data.sessionId) {
+    throw new Error("sessionId is required");
+  }
+
+  const distributions = await prisma.prizeDistribution.findMany({
+    where: {
+      sessionId: data.sessionId,
+      status: { in: [PrizeDistributionStatus.PENDING, PrizeDistributionStatus.FAILED] },
+    },
+    orderBy: [{ rank: "asc" }, { userId: "asc" }],
+  });
+
+  let credited = 0;
+  let skipped = 0;
+  let failed = 0;
+  const creditedUserIds = new Set<string>();
+
+  for (const distribution of distributions) {
+    const result = await creditOneDistribution({ distributionId: distribution.id, now });
+    if (result.type === "credited" || result.type === "idempotent") {
+      credited += 1;
+      creditedUserIds.add(result.userId);
+    } else if (result.type === "wallet-frozen") {
+      failed += 1;
+    } else {
+      skipped += 1;
+    }
+  }
+
+  for (const userId of creditedUserIds) {
+    await recomputePlayerStatsSnapshot(userId, now);
+  }
+
+  if (credited > 0) {
+    await prisma.gameEvent.create({
+      data: {
+        sessionId: data.sessionId,
+        eventType: "credits.distributed",
+        aggregateType: "GameSession",
+        aggregateId: data.sessionId,
+        payload: { credited, skipped, failed },
+      },
+    });
+  }
+
+  const remaining = await prisma.prizeDistribution.count({
+    where: {
+      sessionId: data.sessionId,
+      status: { not: PrizeDistributionStatus.CREDITED },
+    },
+  });
+
+  if (remaining === 0) {
+    await prisma.gameEvent.create({
+      data: {
+        sessionId: data.sessionId,
+        eventType: "results.published",
+        aggregateType: "GameSession",
+        aggregateId: data.sessionId,
+        payload: { credited, skipped, failed },
+      },
+    });
+  }
+
+  return { sessionId: data.sessionId, credited, skipped, failed, remaining };
+}
+
+===== B. GAME-ENGINE : resolvers existants =====
+----- FILE: packages/game-engine/src/index.ts -----
+import { createHash } from "node:crypto";
+
+export const GAME_ENGINE_VERSION = "0.1.0";
+
+export type ResolverFamily = "solo-score" | "duel-score";
+
+export type PlayerAction = {
+  playerId: string;
+  actionNonce: string;
+  submittedAt: string;
+  payload: {
+    score?: number;
+    tieBreakMs?: number;
+    [key: string]: unknown;
+  };
+};
+
+export type ResolverConfig = {
+  family: ResolverFamily;
+  winnersCount: number;
+  missingActionScore?: number;
+};
+
+export type ResolverInput = {
+  roundId: string;
+  participants: string[];
+  actions: PlayerAction[];
+  config: ResolverConfig;
+  seedLog?: ResolutionEvidence[];
+};
+
+export type RankedPlayer = {
+  playerId: string;
+  score: number;
+  rank: number;
+  tieBreakMs: number | null;
+  missingAction: boolean;
+};
+
+export type ResolutionEvidence = {
+  type: string;
+  message: string;
+  data?: Record<string, unknown>;
+};
+
+export type ResolverOutput = {
+  resolverId: ResolverFamily;
+  roundId: string;
+  scores: Record<string, number>;
+  ranks: Record<string, number>;
+  qualifiedIds: string[];
+  eliminatedIds: string[];
+  tieGroups: string[][];
+  ranking: RankedPlayer[];
+  evidence: ResolutionEvidence[];
+  seedLog: ResolutionEvidence[];
+};
+
+export function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  const record = value as Record<string, unknown>;
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+    .join(",")}}`;
+}
+
+export function hashResolution(value: unknown) {
+  return createHash("sha256").update(stableStringify(value)).digest("base64url");
+}
+
+export function rankPlayers(
+  entries: Array<Omit<RankedPlayer, "rank">>,
+): { ranking: RankedPlayer[]; tieGroups: string[][] } {
+  const sorted = [...entries].sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    if (a.tieBreakMs !== null && b.tieBreakMs !== null && a.tieBreakMs !== b.tieBreakMs) {
+      return a.tieBreakMs - b.tieBreakMs;
+    }
+    if (a.tieBreakMs !== null && b.tieBreakMs === null) return -1;
+    if (a.tieBreakMs === null && b.tieBreakMs !== null) return 1;
+    return a.playerId.localeCompare(b.playerId);
+  });
+
+  const ranking = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
+  const tieGroups = new Map<string, string[]>();
+  for (const entry of ranking) {
+    const key = `${entry.score}:${entry.tieBreakMs ?? "none"}`;
+    const group = tieGroups.get(key) ?? [];
+    group.push(entry.playerId);
+    tieGroups.set(key, group);
+  }
+
+  return {
+    ranking,
+    tieGroups: [...tieGroups.values()].filter((group) => group.length > 1),
+  };
+}
+
+export function applyWinnersCount(ranking: RankedPlayer[], winnersCount: number) {
+  const safeWinnersCount = Math.max(0, Math.min(winnersCount, ranking.length));
+  const qualifiedIds = ranking.slice(0, safeWinnersCount).map((entry) => entry.playerId);
+  const qualified = new Set(qualifiedIds);
+  return {
+    qualifiedIds,
+    eliminatedIds: ranking
+      .filter((entry) => !qualified.has(entry.playerId))
+      .map((entry) => entry.playerId),
+  };
+}
+
+function latestActionByPlayer(actions: PlayerAction[]) {
+  const byPlayer = new Map<string, PlayerAction>();
+  for (const action of actions) {
+    const existing = byPlayer.get(action.playerId);
+    if (!existing || action.submittedAt > existing.submittedAt) {
+      byPlayer.set(action.playerId, action);
+    }
+  }
+  return byPlayer;
+}
+
+function resolveScoreRound(input: ResolverInput, resolverId: ResolverFamily): ResolverOutput {
+  const evidence: ResolutionEvidence[] = [
+    {
+      type: "resolver.selected",
+      message: `${resolverId} resolver selected`,
+      data: { winnersCount: input.config.winnersCount },
+    },
+  ];
+  const actions = latestActionByPlayer(input.actions);
+  const missingActionScore = input.config.missingActionScore ?? 0;
+
+  const entries = input.participants.map((playerId) => {
+    const action = actions.get(playerId);
+    const score = typeof action?.payload.score === "number" ? action.payload.score : missingActionScore;
+    const tieBreakMs =
+      typeof action?.payload.tieBreakMs === "number" ? action.payload.tieBreakMs : null;
+    const missingAction = !action;
+    if (missingAction) {
+      evidence.push({
+        type: "action.missing",
+        message: "Missing action scored with default",
+        data: { playerId, score },
+      });
+    }
+    return { playerId, score, tieBreakMs, missingAction };
+  });
+
+  const { ranking, tieGroups } = rankPlayers(entries);
+  const { qualifiedIds, eliminatedIds } = applyWinnersCount(
+    ranking,
+    resolverId === "duel-score" ? Math.min(1, input.config.winnersCount) : input.config.winnersCount,
+  );
+
+  return {
+    resolverId,
+    roundId: input.roundId,
+    scores: Object.fromEntries(ranking.map((entry) => [entry.playerId, entry.score])),
+    ranks: Object.fromEntries(ranking.map((entry) => [entry.playerId, entry.rank])),
+    qualifiedIds,
+    eliminatedIds,
+    tieGroups,
+    ranking,
+    evidence,
+    seedLog: input.seedLog ?? [],
+  };
+}
+
+export function resolveSoloScoreRound(input: ResolverInput) {
+  return resolveScoreRound(input, "solo-score");
+}
+
+export function resolveDuelScoreRound(input: ResolverInput) {
+  if (input.participants.length !== 2) {
+    throw new Error("duel-score resolver requires exactly two participants");
+  }
+  return resolveScoreRound(input, "duel-score");
+}
+
+export function resolveRound(input: ResolverInput) {
+  if (input.config.family === "solo-score") return resolveSoloScoreRound(input);
+  if (input.config.family === "duel-score") return resolveDuelScoreRound(input);
+  throw new Error(`Unsupported resolver family: ${input.config.family}`);
+}
+
+===== C. API : routes live + lobby + sessions (contrats a consommer par l'UI) =====
+----- FILE: apps/api/src/routes/live.ts -----
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { requireAuth } from "../auth/session.js";
+import type { AuthVariables } from "../auth/session.js";
+import { errorResponse, successResponse } from "../lib/responses.js";
+import {
+  adminLiveSessionParamsSchema,
+  createLiveReservation,
+  getGameWsEndpoint,
+  getLiveStateForPlayer,
+  liveReservationBodySchema,
+  liveSessionParamsSchema,
+  serializeLiveSessionState,
+} from "../live/live.js";
+
+const live = new Hono<{ Variables: AuthVariables }>();
+
+const validationHook = (result: { success: boolean }, c: Parameters<typeof errorResponse>[0]) => {
+  if (!result.success) {
+    return errorResponse(c, 400, "VALIDATION_ERROR", "Validation failed");
+  }
+};
+
+live.post(
+  "/sessions/:id/reservation",
+  requireAuth,
+  zValidator("param", liveSessionParamsSchema, validationHook),
+  zValidator("json", liveReservationBodySchema, validationHook),
+  async (c) => {
+    const user = c.get("user");
+    const { id } = c.req.valid("param");
+    const body = c.req.valid("json");
+    const result = await createLiveReservation({
+      userId: user.id,
+      sessionId: id,
+      joinToken: body.joinToken,
+    });
+
+    if (result.type === "invalid-join-token") {
+      return errorResponse(c, 403, "JOIN_TOKEN_INVALID", "Join token is invalid");
+    }
+    if (result.type === "expired-join-token") {
+      return errorResponse(c, 410, "JOIN_TOKEN_EXPIRED", "Join token has expired");
+    }
+    if (result.type === "used-join-token") {
+      return errorResponse(c, 409, "JOIN_TOKEN_USED", "Join token has already been used");
+    }
+    if (result.type === "not-checked-in") {
+      return errorResponse(c, 403, "NOT_CHECKED_IN", "Check-in is required before live entry");
+    }
+    if (result.type === "session-cancelled") {
+      return errorResponse(c, 410, "SESSION_CANCELLED", "Session is cancelled");
+    }
+    if (result.type === "session-not-live") {
+      return errorResponse(c, 409, "SESSION_NOT_LIVE", "Session is not live");
+    }
+
+    return successResponse(c, {
+      reservation: {
+        token: result.liveToken,
+        tokenId: result.reservation.id,
+        expiresAt: result.reservation.expiresAt.toISOString(),
+      },
+      websocket: {
+        endpoint: getGameWsEndpoint(),
+        roomName: "game_session",
+        options: {
+          sessionId: id,
+          reservationToken: result.liveToken,
+        },
+      },
+      liveState: serializeLiveSessionState(result.liveState),
+    });
+  },
+);
+
+live.get(
+  "/:sessionId/state",
+  requireAuth,
+  zValidator("param", adminLiveSessionParamsSchema, validationHook),
+  async (c) => {
+    const user = c.get("user");
+    const { sessionId } = c.req.valid("param");
+    const result = await getLiveStateForPlayer({ userId: user.id, sessionId });
+
+    if (result.type === "not-checked-in") {
+      return errorResponse(c, 403, "NOT_CHECKED_IN", "Live state requires check-in");
+    }
+    if (result.type === "not-live") {
+      return errorResponse(c, 409, "SESSION_NOT_LIVE", "Live state is not available");
+    }
+
+    return successResponse(c, {
+      liveState: serializeLiveSessionState(result.liveState),
+      currentRound: result.liveState.currentRound
+        ? {
+            id: result.liveState.currentRound.id,
+            roundNum: result.liveState.currentRound.roundNum,
+            status: result.liveState.currentRound.status,
+            startTime: result.liveState.currentRound.startTime?.toISOString() ?? null,
+            endTime: result.liveState.currentRound.endTime?.toISOString() ?? null,
+          }
+        : null,
+      deadline: result.deadline
+        ? {
+            deadlineAt: result.deadline.deadlineAt.toISOString(),
+            closedAt: result.deadline.closedAt?.toISOString() ?? null,
+          }
+        : null,
+      players: result.players.map((player) => ({
+        userId: player.userId,
+        status: player.status,
+        lastSeenAt: player.lastSeenAt?.toISOString() ?? null,
+        disconnectedAt: player.disconnectedAt?.toISOString() ?? null,
+        reconnectUntil: player.reconnectUntil?.toISOString() ?? null,
+      })),
+    });
+  },
+);
+
+export default live;
+----- FILE: apps/api/src/routes/lobby.ts -----
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { requireAuth } from "../auth/session.js";
+import type { AuthVariables } from "../auth/session.js";
+import { errorResponse, successResponse } from "../lib/responses.js";
+import {
+  checkInPlayer,
+  getLobbyForPlayer,
+  issueJoinToken,
+  serializeJoinToken,
+  serializeLobbyRegistration,
+  serializeLobbySession,
+  sessionIdParamsSchema,
+} from "../lobby/lobby.js";
+
+const lobby = new Hono<{ Variables: AuthVariables }>();
+
+const validationHook = (result: { success: boolean }, c: Parameters<typeof errorResponse>[0]) => {
+  if (!result.success) {
+    return errorResponse(c, 400, "VALIDATION_ERROR", "Validation failed");
+  }
+};
+
+lobby.get(
+  "/sessions/:id/lobby",
+  requireAuth,
+  zValidator("param", sessionIdParamsSchema, validationHook),
+  async (c) => {
+    const user = c.get("user");
+    const { id } = c.req.valid("param");
+    const result = await getLobbyForPlayer({ userId: user.id, sessionId: id });
+
+    if (result.type === "not-paid") {
+      return errorResponse(c, 403, "NOT_PAID", "Only paid players can access the lobby");
+    }
+    if (result.type === "session-cancelled") {
+      return errorResponse(c, 410, "SESSION_CANCELLED", "Session is cancelled");
+    }
+
+    return successResponse(c, {
+      session: serializeLobbySession(result.session),
+      registration: serializeLobbyRegistration(result.registration),
+      presence: result.presence,
+    });
+  },
+);
+
+lobby.post(
+  "/sessions/:id/check-in",
+  requireAuth,
+  zValidator("param", sessionIdParamsSchema, validationHook),
+  async (c) => {
+    const user = c.get("user");
+    const { id } = c.req.valid("param");
+    const result = await checkInPlayer({ userId: user.id, sessionId: id });
+
+    if (result.type === "not-paid") {
+      return errorResponse(c, 403, "NOT_PAID", "Only paid players can check in");
+    }
+    if (result.type === "session-cancelled") {
+      return errorResponse(c, 410, "SESSION_CANCELLED", "Session is cancelled");
+    }
+    if (result.type === "checkin-closed") {
+      return errorResponse(c, 409, "CHECKIN_CLOSED", "Check-in deadline has passed", {
+        checkInDeadlineAt: result.checkInDeadlineAt.toISOString(),
+      });
+    }
+
+    return successResponse(
+      c,
+      {
+        registration: serializeLobbyRegistration(result.registration),
+        checkInDeadlineAt: result.checkInDeadlineAt?.toISOString() ?? null,
+      },
+      result.type === "idempotent" ? 200 : 201,
+    );
+  },
+);
+
+lobby.get(
+  "/sessions/:id/join-token",
+  requireAuth,
+  zValidator("param", sessionIdParamsSchema, validationHook),
+  async (c) => {
+    const user = c.get("user");
+    const { id } = c.req.valid("param");
+    const result = await issueJoinToken({ userId: user.id, sessionId: id });
+
+    if (result.type === "not-checked-in") {
+      return errorResponse(c, 403, "NOT_CHECKED_IN", "Check-in is required before joining live");
+    }
+    if (result.type === "session-cancelled") {
+      return errorResponse(c, 410, "SESSION_CANCELLED", "Session is cancelled");
+    }
+
+    return successResponse(c, { joinToken: serializeJoinToken(result.record, result.token) });
+  },
+);
+
+export default lobby;
+----- FILE: apps/api/src/routes/registrations.ts -----
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { prisma, SessionRegistrationStatus } from "@session-jeu/db";
+import { requireAuth } from "../auth/session.js";
+import type { AuthVariables } from "../auth/session.js";
+import { errorResponse, successResponse } from "../lib/responses.js";
+import {
+  activeRegistrationStatuses,
+  cancelRegistrationSchema,
+  registrationIdParamsSchema,
+  registerForSession,
+  serializeRegistration,
+  sessionIdParamsSchema,
+} from "../registrations/sessionRegistration.js";
+
+const registrations = new Hono<{ Variables: AuthVariables }>();
+
+const validationHook = (result: { success: boolean }, c: Parameters<typeof errorResponse>[0]) => {
+  if (!result.success) {
+    return errorResponse(c, 400, "VALIDATION_ERROR", "Validation failed");
+  }
+};
+
+registrations.post(
+  "/sessions/:id/register",
+  requireAuth,
+  zValidator("param", sessionIdParamsSchema, validationHook),
+  async (c) => {
+    const user = c.get("user");
+    const { id } = c.req.valid("param");
+    const result = await registerForSession({ userId: user.id, sessionId: id });
+
+    if (result.type === "not-found") {
+      return errorResponse(c, 404, "SESSION_NOT_FOUND", "Session not found");
+    }
+    if (result.type === "closed" && result.code === "SESSION_CANCELLED") {
+      return errorResponse(c, 410, "SESSION_CANCELLED", "Session is cancelled");
+    }
+    if (result.type === "closed") {
+      return errorResponse(c, 423, "REGISTRATION_CLOSED", "Registration is closed");
+    }
+    if (result.type === "already-registered") {
+      return errorResponse(
+        c,
+        409,
+        "ALREADY_REGISTERED",
+        "Player already has an active registration",
+        {
+          registration: serializeRegistration(result.registration),
+        },
+      );
+    }
+    if (result.type === "full") {
+      return errorResponse(c, 409, "SESSION_FULL", "Session is full");
+    }
+
+    return successResponse(c, { registration: serializeRegistration(result.registration) }, 201);
+  },
+);
+
+registrations.get(
+  "/sessions/:id/registration",
+  requireAuth,
+  zValidator("param", sessionIdParamsSchema, validationHook),
+  async (c) => {
+    const user = c.get("user");
+    const { id } = c.req.valid("param");
+    const registration = await prisma.sessionRegistration.findFirst({
+      where: {
+        sessionId: id,
+        userId: user.id,
+        status: { in: [...activeRegistrationStatuses] },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (!registration) {
+      return errorResponse(c, 404, "REGISTRATION_NOT_FOUND", "Registration not found");
+    }
+
+    return successResponse(c, { registration: serializeRegistration(registration) });
+  },
+);
+
+registrations.post(
+  "/registrations/:id/cancel",
+  requireAuth,
+  zValidator("param", registrationIdParamsSchema, validationHook),
+  zValidator("json", cancelRegistrationSchema, validationHook),
+  async (c) => {
+    const user = c.get("user");
+    const { id } = c.req.valid("param");
+    const input = c.req.valid("json");
+
+    const result = await prisma.$transaction(async (tx) => {
+      const existing = await tx.sessionRegistration.findUnique({ where: { id } });
+      if (!existing) return { type: "not-found" as const };
+      if (existing.userId !== user.id) return { type: "forbidden" as const };
+      if (existing.status === SessionRegistrationStatus.PAID) return { type: "paid" as const };
+      if (existing.status !== SessionRegistrationStatus.PAYMENT_PENDING) {
+        return { type: "not-cancellable" as const };
+      }
+
+      const updated = await tx.sessionRegistration.update({
+        where: { id },
+        data: {
+          status: SessionRegistrationStatus.CANCELLED,
+          cancelledAt: new Date(),
+          cancellationReason: input.reason ?? "player-cancelled-before-payment",
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "registration.cancelled",
+          entity: "SessionRegistration",
+          entityId: id,
+          reason: input.reason,
+          oldData: serializeRegistration(existing),
+          newData: serializeRegistration(updated),
+        },
+      });
+
+      return { type: "ok" as const, registration: updated };
+    });
+
+    if (result.type === "not-found") {
+      return errorResponse(c, 404, "REGISTRATION_NOT_FOUND", "Registration not found");
+    }
+    if (result.type === "forbidden") {
+      return errorResponse(
+        c,
+        403,
+        "REGISTRATION_FORBIDDEN",
+        "Registration belongs to another user",
+      );
+    }
+    if (result.type === "paid") {
+      return errorResponse(
+        c,
+        409,
+        "REGISTRATION_ALREADY_PAID",
+        "Paid registrations cannot be cancelled here",
+      );
+    }
+    if (result.type === "not-cancellable") {
+      return errorResponse(
+        c,
+        409,
+        "REGISTRATION_NOT_CANCELLABLE",
+        "Registration cannot be cancelled",
+      );
+    }
+
+    return successResponse(c, { registration: serializeRegistration(result.registration) });
+  },
+);
+
+export default registrations;
+----- FILE: apps/api/src/routes/auth.ts -----
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { prisma } from "@session-jeu/db";
+import { hashPassword, verifyPassword } from "../auth/password.js";
+import {
+  PASSWORD_RESET_TTL_MS,
+  createAuthSession,
+  createOpaqueToken,
+  clearSessionCookie,
+  getClientIp,
+  getRequestId,
+  getUserAgent,
+  hashOpaqueToken,
+  requireAuth,
+  revokeSessionFromRequest,
+} from "../auth/session.js";
+import type { AuthVariables } from "../auth/session.js";
+import { clearAuthRateLimit, consumeAuthRateLimit } from "../auth/rateLimit.js";
+import {
+  loginSchema,
+  registerSchema,
+  requestPasswordResetSchema,
+  resetPasswordSchema,
+} from "../auth/validation.js";
+import { errorResponse, successResponse } from "../lib/responses.js";
+
+const auth = new Hono<{ Variables: AuthVariables }>();
+
+const validationHook = (
+  result: { success: boolean; error?: unknown },
+  c: Parameters<typeof errorResponse>[0],
+) => {
+  if (!result.success) {
+    return errorResponse(c, 400, "VALIDATION_ERROR", "Validation failed");
+  }
+};
+
+function publicUser(user: { id: string; email: string; name: string | null; role: string }) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+  };
+}
+
+function auditContext(c: Parameters<typeof getClientIp>[0]) {
+  return {
+    requestId: getRequestId(c),
+    ipAddress: getClientIp(c),
+    userAgent: getUserAgent(c),
+  };
+}
+
+function rateLimitKey(c: Parameters<typeof getClientIp>[0], scope: string, email: string) {
+  return `${scope}:${getClientIp(c) ?? "unknown"}:${email}`;
+}
+
+auth.post("/register", zValidator("json", registerSchema, validationHook), async (c) => {
+  const input = c.req.valid("json");
+
+  const [existingEmail, existingUsername, existingPhone] = await Promise.all([
+    prisma.user.findUnique({ where: { email: input.email } }),
+    prisma.playerProfile.findUnique({ where: { username: input.username } }),
+    input.phone ? prisma.user.findUnique({ where: { phone: input.phone } }) : Promise.resolve(null),
+  ]);
+
+  if (existingEmail) {
+    return errorResponse(c, 409, "EMAIL_ALREADY_USED", "Email is already used");
+  }
+  if (existingPhone) {
+    return errorResponse(c, 409, "PHONE_ALREADY_USED", "Phone is already used");
+  }
+  if (existingUsername) {
+    return errorResponse(c, 409, "USERNAME_ALREADY_USED", "Username is already used");
+  }
+
+  const passwordHash = await hashPassword(input.password);
+  const result = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.create({
+      data: {
+        email: input.email,
+        phone: input.phone,
+        passwordHash,
+        name: input.name,
+        role: "PLAYER",
+        isActive: true,
+        profile: {
+          create: {
+            username: input.username,
+          },
+        },
+        roleAssignments: {
+          create: {
+            role: "PLAYER",
+            reason: "auth.register",
+          },
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        sessionVersion: true,
+      },
+    });
+
+    const session = await createAuthSession(c, tx, user);
+    await tx.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "auth.user-created",
+        entity: "User",
+        entityId: user.id,
+        newData: { role: user.role },
+        ...auditContext(c),
+      },
+    });
+
+    return { user, sessionExpiresAt: session.expiresAt };
+  });
+
+  return successResponse(
+    c,
+    {
+      user: publicUser(result.user),
+      sessionExpiresAt: result.sessionExpiresAt.toISOString(),
+    },
+    201,
+  );
+});
+
+auth.post("/login", zValidator("json", loginSchema, validationHook), async (c) => {
+  const input = c.req.valid("json");
+  const key = rateLimitKey(c, "login", input.email);
+  const rate = consumeAuthRateLimit(key);
+  if (!rate.allowed) {
+    return errorResponse(c, 429, "LOGIN_RATE_LIMITED", "Too many login attempts", {
+      resetAt: new Date(rate.resetAt).toISOString(),
+    });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email: input.email },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      passwordHash: true,
+      isActive: true,
+      sessionVersion: true,
+    },
+  });
+
+  if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
+    return errorResponse(c, 401, "INVALID_CREDENTIALS", "Invalid credentials");
+  }
+
+  if (!user.isActive) {
+    return errorResponse(c, 403, "ACCOUNT_DISABLED", "Account is disabled");
+  }
+
+  await revokeSessionFromRequest(c, prisma);
+  const session = await createAuthSession(c, prisma, user);
+  clearAuthRateLimit(key);
+
+  await prisma.auditLog.create({
+    data: {
+      userId: user.id,
+      action: "auth.login-succeeded",
+      entity: "AuthSession",
+      entityId: session.sessionId,
+      ...auditContext(c),
+    },
+  });
+
+  return successResponse(c, {
+    user: publicUser(user),
+    sessionExpiresAt: session.expiresAt.toISOString(),
+  });
+});
+
+auth.post("/logout", requireAuth, async (c) => {
+  const user = c.get("user");
+  await prisma.authSession.update({
+    where: { id: user.sessionId },
+    data: { revokedAt: new Date() },
+  });
+  await prisma.auditLog.create({
+    data: {
+      userId: user.id,
+      action: "auth.session-revoked",
+      entity: "AuthSession",
+      entityId: user.sessionId,
+      ...auditContext(c),
+    },
+  });
+  clearSessionCookie(c);
+
+  return successResponse(c, { loggedOut: true });
+});
+
+auth.post(
+  "/password/request-reset",
+  zValidator("json", requestPasswordResetSchema, validationHook),
+  async (c) => {
+    const input = c.req.valid("json");
+    const key = rateLimitKey(c, "password-reset", input.email);
+    const rate = consumeAuthRateLimit(key);
+    if (!rate.allowed) {
+      return errorResponse(c, 429, "PASSWORD_RESET_RATE_LIMITED", "Too many reset attempts", {
+        resetAt: new Date(rate.resetAt).toISOString(),
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email: input.email },
+      select: { id: true, isActive: true },
+    });
+
+    if (user?.isActive) {
+      const token = createOpaqueToken();
+      await prisma.$transaction(async (tx) => {
+        await tx.passwordResetToken.create({
+          data: {
+            userId: user.id,
+            tokenHash: hashOpaqueToken(token),
+            expiresAt: new Date(Date.now() + PASSWORD_RESET_TTL_MS),
+          },
+        });
+        await tx.auditLog.create({
+          data: {
+            userId: user.id,
+            action: "auth.password-reset-requested",
+            entity: "User",
+            entityId: user.id,
+            ...auditContext(c),
+          },
+        });
+      });
+    }
+
+    return successResponse(c, {
+      message: "If an active account exists, a reset instruction has been created.",
+    });
+  },
+);
+
+auth.post("/password/reset", zValidator("json", resetPasswordSchema, validationHook), async (c) => {
+  const input = c.req.valid("json");
+  const tokenHash = hashOpaqueToken(input.token);
+  const resetToken = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash },
+    include: {
+      user: {
+        select: {
+          id: true,
+          isActive: true,
+        },
+      },
+    },
+  });
+
+  if (!resetToken || resetToken.usedAt) {
+    return errorResponse(c, 400, "RESET_TOKEN_INVALID", "Reset token is invalid");
+  }
+  if (resetToken.expiresAt <= new Date()) {
+    return errorResponse(c, 400, "RESET_TOKEN_EXPIRED", "Reset token is expired");
+  }
+  if (!resetToken.user.isActive) {
+    return errorResponse(c, 403, "ACCOUNT_DISABLED", "Account is disabled");
+  }
+
+  const passwordHash = await hashPassword(input.password);
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: resetToken.user.id },
+      data: {
+        passwordHash,
+        sessionVersion: { increment: 1 },
+      },
+    });
+    await tx.passwordResetToken.update({
+      where: { id: resetToken.id },
+      data: { usedAt: new Date() },
+    });
+    await tx.authSession.updateMany({
+      where: { userId: resetToken.user.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    await tx.auditLog.create({
+      data: {
+        userId: resetToken.user.id,
+        action: "auth.password-reset",
+        entity: "User",
+        entityId: resetToken.user.id,
+        ...auditContext(c),
+      },
+    });
+  });
+
+  clearSessionCookie(c);
+  return successResponse(c, { passwordReset: true });
+});
+
+export default auth;
+----- FILE: apps/api/src/routes/wallet.ts -----
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { requireAuth } from "../auth/session.js";
+import type { AuthVariables } from "../auth/session.js";
+import { errorResponse, successResponse } from "../lib/responses.js";
+import { rateLimit } from "../middleware/rateLimit.js";
+import { registrationIdParamsSchema } from "../registrations/sessionRegistration.js";
+import {
+  getWalletForUser,
+  listWalletLedger,
+  payRegistrationWithWallet,
+  payWithWalletSchema,
+  serializeLedgerEntry,
+  serializeRegistrationPaymentResult,
+  serializeWallet,
+  walletLedgerQuerySchema,
+} from "../wallet/wallet.js";
+
+const wallet = new Hono<{ Variables: AuthVariables }>();
+
+const validationHook = (result: { success: boolean }, c: Parameters<typeof errorResponse>[0]) => {
+  if (!result.success) {
+    return errorResponse(c, 400, "VALIDATION_ERROR", "Validation failed");
+  }
+};
+
+wallet.get("/wallet/me", requireAuth, async (c) => {
+  const user = c.get("user");
+  const result = await getWalletForUser(user.id);
+
+  return successResponse(c, {
+    wallet: serializeWallet(result.wallet),
+    ledgerBalanceXaf: result.ledgerBalanceXaf,
+    isLedgerAligned: result.isLedgerAligned,
+  });
+});
+
+wallet.get(
+  "/wallet/me/ledger",
+  requireAuth,
+  zValidator("query", walletLedgerQuerySchema, validationHook),
+  async (c) => {
+    const user = c.get("user");
+    const query = c.req.valid("query");
+    const result = await listWalletLedger({
+      userId: user.id,
+      cursor: query.cursor,
+      limit: query.limit,
+    });
+
+    return successResponse(c, {
+      wallet: result.wallet ? serializeWallet(result.wallet) : null,
+      entries: result.entries.map(serializeLedgerEntry),
+      nextCursor: result.nextCursor,
+    });
+  },
+);
+
+wallet.post(
+  "/registrations/:id/pay-with-wallet",
+  rateLimit({ scope: "wallet-payment", limit: 20, windowMs: 60_000 }),
+  requireAuth,
+  zValidator("param", registrationIdParamsSchema, validationHook),
+  zValidator("json", payWithWalletSchema, validationHook),
+  async (c) => {
+    const user = c.get("user");
+    const { id } = c.req.valid("param");
+    const input = c.req.valid("json");
+    const result = await payRegistrationWithWallet({
+      userId: user.id,
+      registrationId: id,
+      idempotencyKey: input.idempotencyKey,
+    });
+
+    if (result.type === "not-found") {
+      return errorResponse(c, 404, "REGISTRATION_NOT_FOUND", "Registration not found");
+    }
+    if (result.type === "forbidden") {
+      return errorResponse(
+        c,
+        403,
+        "REGISTRATION_FORBIDDEN",
+        "Registration belongs to another user",
+      );
+    }
+    if (result.type === "expired") {
+      return errorResponse(c, 409, "REGISTRATION_EXPIRED", "Registration payment deadline passed");
+    }
+    if (result.type === "already-paid") {
+      return errorResponse(c, 409, "REGISTRATION_ALREADY_PAID", "Registration is already paid");
+    }
+    if (result.type === "not-payable") {
+      return errorResponse(c, 409, "REGISTRATION_NOT_PAYABLE", "Registration cannot be paid");
+    }
+    if (result.type === "wallet-frozen") {
+      return errorResponse(c, 409, "WALLET_FROZEN", "Wallet is frozen");
+    }
+    if (result.type === "insufficient-funds") {
+      return errorResponse(c, 409, "INSUFFICIENT_FUNDS", "Wallet balance is insufficient");
+    }
+    if (result.type === "ledger-duplicate") {
+      return errorResponse(c, 409, "LEDGER_DUPLICATE", "Ledger idempotency key is already used");
+    }
+
+    return successResponse(
+      c,
+      {
+        wallet: serializeWallet(result.wallet),
+        ledgerEntry: serializeLedgerEntry(result.ledger),
+        registration: serializeRegistrationPaymentResult(result.registration),
+      },
+      result.type === "idempotent" ? 200 : 201,
+    );
+  },
+);
+
+wallet.post("/wallet/me/withdraw", requireAuth, (c) =>
+  errorResponse(c, 403, "WITHDRAWALS_DISABLED", "Real-money withdrawals are disabled in V1"),
+);
+
+export default wallet;
+--- liste reelle des fichiers routes ---
+admin
+auth.ts
+health.ts
+internal
+live.ts
+lobby.ts
+me.ts
+minigames.ts
+notifications.ts
+payments.ts
+players.ts
+public
+registrations.ts
+results.ts
+security.ts
+share.ts
+__tests__
+wallet.ts
+webhooks
+
+===== D. MINI-JEUX : definitions seedees =====
+packages/db/prisma/seed.ts:412:    await prisma.miniGameDefinition.upsert({
+packages/db/prisma/schema.prisma:261:  miniGameDefinitions    MiniGameDefinition[]
+packages/db/prisma/schema.prisma:641:  miniGameDefinitionId String?
+packages/db/prisma/schema.prisma:658:  miniGameDefinition MiniGameDefinition? @relation(fields: [miniGameDefinitionId], references: [id], onDelete: SetNull)
+packages/db/prisma/schema.prisma:663:  @@index([miniGameDefinitionId])
+packages/db/prisma/schema.prisma:666:model MiniGameDefinition {
+packages/db/prisma/seed.ts
+----- FILE: packages/db/prisma/seed.ts -----
+import { PrismaClient } from "@prisma/client";
+import { randomBytes, scryptSync } from "node:crypto";
+
+const prisma = new PrismaClient({
+  datasourceUrl: process.env.DATABASE_URL,
+});
+
+const SCRYPT_N = 16384;
+const SCRYPT_R = 8;
+const SCRYPT_P = 1;
+const HASH_LENGTH = 64;
+
+function getSeedPassword(envName: string, localDefault: string) {
+  const password = process.env[envName];
+  if (password) return password;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(`${envName} must be set when seeding production-like data`);
+  }
+  return localDefault;
+}
+
+function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("base64url");
+  const hash = scryptSync(password, salt, HASH_LENGTH, {
+    N: SCRYPT_N,
+    r: SCRYPT_R,
+    p: SCRYPT_P,
+  }).toString("base64url");
+
+  return `scrypt$1$${SCRYPT_N}$${SCRYPT_R}$${SCRYPT_P}$${HASH_LENGTH}$${salt}$${hash}`;
+}
+
+const commonMiniGameAntiCheat = {
+  serverTimersOnly: true,
+  nonceRequired: true,
+  rejectAfterDeadline: true,
+  sensitiveStateKeysBlocked: ["answer", "answers", "solution", "seed", "targetValue"],
+};
+
+const soloScoreConfigSchema = {
+  type: "object",
+  required: ["durationSeconds", "winnersCount", "maxAttempts"],
+  properties: {
+    durationSeconds: { type: "integer", minimum: 10, maximum: 180 },
+    winnersCount: { type: "integer", minimum: 1, maximum: 100 },
+    maxAttempts: { type: "integer", minimum: 1, maximum: 200 },
+  },
+};
+
+const minigameDefinitions = [
+  {
+    key: "memory-sequence",
+    name: "Sequence memoire",
+    description: "Reproduire une sequence affichee par le serveur, classement par manches reussies.",
+    family: "SOLO",
+    playerMode: "SOLO",
+    resolverId: "solo-score",
+    version: 1,
+    configSchema: soloScoreConfigSchema,
+    defaultConfig: { durationSeconds: 60, winnersCount: 3, maxAttempts: 20 },
+    allowedActions: [{ type: "submit-score", maxPerWindow: 3, windowMs: 1000, requiresNonce: true }],
+    antiCheatPolicy: commonMiniGameAntiCheat,
+    clientStateSchema: { phase: "string", roundNum: "number", deadlineEpochMs: "number" },
+    uiCopy: { objective: "Memorise la suite et reproduis-la dans l'ordre." },
+  },
+  {
+    key: "rapid-calculation",
+    name: "Calcul rapide",
+    description: "Serie de calculs server-side, classement par bonnes reponses puis temps.",
+    family: "SOLO",
+    playerMode: "SOLO",
+    resolverId: "solo-score",
+    version: 1,
+    configSchema: soloScoreConfigSchema,
+    defaultConfig: { durationSeconds: 45, winnersCount: 3, maxAttempts: 30 },
+    allowedActions: [{ type: "submit-score", maxPerWindow: 4, windowMs: 1000, requiresNonce: true }],
+    antiCheatPolicy: commonMiniGameAntiCheat,
+    clientStateSchema: { phase: "string", promptId: "string", deadlineEpochMs: "number" },
+    uiCopy: { objective: "Reponds au plus grand nombre de calculs avant la fin." },
+  },
+  {
+    key: "pure-reaction-duel",
+    name: "Reaction pure duel",
+    description: "Duel de reaction apres signal serveur, faux depart penalise.",
+    family: "DUEL",
+    playerMode: "DUEL",
+    resolverId: "duel-score",
+    version: 1,
+    configSchema: {
+      type: "object",
+      required: ["durationSeconds", "roundsToWin", "falseStartPenaltyMs"],
+      properties: {
+        durationSeconds: { type: "integer", minimum: 5, maximum: 120 },
+        roundsToWin: { type: "integer", minimum: 1, maximum: 5 },
+        falseStartPenaltyMs: { type: "integer", minimum: 0, maximum: 5000 },
+      },
+    },
+    defaultConfig: { durationSeconds: 30, roundsToWin: 2, falseStartPenaltyMs: 1000 },
+    allowedActions: [{ type: "reaction-click", maxPerWindow: 2, windowMs: 1000, requiresNonce: true }],
+    antiCheatPolicy: { ...commonMiniGameAntiCheat, latencyCorrectionRequired: true },
+    clientStateSchema: { phase: "string", signalVisible: "boolean", deadlineEpochMs: "number" },
+    uiCopy: { objective: "Clique seulement apres le signal." },
+  },
+  {
+    key: "target-precision",
+    name: "Precision de tir",
+    description: "Cibles generees cote serveur, classement par touches et precision.",
+    family: "SOLO",
+    playerMode: "SOLO",
+    resolverId: "solo-score",
+    version: 1,
+    configSchema: soloScoreConfigSchema,
+    defaultConfig: { durationSeconds: 45, winnersCount: 3, maxAttempts: 40 },
+    allowedActions: [{ type: "target-hit", maxPerWindow: 8, windowMs: 1000, requiresNonce: true }],
+    antiCheatPolicy: { ...commonMiniGameAntiCheat, hitboxValidatedServerSide: true },
+    clientStateSchema: { phase: "string", visibleTargets: "array", deadlineEpochMs: "number" },
+    uiCopy: { objective: "Touche les cibles visibles, evite les clics inutiles." },
+  },
+  {
+    key: "safe-zones",
+
+===== E. WEB : pages actuelles (contenu) =====
+----- FILE: apps/web/src/app/page.tsx -----
+import Link from "next/link";
+import type { Metadata } from "next";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+
+export const metadata: Metadata = {
+  title: "Session Jeu - Compétitions Stratégiques en Ligne",
+  description:
+    "Rejoignez des sessions de compétitions stratégiques en temps réel. Testez votre adresse, votre réflexion et votre stratégie dans un cadre structuré et équitable.",
+  openGraph: {
+    title: "Session Jeu - Compétitions Stratégiques en Ligne",
+    description: "Rejoignez des sessions de compétitions stratégiques en temps réel.",
+    type: "website",
+  },
+};
+
+export default function HomePage() {
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b">
+        <div className="container mx-auto flex items-center justify-between px-4 py-4">
+          <h1 className="text-xl font-bold">Session Jeu</h1>
+          <nav className="flex gap-4">
+            <Link href="/catalogue">
+              <Button variant="ghost">Catalogue</Button>
+            </Link>
+            <Link href="/notifications">
+              <Button variant="ghost">Notifications</Button>
+            </Link>
+          </nav>
+        </div>
+      </header>
+
+      <main>
+        <section className="container mx-auto px-4 py-16 text-center">
+          <h2 className="mb-4 text-4xl font-bold tracking-tight">Compétitions Stratégiques</h2>
+          <p className="mx-auto mb-8 max-w-2xl text-lg text-muted-foreground">
+            Affrontez d&apos;autres joueurs dans des sessions de compétitions structurées.
+            Réflexion, stratégie et adresse au programme dans un cadre équitable et transparent.
+          </p>
+          <Link href="/catalogue">
+            <Button size="lg">Voir les sessions disponibles</Button>
+          </Link>
+        </section>
+
+        <Separator />
+
+        <section className="container mx-auto px-4 py-16">
+          <h3 className="mb-8 text-center text-2xl font-semibold">Comment ça marche</h3>
+          <div className="grid gap-6 md:grid-cols-3">
+            <Card>
+              <CardHeader>
+                <CardTitle>1. Choisissez une session</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Parcourez le catalogue et trouvez une session qui vous convient. Chaque session a
+                  ses propres règles et prix d&apos;inscription.
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>2. Inscrivez-vous</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Créez votre compte gratuitement, puis inscrivez-vous à la session de votre choix.
+                  Le paiement est sécurisé et transparent.
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>3. Jouez et progressez</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Participez aux rounds, éliminez vos adversaires et progressez dans le classement.
+                  Les performances sont évaluées à chaque round selon les règles définies par
+                  l&apos;organisateur.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        <Separator />
+
+        <section className="container mx-auto px-4 py-16 text-center">
+          <h3 className="mb-4 text-2xl font-semibold">Une expérience équitable</h3>
+          <p className="mx-auto max-w-2xl text-muted-foreground">
+            Toutes les sessions sont supervisées par serveur. Les règles sont transparentes, les
+            résultats sont auditables et l&apos;expérience est conçue pour valoriser l&apos;adresse
+            et la stratégie.
+          </p>
+        </section>
+      </main>
+
+      <footer className="border-t">
+        <div className="container mx-auto px-4 py-8 text-center text-sm text-muted-foreground">
+          Session Jeu &copy; {new Date().getFullYear()} &mdash; Plateforme de compétitions
+          stratégiques
+        </div>
+      </footer>
+    </div>
+  );
+}
+----- FILE: apps/web/src/app/catalogue/page.tsx -----
+import Link from "next/link";
+import type { Metadata } from "next";
+import { Button } from "@/components/ui/button";
+import SessionCard from "@/components/SessionCard";
+
+export const metadata: Metadata = {
+  title: "Catalogue des Sessions | Session Jeu",
+  description:
+    "Découvrez les sessions de compétitions stratégiques disponibles. Inscrivez-vous et participez.",
+};
+
+async function getSessions(page = 1, limit = 20) {
+  const apiBase = process.env.API_URL || "http://localhost:3001";
+  const res = await fetch(`${apiBase}/v1/public/sessions?page=${page}&limit=${limit}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) return { data: [], meta: { total: 0, page, limit, totalPages: 0 } };
+  return res.json();
+}
+
+export default async function CataloguePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  const { page: pageStr } = await searchParams;
+  const page = Number(pageStr) || 1;
+  const result = await getSessions(page);
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b">
+        <div className="container mx-auto flex items-center justify-between px-4 py-4">
+          <Link href="/">
+            <h1 className="text-xl font-bold">Session Jeu</h1>
+          </Link>
+          <nav className="flex gap-4">
+            <Link href="/catalogue">
+              <Button variant="ghost">Catalogue</Button>
+            </Link>
+          </nav>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold tracking-tight">Catalogue</h2>
+          <p className="mt-2 text-muted-foreground">
+            Sessions de compétitions stratégiques disponibles
+          </p>
+        </div>
+
+        {result.data.length === 0 ? (
+          <div className="py-16 text-center">
+            <p className="text-lg text-muted-foreground">
+              Aucune session disponible pour le moment.
+            </p>
+            <Link href="/" className="mt-4 inline-block">
+              <Button variant="outline">Retour à l&apos;accueil</Button>
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {result.data.map(
+                (session: {
+                  code: string;
+                  name: string;
+                  description: string | null;
+                  entryFee: number;
+                  maxPlayers: number;
+                  prizePool: number;
+                  startTime: string | null;
+                  status: string;
+                  placesRemaining: number;
+                }) => (
+                  <SessionCard key={session.code} {...session} />
+                )
+              )}
+            </div>
+
+            {result.meta.totalPages > 1 && (
+              <div className="mt-8 flex justify-center gap-2">
+                {page > 1 && (
+                  <Link href={`/catalogue?page=${page - 1}`}>
+                    <Button variant="outline">Précédent</Button>
+                  </Link>
+                )}
+                <span className="flex items-center px-4 text-sm text-muted-foreground">
+                  Page {result.meta.page} / {result.meta.totalPages}
+                </span>
+                {page < result.meta.totalPages && (
+                  <Link href={`/catalogue?page=${page + 1}`}>
+                    <Button variant="outline">Suivant</Button>
+                  </Link>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
+----- FILE: apps/web/src/app/session/[code]/page.tsx -----
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { CTAButton } from "@/components/CTAButton";
+
+async function getSession(code: string) {
+  const apiBase = process.env.API_URL || "http://localhost:3001";
+  const res = await fetch(`${apiBase}/v1/public/sessions/${code}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  const json = await res.json();
+  return json.data ?? null;
+}
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat("fr-FR", {
+    style: "currency",
+    currency: "XAF",
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr) return "Date à confirmer";
+  return new Date(dateStr).toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ code: string }>;
+}): Promise<Metadata> {
+  const { code } = await params;
+  const session = await getSession(code);
+  if (!session) return { title: "Session introuvable" };
+
+  return {
+    title: `${session.name} | Session Jeu`,
+    description: session.description || `Session ${session.name}`,
+    openGraph: {
+      title: session.name,
+      description: session.description || "",
+      type: "website",
+    },
+  };
+}
+
+export default async function SessionDetailPage({ params }: { params: Promise<{ code: string }> }) {
+  const { code } = await params;
+  const session = await getSession(code);
+
+  if (!session) notFound();
+
+  const isFull = session.placesRemaining <= 0;
+  const isClosed = session.status === "COMPLETED" || session.status === "CANCELLED";
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b">
+        <div className="container mx-auto flex items-center justify-between px-4 py-4">
+          <Link href="/">
+            <h1 className="text-xl font-bold">Session Jeu</h1>
+          </Link>
+          <nav className="flex gap-4">
+            <Link href="/catalogue">
+              <Button variant="ghost">Catalogue</Button>
+            </Link>
+          </nav>
+        </div>
+      </header>
+
+      <main className="container mx-auto max-w-3xl px-4 py-8">
+        <Link href="/catalogue" className="mb-6 inline-block">
+          <Button variant="ghost" size="sm">
+            &larr; Retour au catalogue
+          </Button>
+        </Link>
+
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight">{session.name}</h2>
+            <div className="mt-2 flex gap-2">
+              <Badge>{session.status}</Badge>
+            </div>
+          </div>
+        </div>
+
+        {session.description && <p className="mb-8 text-muted-foreground">{session.description}</p>}
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Détails de la session</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Date de début</span>
+                <span>{formatDate(session.startTime)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Frais d&apos;inscription</span>
+                <span className="font-medium">{formatCurrency(session.entryFee)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Récompenses internes configurées</span>
+                <span className="font-medium">{formatCurrency(session.prizePool)}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Places disponibles</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Capacité maximale</span>
+                <span>{session.maxPlayers} joueurs</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Places restantes</span>
+                <span className="font-medium">
+                  {isFull ? (
+                    <span className="text-destructive">Session complète</span>
+                  ) : (
+                    `${session.placesRemaining} place(s)`
+                  )}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Inscrits</span>
+                <span>{session.registrationCount}</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Separator className="my-8" />
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Règles essentielles</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
+            <p>&bull; Les sessions sont supervisées par serveur pour garantir l&apos;équité.</p>
+            <p>
+              &bull; Les résultats sont auditables et ne peuvent pas être modifiés après validation.
+            </p>
+            <p>&bull; Le paiement doit être confirmé avant l&apos;accès à la session.</p>
+            <p>
+              &bull; Consultez la politique d&apos;annulation et de remboursement avant de vous
+              inscrire.
+            </p>
+          </CardContent>
+        </Card>
+
+        <div className="mt-8 flex justify-center gap-4">
+          <CTAButton
+            label="S'inscrire à cette session"
+            href={`/auth/register?next=/session/${code}`}
+            disabled={isFull || isClosed}
+          />
+          <Link href="/catalogue">
+            <Button variant="outline">Autres sessions</Button>
+          </Link>
+        </div>
+      </main>
+    </div>
+  );
+}
+----- FILE: apps/web/src/app/layout.tsx -----
+import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "Session Jeu - Compétitions Stratégiques en Ligne",
+  description:
+    "Rejoignez des sessions de compétitions stratégiques en temps réel. Testez votre adresse, votre réflexion et votre stratégie dans un cadre structuré et équitable.",
+  openGraph: {
+    title: "Session Jeu",
+    description: "Rejoignez des sessions de compétitions stratégiques en temps réel.",
+    type: "website",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="fr" className="h-full antialiased">
+      <body className="min-h-full flex flex-col">{children}</body>
+    </html>
+  );
+}
+
+===== F. WEB : config =====
+{
+  "name": "@session-jeu/web",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@base-ui/react": "^1.6.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.23.0",
+    "next": "16.2.10",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "shadcn": "^4.13.0",
+    "tailwind-merge": "^3.6.0",
+    "tw-animate-css": "^1.4.0"
+  },
+  "devDependencies": {
+    "@eslint/compat": "^2.1.0",
+    "@playwright/test": "^1.61.1",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^10.6.0",
+    "tailwindcss": "^4.3.2",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.0"
+  }
+}
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+};
+
+export default nextConfig;
+CTAButton.tsx
+SessionCard.tsx
+ui
+apps/web/src/components/CTAButton.tsx
+apps/web/src/components/SessionCard.tsx
+apps/web/src/components/ui/button.tsx
+apps/web/src/components/ui/badge.tsx
+apps/web/src/components/ui/separator.tsx
+apps/web/src/components/ui/card.tsx

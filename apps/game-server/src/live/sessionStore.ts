@@ -12,6 +12,14 @@ import { scheduleRoundDeadline } from "./roundDeadlineQueue.js";
 
 export const RECONNECT_WINDOW_SECONDS = 30;
 export const DEFAULT_ROUND_DURATION_MS = 30 * 1000;
+export const RECETTE_ROUND_KEYS = [
+  "memory-sequence",
+  "pure-reaction-duel",
+  "trust-bridge",
+  "team-relay",
+  "danger-sweep",
+  "silent-vote",
+] as const;
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("base64url");
@@ -175,9 +183,15 @@ export async function startRound(input: {
   const durationMs = input.durationMs ?? DEFAULT_ROUND_DURATION_MS;
   const deadlineAt = new Date(now.getTime() + durationMs);
   const seed = createHash("sha256").update(`${input.sessionId}:${input.roundNum}:game-seed`).digest("hex");
+  const miniGameKey = RECETTE_ROUND_KEYS[(input.roundNum - 1) % RECETTE_ROUND_KEYS.length];
 
   const result = await prisma.$transaction(
     async (tx) => {
+      const miniGameDefinition = await tx.miniGameDefinition.findFirst({
+        where: { key: miniGameKey, enabled: true },
+        orderBy: { version: "desc" },
+      });
+
       const round = await tx.roundInstance.upsert({
         where: {
           sessionId_roundNum: {
@@ -188,15 +202,29 @@ export async function startRound(input: {
         create: {
           sessionId: input.sessionId,
           roundNum: input.roundNum,
+          miniGameDefinitionId: miniGameDefinition?.id,
           status: RoundStatus.ACTIVE,
           startTime: now,
-          configJson: { seed },
+          configJson: {
+            seed,
+            miniGameKey,
+            ...(miniGameDefinition?.defaultConfig && typeof miniGameDefinition.defaultConfig === "object"
+              ? (miniGameDefinition.defaultConfig as Record<string, unknown>)
+              : {}),
+          },
         },
         update: {
+          miniGameDefinitionId: miniGameDefinition?.id,
           status: RoundStatus.ACTIVE,
           startTime: now,
           endTime: null,
-          configJson: { seed },
+          configJson: {
+            seed,
+            miniGameKey,
+            ...(miniGameDefinition?.defaultConfig && typeof miniGameDefinition.defaultConfig === "object"
+              ? (miniGameDefinition.defaultConfig as Record<string, unknown>)
+              : {}),
+          },
         },
       });
 
@@ -251,7 +279,7 @@ export async function startRound(input: {
         ],
       });
 
-      return { round, deadline, liveState };
+      return { round, deadline, liveState, miniGameDefinition };
     },
     {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,

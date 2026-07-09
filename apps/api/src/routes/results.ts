@@ -4,6 +4,7 @@ import { requireAuth } from "../auth/session.js";
 import type { AuthVariables } from "../auth/session.js";
 import { errorResponse, successResponse } from "../lib/responses.js";
 import { getSessionResultsForPlayer, sessionResultsParamsSchema } from "../results/results.js";
+import { resolvePublicSessionId } from "../sessions/resolveSession.js";
 
 const results = new Hono<{ Variables: AuthVariables }>();
 
@@ -20,7 +21,8 @@ results.get(
   async (c) => {
     const user = c.get("user");
     const { id } = c.req.valid("param");
-    const result = await getSessionResultsForPlayer({ sessionId: id, userId: user.id });
+    const sessionId = await resolvePublicSessionId(id);
+    const result = await getSessionResultsForPlayer({ sessionId, userId: user.id });
 
     if (result.type === "not-found") {
       return errorResponse(c, 404, "SESSION_NOT_FOUND", "Session not found");

@@ -25,6 +25,9 @@ const dbMocks = vi.hoisted(() => {
         findUnique: vi.fn(),
         update: vi.fn(),
       },
+      gameSession: {
+        findFirst: vi.fn(),
+      },
       sessionRegistration: {
         findFirst: vi.fn(),
       },
@@ -130,6 +133,10 @@ describe("registration routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dbMocks.prisma.authSession.findUnique.mockResolvedValue(validAuthSession());
+    dbMocks.prisma.gameSession.findFirst.mockResolvedValue({
+      id: "session-1",
+      code: "SESSION-1",
+    });
     dbMocks.prisma.$transaction.mockImplementation(
       async (callback: (tx: typeof dbMocks.tx) => unknown) => callback(dbMocks.tx),
     );
@@ -219,6 +226,21 @@ describe("registration routes", () => {
     expect(dbMocks.prisma.sessionRegistration.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ sessionId: "session-1", userId: "player-1" }),
+      }),
+    );
+  });
+
+  it("resolves public session code before reading current registration", async () => {
+    dbMocks.prisma.sessionRegistration.findFirst.mockResolvedValue(registration());
+
+    const res = await app.request("/v1/sessions/SESSION-1/registration", {
+      headers: { cookie: `${SESSION_COOKIE_NAME}=session-token` },
+    });
+
+    expect(res.status).toBe(200);
+    expect(dbMocks.prisma.gameSession.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { OR: [{ id: "SESSION-1" }, { code: "SESSION-1" }] },
       }),
     );
   });

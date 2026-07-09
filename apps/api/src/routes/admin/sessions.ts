@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { randomBytes } from "node:crypto";
-import { prisma, GameSessionStatus, SessionRegistrationStatus, Prisma } from "@session-jeu/db";
+import { prisma, GameSessionStatus, Prisma } from "@session-jeu/db";
 import {
   requireAuth,
   requireRole,
@@ -25,6 +25,10 @@ import { checkInDeadlineFor } from "../../lobby/lobby.js";
 import { scheduleCheckInDeadline } from "../../queues/checkInDeadline.js";
 import { assertPublicSessionCompliance } from "../../security/security.js";
 import { z } from "zod";
+import {
+  CAPACITY_REGISTRATION_STATUSES,
+  PAID_ACCESS_REGISTRATION_STATUSES,
+} from "../../sessions/statusGroups.js";
 
 const adminSessions = new Hono<{ Variables: AuthVariables }>();
 
@@ -255,7 +259,7 @@ adminSessions.get(
           _count: {
             select: {
               registrations: {
-                where: { status: { in: [SessionRegistrationStatus.PAYMENT_PENDING, SessionRegistrationStatus.PAID] } },
+                where: { status: { in: [...CAPACITY_REGISTRATION_STATUSES] } },
               },
             },
           },
@@ -393,7 +397,7 @@ adminSessions.get(
     const paidRegistrationsCount = await prisma.sessionRegistration.count({
       where: {
         sessionId: id,
-        status: SessionRegistrationStatus.PAID,
+        status: { in: [...PAID_ACCESS_REGISTRATION_STATUSES] },
       },
     });
 
@@ -426,8 +430,8 @@ adminSessions.patch(
       if (!existing) return { type: "not-found" as const };
 
       const paidRegistrationsCount = await tx.sessionRegistration.count({
-        where: { sessionId: id, status: SessionRegistrationStatus.PAID },
-      });
+      where: { sessionId: id, status: { in: [...PAID_ACCESS_REGISTRATION_STATUSES] } },
+    });
 
       const before = serializeSession(existing);
       const merged = {

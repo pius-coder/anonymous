@@ -20,7 +20,7 @@ import {
 
 export const BRIEFING_DURATION_MS = 5 * 1000;
 export const RESULTS_DURATION_MS = 3 * 1000;
-export const DEFAULT_MAX_ROUNDS = 3;
+export const DEFAULT_MAX_ROUNDS = 6;
 
 type JoinOptions = {
   sessionId?: string;
@@ -34,6 +34,37 @@ type PlayerActionMessage = {
 };
 
 type LiveClient = Client<{ auth: LiveAuth }>;
+
+function publicStateForGame(input: {
+  key: string;
+  roundNum: number;
+  deadlineEpochMs: number;
+  players: Array<{ userId: string; displayName: string; isEliminated: boolean }>;
+}) {
+  if (input.key === "memory-sequence") {
+    return { sequenceLength: 3 + input.roundNum - 1, paletteSize: 4 };
+  }
+  if (input.key === "pure-reaction-duel") {
+    return { armed: true, signalOn: false, roundsToWin: 2 };
+  }
+  if (input.key === "trust-bridge") {
+    return { routes: ["alpha", "beta", "gamma"], pairs: input.players.map((p, i) => ({ userId: p.userId, pairId: `pair-${Math.floor(i / 2) + 1}` })) };
+  }
+  if (input.key === "team-relay") {
+    return { steps: ["scan", "align", "lock", "release"], teams: input.players.map((p, i) => ({ userId: p.userId, teamId: i % 2 === 0 ? "red" : "green" })) };
+  }
+  if (input.key === "danger-sweep") {
+    return {
+      arena: { width: 1000, height: 700 },
+      sweep: { fn: "linear", t0EpochMs: Date.now(), speed: 180, width: 72 },
+      players: input.players.map((p, i) => ({ userId: p.userId, x: 160 + (i % 5) * 130, y: 160 + Math.floor(i / 5) * 110 })),
+    };
+  }
+  if (input.key === "silent-vote") {
+    return { voteRound: input.roundNum, candidates: input.players.map((p) => ({ userId: p.userId, displayName: p.displayName, hasVoted: false })) };
+  }
+  return {};
+}
 
 export class GameSessionRoom extends Room<{ state: LiveRoomState; client: LiveClient }> {
   maxClients = 100;
@@ -123,6 +154,9 @@ export class GameSessionRoom extends Room<{ state: LiveRoomState; client: LiveCl
       userId: auth.userId,
       reconnectWindowSeconds: RECONNECT_WINDOW_SECONDS,
     });
+    if (this.state.currentRoundId && this.state.currentGameKey) {
+      client.send("round.game", this.buildRoundGameMessage());
+    }
   }
 
   async onLeave(client: LiveClient) {
@@ -159,6 +193,9 @@ export class GameSessionRoom extends Room<{ state: LiveRoomState; client: LiveCl
 
     this.state.phase = result.liveState.phase;
     this.state.currentRoundId = result.round.id;
+    this.state.currentGameKey = result.miniGameDefinition?.key ?? "";
+    this.state.currentGameFamily = result.miniGameDefinition?.family ?? "";
+    this.state.currentGameName = result.miniGameDefinition?.name ?? "";
     this.state.roundNum = result.round.roundNum;
     this.state.deadlineEpochMs = result.deadline.deadlineAt.getTime();
     for (const player of this.state.players.values()) {
@@ -169,10 +206,12 @@ export class GameSessionRoom extends Room<{ state: LiveRoomState; client: LiveCl
       this.state.phase = "RESOLVING";
     }, Math.max(0, result.deadline.deadlineAt.getTime() - Date.now()));
 
+    this.broadcast("round.game", this.buildRoundGameMessage());
     this.broadcast("round.started", {
       roundId: result.round.id,
       roundNum: result.round.roundNum,
       deadlineAt: result.deadline.deadlineAt.toISOString(),
+      miniGameKey: this.state.currentGameKey,
     });
   }
 
@@ -257,5 +296,30 @@ export class GameSessionRoom extends Room<{ state: LiveRoomState; client: LiveCl
       this.state.players.set(userId, player);
     }
     return player;
+  }
+
+  private livePlayersForPublicState() {
+    return [...this.state.players.values()].map((player) => ({
+      userId: player.userId,
+      displayName: player.displayName,
+      isEliminated: player.isEliminated,
+    }));
+  }
+
+  private buildRoundGameMessage() {
+    return {
+      roundId: this.state.currentRoundId,
+      roundNum: this.state.roundNum,
+      key: this.state.currentGameKey,
+      family: this.state.currentGameFamily,
+      name: this.state.currentGameName,
+      deadlineEpochMs: this.state.deadlineEpochMs,
+      publicState: publicStateForGame({
+        key: this.state.currentGameKey,
+        roundNum: this.state.roundNum,
+        deadlineEpochMs: this.state.deadlineEpochMs,
+        players: this.livePlayersForPublicState(),
+      }),
+    };
   }
 }

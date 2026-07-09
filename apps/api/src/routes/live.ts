@@ -12,6 +12,7 @@ import {
   liveSessionParamsSchema,
   serializeLiveSessionState,
 } from "../live/live.js";
+import { resolvePublicSessionId } from "../sessions/resolveSession.js";
 
 const live = new Hono<{ Variables: AuthVariables }>();
 
@@ -30,9 +31,10 @@ live.post(
     const user = c.get("user");
     const { id } = c.req.valid("param");
     const body = c.req.valid("json");
+    const sessionId = await resolvePublicSessionId(id);
     const result = await createLiveReservation({
       userId: user.id,
-      sessionId: id,
+      sessionId,
       joinToken: body.joinToken,
     });
 
@@ -62,10 +64,10 @@ live.post(
         expiresAt: result.reservation.expiresAt.toISOString(),
       },
       websocket: {
-        endpoint: getGameWsEndpoint(),
-        roomName: "game_session",
-        options: {
-          sessionId: id,
+          endpoint: getGameWsEndpoint(),
+          roomName: "game_session",
+          options: {
+          sessionId,
           reservationToken: result.liveToken,
         },
       },
@@ -80,7 +82,8 @@ live.get(
   zValidator("param", adminLiveSessionParamsSchema, validationHook),
   async (c) => {
     const user = c.get("user");
-    const { sessionId } = c.req.valid("param");
+    const { sessionId: identifier } = c.req.valid("param");
+    const sessionId = await resolvePublicSessionId(identifier);
     const result = await getLiveStateForPlayer({ userId: user.id, sessionId });
 
     if (result.type === "not-checked-in") {

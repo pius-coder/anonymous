@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { adminApiGet } from "./admin-api";
+import type { AdminDashboard } from "./admin-types";
 import { Badge } from "@/components/retroui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/retroui/card";
 
@@ -7,40 +8,6 @@ export const metadata: Metadata = {
   title: "Admin Operations | Session Jeu",
   description: "Tableau de bord operations, audit et support pour Session Jeu.",
 };
-
-type DashboardResponse = {
-  success: boolean;
-  data?: {
-    dashboard: {
-      role: string;
-      sessions: { total: number; live: number; completed: number };
-      registrations: { paid: number; noShow: number };
-      incidents: { open: number };
-      support: { openCases: number; pendingActions: number };
-      finance: null | {
-        payments: { pending: number; successful: number; failed: number };
-        wallets: { frozen: number };
-        creditsDistributedXaf: number;
-      };
-    };
-  };
-};
-
-async function getDashboard(): Promise<DashboardResponse | null> {
-  const apiBase = process.env.API_URL || "http://localhost:3001";
-  const cookieHeader = (await cookies()).toString();
-
-  try {
-    const res = await fetch(`${apiBase}/v1/admin/dashboard`, {
-      cache: "no-store",
-      headers: cookieHeader ? { cookie: cookieHeader } : {},
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
-}
 
 function KpiCard({ label, value }: { label: string; value: number | string }) {
   return (
@@ -56,8 +23,8 @@ function KpiCard({ label, value }: { label: string; value: number | string }) {
 }
 
 export default async function AdminPage() {
-  const result = await getDashboard();
-  const dashboard = result?.data?.dashboard;
+  const result = await adminApiGet<{ dashboard: AdminDashboard }>("/v1/admin/dashboard");
+  const dashboard = result?.dashboard;
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
@@ -86,6 +53,16 @@ export default async function AdminPage() {
               <KpiCard label="Sessions live" value={dashboard.sessions.live} />
               <KpiCard label="Incidents ouverts" value={dashboard.incidents.open} />
               <KpiCard label="Cas support ouverts" value={dashboard.support.openCases} />
+            </div>
+          </section>
+
+          <section>
+            <h3 className="mb-4 text-lg font-semibold">Utilisateurs</h3>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <KpiCard label="Comptes totaux" value={dashboard.users.total} />
+              <KpiCard label="Comptes actifs" value={dashboard.users.active} />
+              <KpiCard label="Joueurs inscrits" value={dashboard.users.players} />
+              <KpiCard label="Comptes operations" value={dashboard.users.operators} />
             </div>
           </section>
 

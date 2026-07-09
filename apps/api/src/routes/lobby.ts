@@ -12,6 +12,7 @@ import {
   serializeLobbySession,
   sessionIdParamsSchema,
 } from "../lobby/lobby.js";
+import { resolvePublicSessionId } from "../sessions/resolveSession.js";
 
 const lobby = new Hono<{ Variables: AuthVariables }>();
 
@@ -28,7 +29,8 @@ lobby.get(
   async (c) => {
     const user = c.get("user");
     const { id } = c.req.valid("param");
-    const result = await getLobbyForPlayer({ userId: user.id, sessionId: id });
+    const sessionId = await resolvePublicSessionId(id);
+    const result = await getLobbyForPlayer({ userId: user.id, sessionId });
 
     if (result.type === "not-paid") {
       return errorResponse(c, 403, "NOT_PAID", "Only paid players can access the lobby");
@@ -52,7 +54,8 @@ lobby.post(
   async (c) => {
     const user = c.get("user");
     const { id } = c.req.valid("param");
-    const result = await checkInPlayer({ userId: user.id, sessionId: id });
+    const sessionId = await resolvePublicSessionId(id);
+    const result = await checkInPlayer({ userId: user.id, sessionId });
 
     if (result.type === "not-paid") {
       return errorResponse(c, 403, "NOT_PAID", "Only paid players can check in");
@@ -84,13 +87,17 @@ lobby.get(
   async (c) => {
     const user = c.get("user");
     const { id } = c.req.valid("param");
-    const result = await issueJoinToken({ userId: user.id, sessionId: id });
+    const sessionId = await resolvePublicSessionId(id);
+    const result = await issueJoinToken({ userId: user.id, sessionId });
 
     if (result.type === "not-checked-in") {
       return errorResponse(c, 403, "NOT_CHECKED_IN", "Check-in is required before joining live");
     }
     if (result.type === "session-cancelled") {
       return errorResponse(c, 410, "SESSION_CANCELLED", "Session is cancelled");
+    }
+    if (result.type === "session-not-live") {
+      return errorResponse(c, 409, "SESSION_NOT_LIVE", "Session is not live yet");
     }
 
     return successResponse(c, { joinToken: serializeJoinToken(result.record, result.token) });

@@ -7,6 +7,9 @@ const dbMocks = vi.hoisted(() => ({
       findUnique: vi.fn(),
       update: vi.fn(),
     },
+    gameSession: {
+      findFirst: vi.fn(),
+    },
   },
 }));
 
@@ -95,6 +98,10 @@ describe("live routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dbMocks.prisma.authSession.findUnique.mockResolvedValue(validAuthSession());
+    dbMocks.prisma.gameSession.findFirst.mockResolvedValue({
+      id: "session-1",
+      code: "SESSION-1",
+    });
     liveMocks.getGameWsEndpoint.mockReturnValue("ws://game.example.test");
     liveMocks.createLiveReservation.mockResolvedValue({
       type: "ok",
@@ -152,6 +159,24 @@ describe("live routes", () => {
     });
     const body = (await res.json()) as { data: { websocket: { roomName: string } } };
     expect(body.data.websocket.roomName).toBe("game_session");
+  });
+
+  it("resolves public session code before creating live reservation", async () => {
+    const res = await app.request("/v1/live/sessions/SESSION-1/reservation", {
+      method: "POST",
+      headers: {
+        cookie: `${SESSION_COOKIE_NAME}=session-token`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ joinToken: "join-token-value" }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(liveMocks.createLiveReservation).toHaveBeenCalledWith({
+      userId: "player-1",
+      sessionId: "session-1",
+      joinToken: "join-token-value",
+    });
   });
 
   it("rejects live reservation when session is not live", async () => {

@@ -16,6 +16,7 @@ vi.mock("@session-jeu/db", () => ({
   GameSessionStatus: {
     PUBLISHED: "PUBLISHED",
     ACTIVE: "ACTIVE",
+    LIVE: "LIVE",
     DRAFT: "DRAFT",
     COMPLETED: "COMPLETED",
     CANCELLED: "CANCELLED",
@@ -23,6 +24,8 @@ vi.mock("@session-jeu/db", () => ({
   SessionRegistrationStatus: {
     PAYMENT_PENDING: "PAYMENT_PENDING",
     PAID: "PAID",
+    CHECKED_IN: "CHECKED_IN",
+    IN_ROOM: "IN_ROOM",
     CANCELLED: "CANCELLED",
   },
   SessionVisibility: { PUBLIC: "PUBLIC", UNLISTED: "UNLISTED", PRIVATE: "PRIVATE" },
@@ -151,7 +154,23 @@ describe("GET /v1/public/sessions", () => {
       expect.objectContaining({
         where: expect.objectContaining({
           visibility: "PUBLIC",
-          status: { in: ["PUBLISHED", "ACTIVE"] },
+          status: { in: ["PUBLISHED", "ACTIVE", "LIVE"] },
+        }),
+      }),
+    );
+  });
+
+  it("should query only LIVE sessions with the live filter", async () => {
+    mockPrisma.gameSession.count.mockResolvedValue(0);
+    mockPrisma.gameSession.findMany.mockResolvedValue([]);
+
+    await app.request("/v1/public/sessions?filter=live");
+
+    expect(mockPrisma.gameSession.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          visibility: "PUBLIC",
+          status: "LIVE",
         }),
       }),
     );

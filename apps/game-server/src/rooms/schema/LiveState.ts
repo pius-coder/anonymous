@@ -13,6 +13,9 @@ export class LiveRoomState extends Schema {
   @type("string") phase: string = "BRIEFING";
   @type("string") roomId: string = "";
   @type("string") currentRoundId: string = "";
+  @type("string") currentGameKey: string = "";
+  @type("string") currentGameFamily: string = "";
+  @type("string") currentGameName: string = "";
   @type("number") roundNum: number = 0;
   @type("number") deadlineEpochMs: number = 0;
   @type("number") maxRounds: number = 3;

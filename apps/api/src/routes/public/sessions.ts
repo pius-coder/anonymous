@@ -4,12 +4,15 @@ import { zValidator } from "@hono/zod-validator";
 import {
   prisma,
   GameSessionStatus,
-  SessionRegistrationStatus,
+  Prisma,
   SessionVisibility,
 } from "@session-jeu/db";
 import { PAGINATION_DEFAULTS } from "@session-jeu/shared";
+import { CAPACITY_REGISTRATION_STATUSES } from "../../sessions/statusGroups.js";
 
 const sessions = new Hono();
+
+const FILTER_VALUES = ["all", "open", "live", "today", "capacity"] as const;
 
 const querySchema = z.object({
   page: z.coerce.number().int().min(1).default(PAGINATION_DEFAULTS.PAGE),
@@ -19,23 +22,44 @@ const querySchema = z.object({
     .min(1)
     .max(PAGINATION_DEFAULTS.MAX_LIMIT)
     .default(PAGINATION_DEFAULTS.LIMIT),
+  filter: z.enum(FILTER_VALUES).default("all"),
 });
 
+function startOfToday(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function endOfToday(): Date {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
 sessions.get("/", zValidator("query", querySchema), async (c) => {
-  const { page, limit } = c.req.valid("query");
+  const { page, limit, filter } = c.req.valid("query");
   const skip = (page - 1) * limit;
 
-  const where = {
+  const where: Prisma.GameSessionWhereInput = {
     visibility: SessionVisibility.PUBLIC,
-    status: { in: [GameSessionStatus.PUBLISHED, GameSessionStatus.ACTIVE] },
+    status: { in: [GameSessionStatus.PUBLISHED, GameSessionStatus.ACTIVE, GameSessionStatus.LIVE] },
   };
 
-  const [total, sessions] = await Promise.all([
+  if (filter === "live") {
+    where.status = GameSessionStatus.LIVE;
+  }
+  if (filter === "open") {
+    where.status = { in: [GameSessionStatus.PUBLISHED, GameSessionStatus.ACTIVE] };
+  }
+  if (filter === "today") {
+    where.startTime = { gte: startOfToday(), lte: endOfToday() };
+  }
+
+  const [totalMatching, sessions] = await Promise.all([
     prisma.gameSession.count({ where }),
     prisma.gameSession.findMany({
       where,
-      skip,
-      take: limit,
       orderBy: { startTime: "asc" },
       include: {
         _count: {
@@ -43,7 +67,7 @@ sessions.get("/", zValidator("query", querySchema), async (c) => {
             registrations: {
               where: {
                 status: {
-                  in: [SessionRegistrationStatus.PAYMENT_PENDING, SessionRegistrationStatus.PAID],
+                  in: [...CAPACITY_REGISTRATION_STATUSES],
                 },
               },
             },
@@ -53,7 +77,8 @@ sessions.get("/", zValidator("query", querySchema), async (c) => {
     }),
   ]);
 
-  const data = sessions.map((s) => ({
+  let filtered = sessions.map((s) => ({
+    id: s.id,
     code: s.code,
     name: s.name,
     description: s.description,
@@ -66,6 +91,16 @@ sessions.get("/", zValidator("query", querySchema), async (c) => {
     visibility: s.visibility,
     placesRemaining: Math.max(0, s.maxPlayers - s._count.registrations),
   }));
+
+  if (filter === "open") {
+    filtered = filtered.filter((s) => s.placesRemaining > 0);
+  }
+  if (filter === "capacity") {
+    filtered = [...filtered].sort((a, b) => b.placesRemaining - a.placesRemaining);
+  }
+
+  const total = filter === "open" || filter === "capacity" ? filtered.length : totalMatching;
+  const data = filtered.slice(skip, skip + limit);
 
   return c.json({
     success: true,

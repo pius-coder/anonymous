@@ -3,6 +3,7 @@
 import { Client, Room } from "@colyseus/sdk";
 import { useEffect, useRef, useState } from "react";
 import { apiGet, apiPost } from "@/lib/api";
+import { randomNonce } from "@/lib/nonce";
 
 export type LivePlayer = {
   userId: string;
@@ -18,7 +19,18 @@ export type LiveSnapshot = {
   roundNum: number;
   deadlineEpochMs: number;
   currentRoundId: string;
+  currentGameKey?: string;
+  currentGameFamily?: string;
+  currentGameName?: string;
   players: LivePlayer[];
+};
+
+export type RoundGameMessage = {
+  key: string;
+  family: string;
+  name: string;
+  deadlineEpochMs: number;
+  publicState?: Record<string, unknown>;
 };
 
 export type Status = "connecting" | "connected" | "reconnecting" | "ended" | "error";
@@ -36,12 +48,14 @@ export function useGameRoom(sessionId: string) {
   const [status, setStatus] = useState<Status>("connecting");
   const [snap, setSnap] = useState<LiveSnapshot | null>(null);
   const [lastMessage, setLastMessage] = useState<{ type: string; data: unknown } | null>(null);
+  const [currentGame, setCurrentGame] = useState<RoundGameMessage | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
 
   useEffect(() => {
     let disposed = false;
     const messages = [
       "joined",
+      "round.game",
       "round.started",
       "round.resolved",
       "you.eliminated",
@@ -94,6 +108,9 @@ export function useGameRoom(sessionId: string) {
             roundNum: number;
             deadlineEpochMs: number;
             currentRoundId: string;
+            currentGameKey?: string;
+            currentGameFamily?: string;
+            currentGameName?: string;
             players: Map<string, LivePlayer> | LivePlayer[];
           };
           const players = state.players
@@ -104,12 +121,18 @@ export function useGameRoom(sessionId: string) {
             roundNum: state.roundNum,
             deadlineEpochMs: state.deadlineEpochMs,
             currentRoundId: state.currentRoundId,
+            currentGameKey: state.currentGameKey,
+            currentGameFamily: state.currentGameFamily,
+            currentGameName: state.currentGameName,
             players: players as LivePlayer[],
           });
         });
 
         for (const t of messages) {
-          room.onMessage(t, (data) => setLastMessage({ type: t, data }));
+          room.onMessage(t, (data) => {
+            if (t === "round.game") setCurrentGame(data as RoundGameMessage);
+            setLastMessage({ type: t, data });
+          });
         }
 
         room.onLeave(async (code) => {
@@ -133,7 +156,10 @@ export function useGameRoom(sessionId: string) {
             roomRef.current = r2;
             setStatus("connected");
             for (const t of messages) {
-              r2.onMessage(t, (data) => setLastMessage({ type: t, data }));
+              r2.onMessage(t, (data) => {
+                if (t === "round.game") setCurrentGame(data as RoundGameMessage);
+                setLastMessage({ type: t, data });
+              });
             }
             r2.onLeave((c) => {
               if (c === 1000) setStatus("ended");
@@ -160,8 +186,8 @@ export function useGameRoom(sessionId: string) {
   };
 
   const sendAction = (type: string, payload: unknown) => {
-    roomRef.current?.send("action", { type, nonce: crypto.randomUUID(), payload });
+    roomRef.current?.send("action", { type, nonce: randomNonce("act"), payload });
   };
 
-  return { status, snap, lastMessage, send, sendAction, errorCode };
+  return { status, snap, lastMessage, currentGame, send, sendAction, errorCode };
 }

@@ -76,7 +76,7 @@ export function LobbyPage() {
   }
 
   const isCheckedIn = data.registration.status === "CHECKED_IN" || data.registration.status === "IN_ROOM";
-  const isLive = data.session.status === "LIVE" || data.session.status === "ACTIVE" || data.session.status === "WAITING_START";
+  const isLive = data.session.status === "LIVE";
 
   return (
     <main className="mx-auto grid max-w-3xl gap-6 px-4 py-10">

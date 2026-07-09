@@ -39,8 +39,8 @@ function generateSignalTimings(
 }
 
 function resolvePureReactionDuel(input: RuntimeResolverInput): ResolverOutput {
-  if (input.participants.length !== 2) {
-    throw new Error("pure-reaction-duel requires exactly two participants");
+  if (input.participants.length < 2) {
+    throw new Error("pure-reaction-duel requires at least two participants");
   }
 
   const config = input.config;
@@ -52,6 +52,58 @@ function resolvePureReactionDuel(input: RuntimeResolverInput): ResolverOutput {
 
   const maxSubRounds = roundsToWin * 2 + 1;
   const signalTimings = generateSignalTimings(input.seed, maxSubRounds, delayRangeMs);
+
+  if (input.participants.length > 2) {
+    const signalMs = signalTimings[0] ?? delayRangeMs[0];
+    const entries: Array<Omit<RankedPlayer, "rank">> = input.participants.map((playerId) => {
+      const action = input.actions
+        .filter((a) => a.playerId === playerId)
+        .sort((a, b) => new Date(a.submittedAt).getTime() - new Date(b.submittedAt).getTime())[0];
+      if (!action) return { playerId, score: 0, tieBreakMs: null, missingAction: true };
+      const payload = action.payload as Record<string, unknown>;
+      const clickedAtMs =
+        typeof payload.clickedAtMs === "number"
+          ? payload.clickedAtMs
+          : typeof payload.clientTs === "number"
+            ? Math.max(0, (payload.clientTs as number) - new Date(action.submittedAt).getTime() + signalMs)
+            : signalMs + 9999;
+      const falseStart = clickedAtMs < signalMs;
+      const reaction = falseStart ? falseStartPenaltyMs + 9999 : clickedAtMs - signalMs;
+      return {
+        playerId,
+        score: falseStart ? 0 : Math.max(1, 10000 - reaction),
+        tieBreakMs: reaction,
+        missingAction: false,
+      };
+    });
+    const { ranking, tieGroups } = rankPlayers(entries);
+    const qualifiedIds = ranking.slice(0, Math.max(1, Math.floor(ranking.length / 2))).map((e) => e.playerId);
+    const qualified = new Set(qualifiedIds);
+    return {
+      resolverId: "pure-reaction-duel" as never,
+      roundId: input.roundId,
+      scores: Object.fromEntries(ranking.map((e) => [e.playerId, e.score])),
+      ranks: Object.fromEntries(ranking.map((e) => [e.playerId, e.rank])),
+      qualifiedIds,
+      eliminatedIds: ranking.filter((e) => !qualified.has(e.playerId)).map((e) => e.playerId),
+      tieGroups,
+      ranking,
+      evidence: [
+        {
+          type: "runtime.pure-reaction-duel.group",
+          message: "Group reaction round resolved server-side from first valid click",
+          data: { participants: input.participants.length, signalMs },
+        },
+      ],
+      seedLog: [
+        {
+          type: "seed.pure-reaction-duel",
+          message: "Signal timing generated server-side",
+          data: { seed: input.seed, signalMs },
+        },
+      ],
+    };
+  }
 
   const actionsByPlayer = new Map<string, PlayerAction[]>();
   for (const action of input.actions) {
