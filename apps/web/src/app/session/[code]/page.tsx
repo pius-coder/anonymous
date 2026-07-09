@@ -6,9 +6,9 @@ import { Button } from "@/components/retroui/button";
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/retroui/card";
 import { Progress } from "@/components/retroui/progress";
 import { Separator } from "@/components/retroui/separator";
-import { CTAButton } from "@/components/CTAButton";
 import { PhaseFlowImage } from "@/components/game/generated-art";
 import { SessionConsoleSvg, WalletFlowSvg } from "@/components/game/game-visuals";
+import { SessionInscriptionCTA } from "@/components/auth/SessionInscriptionCTA";
 
 async function getSession(code: string) {
   const apiBase = process.env.API_URL || "http://localhost:3001";
@@ -96,11 +96,14 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             </p>
           )}
           <div className="mt-8 flex flex-wrap gap-3">
-            <CTAButton
-              label="S'inscrire à cette session"
-              href={`/auth/register?next=/session/${code}`}
+            <SessionInscriptionCTA
+              session={{
+                id: session.id,
+                code,
+                title: session.name,
+                entryFeeXaf: session.entryFee,
+              }}
               disabled={isFull || isClosed}
-              className="h-9 px-4"
             />
             <Link href="/catalogue">
               <Button variant="outline" size="lg">
