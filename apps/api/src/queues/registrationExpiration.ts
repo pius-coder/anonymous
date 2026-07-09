@@ -16,7 +16,7 @@ export function getRegistrationQueue() {
 }
 
 export function registrationExpirationJobId(registrationId: string) {
-  return `${REGISTRATION_EXPIRATION_JOB}:${registrationId}`;
+  return `${REGISTRATION_EXPIRATION_JOB}.${registrationId}`;
 }
 
 export async function scheduleRegistrationExpiration(input: {

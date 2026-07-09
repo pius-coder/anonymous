@@ -16,7 +16,7 @@ export function getPaymentQueue() {
 }
 
 export function paymentReconciliationJobId(paymentId: string) {
-  return `${PAYMENT_RECONCILIATION_JOB}:${paymentId}`;
+  return `${PAYMENT_RECONCILIATION_JOB}.${paymentId}`;
 }
 
 export async function schedulePaymentReconciliation(input: {

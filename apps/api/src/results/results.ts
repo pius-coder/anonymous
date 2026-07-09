@@ -456,7 +456,7 @@ export async function finalizeSessionResults(input: {
 }
 
 export function creditsDistributionJobId(sessionId: string) {
-  return `credits.distribute:${sessionId}`;
+  return `credits.distribute.${sessionId}`;
 }
 
 export function prizeDistributionIdempotencyKey(input: { sessionId: string; userId: string }) {
