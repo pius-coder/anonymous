@@ -5,6 +5,7 @@ export class LivePlayer extends Schema {
   @type("string") displayName: string = "";
   @type("string") connectionStatus: string = "DISCONNECTED";
   @type("boolean") submittedAction: boolean = false;
+  @type("boolean") isEliminated: boolean = false;
 }
 
 export class LiveRoomState extends Schema {
@@ -14,5 +15,7 @@ export class LiveRoomState extends Schema {
   @type("string") currentRoundId: string = "";
   @type("number") roundNum: number = 0;
   @type("number") deadlineEpochMs: number = 0;
+  @type("number") maxRounds: number = 3;
+  @type("string") sessionStatus: string = "PLAYING";
   @type({ map: LivePlayer }) players = new MapSchema<LivePlayer>();
 }

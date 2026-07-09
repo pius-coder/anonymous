@@ -12,8 +12,15 @@ import {
   submitPlayerAction,
   type LiveAuth,
 } from "../live/sessionStore.js";
+import {
+  subscribeToRoundResolved,
+  closeRedisSubscriber,
+  type RoundResolvedPayload,
+} from "../live/redisSubscribed.js";
 
 export const BRIEFING_DURATION_MS = 5 * 1000;
+export const RESULTS_DURATION_MS = 3 * 1000;
+export const DEFAULT_MAX_ROUNDS = 3;
 
 type JoinOptions = {
   sessionId?: string;
@@ -36,6 +43,8 @@ export class GameSessionRoom extends Room<{ state: LiveRoomState; client: LiveCl
 
   private sessionId = "";
   private currentRoundNum = 0;
+  private maxRounds = DEFAULT_MAX_ROUNDS;
+  private unsubscribeFromRoundResolved: (() => void) | null = null;
 
   async onCreate(options: JoinOptions) {
     if (!options.sessionId) {
@@ -56,6 +65,7 @@ export class GameSessionRoom extends Room<{ state: LiveRoomState; client: LiveCl
 
     this.maxClients = Math.max(snapshot.session.maxPlayers, snapshot.players.length);
     this.state.phase = snapshot.liveState.phase;
+    this.state.maxRounds = DEFAULT_MAX_ROUNDS;
 
     for (const registration of snapshot.players) {
       const player = new LivePlayer();
@@ -66,9 +76,22 @@ export class GameSessionRoom extends Room<{ state: LiveRoomState; client: LiveCl
       this.state.players.set(registration.userId, player);
     }
 
+    this.unsubscribeFromRoundResolved = await subscribeToRoundResolved(
+      this.sessionId,
+      this.handleRoundResolved.bind(this),
+    );
+
     this.clock.setTimeout(() => {
       void this.beginRound(1);
     }, BRIEFING_DURATION_MS);
+  }
+
+  async onDispose() {
+    if (this.unsubscribeFromRoundResolved) {
+      this.unsubscribeFromRoundResolved();
+      this.unsubscribeFromRoundResolved = null;
+    }
+    closeRedisSubscriber();
   }
 
   async onAuth(client: Client, options: JoinOptions) {
@@ -153,11 +176,56 @@ export class GameSessionRoom extends Room<{ state: LiveRoomState; client: LiveCl
     });
   }
 
+  private handleRoundResolved(result: RoundResolvedPayload) {
+    this.state.phase = "RESULTS";
+
+    const eliminatedIds = new Set(result.eliminatedIds ?? []);
+    for (const [userId, player] of this.state.players) {
+      if (eliminatedIds.has(userId)) {
+        player.isEliminated = true;
+        this.clients
+          .filter((c) => (c as LiveClient).auth?.userId === userId)
+          .forEach((c) => c.send("you.eliminated", {
+            roundId: result.roundId,
+            rank: result.ranks[userId] ?? 0,
+            score: result.scores[userId] ?? 0,
+          }));
+      }
+    }
+
+    this.broadcast("round.resolved", {
+      roundId: result.roundId,
+      scores: result.scores,
+      ranks: result.ranks,
+      qualifiedIds: result.qualifiedIds,
+      eliminatedIds: result.eliminatedIds,
+      tieGroups: result.tieGroups,
+    });
+
+    this.clock.setTimeout(() => {
+      if (this.currentRoundNum < this.maxRounds) {
+        void this.beginRound(this.currentRoundNum + 1);
+      } else {
+        this.state.phase = "BRIEFING";
+        this.state.sessionStatus = "COMPLETED";
+        this.broadcast("session.completed", {
+          sessionId: this.sessionId,
+        });
+      }
+    }, RESULTS_DURATION_MS);
+  }
+
   messages = {
     action: async (client: LiveClient, message: PlayerActionMessage) => {
       const userId = client.auth?.userId;
       if (!userId || !message.nonce || !message.type) {
         client.send("action.rejected", { reason: "invalid-action" });
+        return;
+      }
+
+      const player = this.state.players.get(userId);
+      if (player?.isEliminated) {
+        client.send("action.rejected", { reason: "player-eliminated" });
         return;
       }
 
@@ -170,8 +238,8 @@ export class GameSessionRoom extends Room<{ state: LiveRoomState; client: LiveCl
       });
 
       if (result.type === "accepted") {
-        const player = this.state.players.get(userId);
-        if (player) player.submittedAction = true;
+        const p = this.state.players.get(userId);
+        if (p) p.submittedAction = true;
         client.send("action.accepted", { actionId: result.action.id });
         return;
       }

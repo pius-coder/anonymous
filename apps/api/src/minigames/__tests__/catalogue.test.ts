@@ -52,7 +52,7 @@ describe("mini-game catalogue", () => {
     expect(
       validateMiniGameAction({
         definition,
-        actionType: "submit-score",
+        actionType: "sequence-input",
         actionNonce: "nonce-1",
         seenNonces: new Set(),
         deadlineAt,
@@ -76,7 +76,7 @@ describe("mini-game catalogue", () => {
     expect(
       validateMiniGameAction({
         definition,
-        actionType: "submit-score",
+        actionType: "sequence-input",
         actionNonce: "nonce-1",
         seenNonces: new Set(["nonce-1"]),
         deadlineAt,
@@ -88,7 +88,7 @@ describe("mini-game catalogue", () => {
     expect(
       validateMiniGameAction({
         definition,
-        actionType: "submit-score",
+        actionType: "sequence-input",
         actionNonce: "nonce-2",
         seenNonces: new Set(),
         deadlineAt,
@@ -100,7 +100,7 @@ describe("mini-game catalogue", () => {
     expect(
       validateMiniGameAction({
         definition,
-        actionType: "submit-score",
+        actionType: "sequence-input",
         actionNonce: "nonce-3",
         seenNonces: new Set(),
         deadlineAt,

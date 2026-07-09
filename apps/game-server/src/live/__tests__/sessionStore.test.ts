@@ -4,6 +4,7 @@ const dbMocks = vi.hoisted(() => {
   const tx = {
     roundInstance: {
       upsert: vi.fn(),
+      findUnique: vi.fn(),
     },
     roundDeadline: {
       upsert: vi.fn(),
@@ -26,6 +27,12 @@ const dbMocks = vi.hoisted(() => {
     },
     riskSignal: {
       create: vi.fn(),
+    },
+    roundOutcome: {
+      findFirst: vi.fn(),
+    },
+    miniGameDefinition: {
+      findUnique: vi.fn(),
     },
   };
 
@@ -94,6 +101,9 @@ describe("sessionStore live invariants", () => {
     dbMocks.tx.playerAction.count.mockResolvedValue(0);
     dbMocks.tx.antiCheatEvent.create.mockResolvedValue({ id: "anticheat-1" });
     dbMocks.tx.riskSignal.create.mockResolvedValue({ id: "risk-1" });
+    dbMocks.tx.roundOutcome.findFirst.mockResolvedValue(null);
+    dbMocks.tx.roundInstance.findUnique.mockResolvedValue({ miniGameDefinitionId: null });
+    dbMocks.tx.miniGameDefinition.findUnique.mockResolvedValue(null);
   });
 
   it("starts a round with a durable deadline and BullMQ recovery job", async () => {
