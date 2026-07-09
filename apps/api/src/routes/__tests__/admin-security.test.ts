@@ -4,12 +4,14 @@ import { Hono } from "hono";
 const dbMocks = vi.hoisted(() => ({
   prisma: {
     authSession: { findUnique: vi.fn(), update: vi.fn() },
+    auditLog: { create: vi.fn() },
   },
 }));
 
 const securityMocks = vi.hoisted(() => ({
   listComplianceGates: vi.fn(),
   createModerationAction: vi.fn(),
+  setComplianceGateStatus: vi.fn(),
 }));
 
 vi.mock("@session-jeu/db", () => ({
@@ -20,11 +22,12 @@ vi.mock("../../security/security.js", async () => {
   const actual = await vi.importActual<typeof import("../../security/security.js")>(
     "../../security/security.js",
   );
-  return {
-    ...actual,
-    listComplianceGates: securityMocks.listComplianceGates,
-    createModerationAction: securityMocks.createModerationAction,
-  };
+    return {
+      ...actual,
+      listComplianceGates: securityMocks.listComplianceGates,
+      createModerationAction: securityMocks.createModerationAction,
+      setComplianceGateStatus: securityMocks.setComplianceGateStatus,
+    };
 });
 
 import { SESSION_COOKIE_NAME, hashOpaqueToken } from "../../auth/session.js";
@@ -65,6 +68,14 @@ describe("admin security routes", () => {
       { type: "WITHDRAWAL", scope: "global", status: "BLOCKED" },
     ]);
     securityMocks.createModerationAction.mockResolvedValue({ id: "moderation-1" });
+    securityMocks.setComplianceGateStatus.mockResolvedValue({
+      id: "gate-1",
+      type: "PUBLIC_LAUNCH",
+      scope: "global",
+      status: "PASSED",
+      reason: "ok",
+      decidedAt: new Date().toISOString(),
+    });
   });
 
   it("lists compliance gates for admin users", async () => {
@@ -116,5 +127,50 @@ describe("admin security routes", () => {
     });
 
     expect(res.status).toBe(403);
+  });
+
+  it("lets an admin decide a compliance gate (validate)", async () => {
+    const res = await app.request("/v1/admin/compliance/gates/gate-1", {
+      method: "PATCH",
+      body: JSON.stringify({ status: "PASSED" }),
+      headers: {
+        "content-type": "application/json",
+        cookie: `${SESSION_COOKIE_NAME}=session-token`,
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(securityMocks.setComplianceGateStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ gateId: "gate-1", status: "PASSED", decidedById: "admin-1" }),
+    );
+    expect(dbMocks.prisma.auditLog.create).toHaveBeenCalled();
+  });
+
+  it("refuses a player deciding a compliance gate", async () => {
+    dbMocks.prisma.authSession.findUnique.mockResolvedValueOnce(validAuthSession("PLAYER"));
+
+    const res = await app.request("/v1/admin/compliance/gates/gate-1", {
+      method: "PATCH",
+      body: JSON.stringify({ status: "PASSED" }),
+      headers: {
+        "content-type": "application/json",
+        cookie: `${SESSION_COOKIE_NAME}=session-token`,
+      },
+    });
+
+    expect(res.status).toBe(403);
+  });
+
+  it("rejects an invalid gate status", async () => {
+    const res = await app.request("/v1/admin/compliance/gates/gate-1", {
+      method: "PATCH",
+      body: JSON.stringify({ status: "NONSENSE" }),
+      headers: {
+        "content-type": "application/json",
+        cookie: `${SESSION_COOKIE_NAME}=session-token`,
+      },
+    });
+
+    expect(res.status).toBe(400);
   });
 });

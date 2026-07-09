@@ -11,6 +11,7 @@ import {
   Users,
   Blocks,
   ScrollText,
+  ShieldCheck,
   PanelLeftOpen,
   LogOut,
 } from "lucide-react";
@@ -52,6 +53,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Users,
   Blocks,
   ScrollText,
+  ShieldCheck,
 };
 
 type Props = {
