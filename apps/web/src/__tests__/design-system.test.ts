@@ -37,6 +37,34 @@ describe("Feature 17 design system assets", () => {
     expect(source).toContain('process.env.NODE_ENV === "production"');
     expect(source).toContain("notFound()");
   });
+
+  it("defines the premium surface and depth tokens", () => {
+    const source = readFileSync("src/app/globals.css", "utf-8");
+    for (const token of [
+      "--surface-raised",
+      "--surface-floating",
+      "--surface-stroke",
+      "--shadow-raised",
+      "--shadow-floating",
+      ".premium-panel",
+      ".premium-inset",
+    ]) {
+      expect(source).toContain(token);
+    }
+  });
+
+  it("guards /dev/social in production", () => {
+    const source = readFileSync("src/app/(client)/dev/social/page.tsx", "utf-8");
+    expect(source).toContain('process.env.NODE_ENV === "production"');
+    expect(source).toContain("notFound()");
+  });
+
+  it("pauses the shared Pixi ticker while the page is hidden", () => {
+    const source = readFileSync("src/components/games/pixi/GameCanvas.tsx", "utf-8");
+    expect(source).toContain('document.visibilityState === "hidden"');
+    expect(source).toContain("app.ticker.stop()");
+    expect(source).toContain("app.ticker.start()");
+  });
 });
 
 describe("Feature 17 motion primitives", () => {

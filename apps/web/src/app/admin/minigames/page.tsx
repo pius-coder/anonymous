@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { adminApiGet } from "../admin-api";
+import { AdminService } from "@/services/admin/AdminService";
 import { jsonPreview } from "../admin-format";
-import type { MiniGameDefinition } from "../admin-types";
+import type { MiniGameDefinition } from "@/services/admin/types";
 import { MiniGameToggleForm } from "@/components/admin/AdminActionForms";
 import { Badge } from "@/components/retroui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/retroui/card";
@@ -31,8 +31,8 @@ function groupByFamily(games: MiniGameDefinition[]) {
 }
 
 export default async function AdminMiniGamesPage() {
-  const result = await adminApiGet<{ definitions: MiniGameDefinition[] }>("/v1/admin/minigames");
-  const games = result?.definitions ?? [];
+  const admin = new AdminService();
+  const games = await admin.getMinigames();
   const familyGroups = groupByFamily(games);
 
   return (

@@ -61,11 +61,11 @@ export function TrustBridgeGame({
               disabled={readOnly || Boolean(choice)}
               onPointerDown={() => choose(route.id)}
               whileTap={{ scale: 0.97 }}
-              className="relative min-h-52 overflow-hidden border-4 border-border bg-card p-4 text-left disabled:cursor-not-allowed"
+              className="premium-panel relative min-h-52 p-4 text-left transition hover:-translate-y-0.5 disabled:cursor-not-allowed"
             >
-              <div className="absolute inset-x-6 top-1/2 h-5 -translate-y-1/2 border-2 border-border bg-[--arena-teal]" />
+              <div className="absolute inset-x-6 top-1/2 h-5 -translate-y-1/2 rounded-full border border-white/18 bg-[--arena-teal] shadow-[0_8px_22px_rgb(15_155_142/0.25)]" />
               <div
-                className="absolute top-1/2 size-16 -translate-y-1/2 border-4 border-border bg-[--arena-pink]"
+                className="absolute top-1/2 size-16 -translate-y-1/2 rounded-2xl border border-white/20 bg-[--arena-pink] shadow-lg"
                 style={{ left: `${18 + index * 8}%` }}
               />
               <div className="relative z-10">
@@ -73,7 +73,7 @@ export function TrustBridgeGame({
                 <p className="mt-1 text-xs uppercase text-muted-foreground">{route.risk}</p>
               </div>
               {selected && (
-                <div className="absolute inset-0 grid place-items-center bg-[--arena-green]/85 font-head text-2xl font-black uppercase text-white">
+                <div className="absolute inset-0 grid place-items-center rounded-[inherit] bg-[--arena-green]/85 font-head text-2xl font-black uppercase text-white backdrop-blur-sm">
                   Choix envoye
                 </div>
               )}

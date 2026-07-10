@@ -2,32 +2,32 @@ import { z } from "zod";
 
 export const emailSchema = z.preprocess(
   (value) => (typeof value === "string" ? value.trim().toLowerCase() : value),
-  z.email(),
+  z.email("Email invalide"),
 );
 
 export const passwordSchema = z
   .string()
-  .min(8, "Password must contain at least 8 characters")
-  .max(128, "Password must contain at most 128 characters");
+  .min(8, "Le mot de passe doit contenir au moins 8 caractères")
+  .max(128, "Le mot de passe doit contenir au plus 128 caractères");
 
 export const usernameSchema = z
   .string()
   .trim()
-  .min(3, "Username must contain at least 3 characters")
-  .max(32, "Username must contain at most 32 characters")
-  .regex(/^[a-zA-Z0-9_-]+$/, "Username can only contain letters, numbers, underscores and hyphens");
+  .min(3, "Le pseudo doit contenir au moins 3 caractères")
+  .max(32, "Le pseudo doit contenir au plus 32 caractères")
+  .regex(/^[a-zA-Z0-9_-]+$/, "Le pseudo peut contenir lettres, chiffres, _ et -");
 
 export const registerSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
   username: usernameSchema,
-  name: z.string().trim().min(1).max(100).optional(),
-  phone: z.string().trim().min(6).max(32).optional(),
+  name: z.string().trim().min(1, "Le nom affiché ne peut pas être vide").max(100).optional(),
+  phone: z.string().trim().min(6, "Le téléphone doit contenir au moins 6 caractères").max(32).optional(),
 });
 
 export const loginSchema = z.object({
   email: emailSchema,
-  password: z.string().min(1, "Password is required").max(128),
+  password: z.string().min(1, "Le mot de passe est requis").max(128),
 });
 
 export const requestPasswordResetSchema = z.object({

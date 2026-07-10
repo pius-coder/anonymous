@@ -40,7 +40,7 @@ export function TeamRelayGame({
       </div>
       <div className="mx-auto grid w-full max-w-5xl gap-4">
         {["red", "green"].map((teamId) => (
-          <div key={teamId} className="border-4 border-border bg-card p-4">
+          <div key={teamId} className="premium-panel p-4">
             <div className="mb-3 flex items-center justify-between">
               <p className="font-head text-xl font-black uppercase">Equipe {teamId}</p>
               <span className="font-mono text-xs text-muted-foreground">
@@ -57,7 +57,7 @@ export function TeamRelayGame({
                     disabled={readOnly || teamId !== myTeam || !active || Boolean(submitted)}
                     onPointerDown={() => submit(step)}
                     whileTap={{ scale: 0.96 }}
-                    className="min-h-24 border-2 border-border p-2 font-head text-sm uppercase disabled:cursor-not-allowed"
+                    className="min-h-24 rounded-xl border border-white/16 p-2 font-head text-sm uppercase shadow-sm transition disabled:cursor-not-allowed"
                     style={{
                       backgroundColor: active ? "var(--arena-gold)" : index < activeStep ? "var(--arena-green)" : "var(--muted)",
                       color: active ? "var(--foreground)" : "white",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LivePlayer, LiveRoomState } from "../rooms/schema/LiveState.js";
+import { LiveGroup, LivePlayer, LiveRoomState } from "../rooms/schema/LiveState.js";
 
 describe("LiveRoomState", () => {
   it("starts with minimal live session defaults", () => {
@@ -7,6 +7,7 @@ describe("LiveRoomState", () => {
 
     expect(state.phase).toBe("BRIEFING");
     expect(state.players.size).toBe(0);
+    expect(state.groups.size).toBe(0);
     expect(state.deadlineEpochMs).toBe(0);
   });
 
@@ -34,4 +35,26 @@ describe("LiveRoomState", () => {
     expect(state.phase).toBe("ROUND_ACTIVE");
     expect(state.deadlineEpochMs).toBe(1783468830000);
   });
+
+  it("synchronizes public social groups without private requests", () => {
+    const state = new LiveRoomState();
+    const leader = new LivePlayer();
+    leader.userId = "player-1";
+    leader.socialGroupId = "group-1";
+    leader.socialRole = "LEADER";
+    state.players.set(leader.userId, leader);
+
+    const group = new LiveGroup();
+    group.id = "group-1";
+    group.name = "Les Survivants";
+    group.leaderId = leader.userId;
+    group.memberIds.push(leader.userId);
+    group.maxMembers = 4;
+    state.groups.set(group.id, group);
+
+    expect(Array.from(state.groups.get("group-1")?.memberIds ?? [])).toEqual(["player-1"]);
+    expect(state.players.get("player-1")?.socialRole).toBe("LEADER");
+    expect("requests" in state).toBe(false);
+  });
+
 });

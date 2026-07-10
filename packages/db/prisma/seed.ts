@@ -799,11 +799,10 @@ async function main() {
         },
       },
       update: {
-        miniGameDefinitionId: definition.id,
+        miniGameDefinition: { connect: { id: definition.id } },
         status: "PENDING",
-        startedAt: null,
-        closedAt: null,
-        resolvedAt: null,
+        startTime: null,
+        endTime: null,
         configJson: {
           seed: `seed-${liveSession.code}-${key}`,
           miniGameKey: key,

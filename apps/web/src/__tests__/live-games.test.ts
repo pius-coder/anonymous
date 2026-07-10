@@ -34,4 +34,26 @@ describe("live mini-game surfaces", () => {
     expect(readFileSync("src/app/(client)/session/[code]/live/page.tsx", "utf-8")).toContain("LiveRoomShell");
     expect(readFileSync("src/components/lobby/LobbyPage.tsx", "utf-8")).toContain("LiveRoomShell");
   });
+
+  it("shows all six game families in the UI laboratory", () => {
+    const content = readFileSync("src/app/(client)/dev/ui/GameShowcase.tsx", "utf-8");
+    for (const family of [
+      "Solo",
+      "Duel 1v1",
+      "Alliance forcée",
+      "Équipe libre",
+      "Survie collective",
+      "Rôle caché",
+    ]) {
+      expect(content).toContain(family);
+    }
+  });
+
+  it("keeps social panels mutually exclusive in the live shell", () => {
+    const content = readFileSync("src/components/live/LiveRoomShell.tsx", "utf-8");
+    expect(content).toContain("activePanel");
+    expect(content).toContain("SocialPanelContent");
+    expect(content).toContain("setActivePanel");
+  });
+
 });

@@ -41,10 +41,10 @@ export function PublicHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b-2 border-border bg-background/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+    <header className="sticky top-0 z-40 px-3 pt-3 md:px-5">
+      <div className="premium-toolbar mx-auto flex max-w-7xl items-center justify-between gap-4 px-3 py-2.5 sm:px-4">
         <Link href="/" className="group flex items-center gap-3" aria-label="Session Jeu accueil">
-          <span className="grid size-10 place-items-center border-2 border-border bg-primary font-head text-lg font-black shadow-md transition-transform group-hover:-rotate-3">
+          <span className="grid size-10 place-items-center rounded-2xl border border-primary/45 bg-primary/20 font-head text-lg font-black text-primary shadow-[0_0_26px_rgba(237,27,118,.2)] transition-transform group-hover:-rotate-3">
             SJ
           </span>
           <span className="font-head text-xl font-black uppercase tracking-tight">Session Jeu</span>
@@ -55,7 +55,7 @@ export function PublicHeader() {
             <Link
               key={item.href}
               href={item.href}
-              className="border-2 border-transparent px-3 py-1 font-head text-sm font-bold uppercase hover:border-border hover:bg-accent"
+              className="rounded-xl border border-transparent px-3 py-2 font-head text-xs font-bold uppercase tracking-wide text-white/65 hover:border-white/10 hover:bg-white/5 hover:text-white"
             >
               {item.label}
             </Link>
@@ -136,7 +136,7 @@ export function PublicHeader() {
       {mobileMenuOpen ? (
         <div
           id="mobile-public-menu"
-          className="md:hidden border-t-2 border-border bg-background shadow-xl"
+          className="mx-3 mt-2 rounded-2xl border border-white/12 bg-[--surface-overlay] shadow-[var(--shadow-overlay)] backdrop-blur-xl md:hidden"
         >
           <nav className="mx-auto grid max-w-7xl gap-3 px-4 py-4" aria-label="Navigation mobile">
             {navItems.map((item) => (
@@ -144,7 +144,7 @@ export function PublicHeader() {
                 key={item.href}
                 href={item.href}
                 onClick={closeMobileMenu}
-                className="border-2 border-border bg-card px-4 py-3 font-head text-lg font-black uppercase shadow-md transition-colors hover:bg-muted"
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 font-head text-sm font-black uppercase shadow-sm transition-colors hover:bg-white/10"
               >
                 {item.label}
               </Link>

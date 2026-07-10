@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiPatch } from "@/lib/api";
-import type { ComplianceGate, ComplianceGateStatus } from "@/app/admin/admin-types";
+import type { ComplianceGate, ComplianceGateStatus } from "@/services/admin/types";
 import { Button } from "@/components/retroui/button";
 
 const STATUS_LABEL: Record<ComplianceGateStatus, string> = {

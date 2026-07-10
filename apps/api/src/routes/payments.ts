@@ -6,6 +6,7 @@ import type { AuthVariables } from "../auth/session.js";
 import { errorResponse, successResponse } from "../lib/responses.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 import { createRiskSignal } from "../security/security.js";
+import { validationErrorDetails } from "../lib/validation.js";
 import {
   applyFapshiPaymentStatus,
   fapshiWebhookSchema,
@@ -19,7 +20,13 @@ const payments = new Hono<{ Variables: AuthVariables }>();
 
 const validationHook = (result: { success: boolean }, c: Parameters<typeof errorResponse>[0]) => {
   if (!result.success) {
-    return errorResponse(c, 400, "VALIDATION_ERROR", "Validation failed");
+    return errorResponse(
+      c,
+      400,
+      "VALIDATION_ERROR",
+      "Certains champs sont invalides",
+      validationErrorDetails((result as { error?: unknown }).error),
+    );
   }
 };
 
@@ -66,7 +73,10 @@ payments.post(
       return errorResponse(c, 502, "PROVIDER_UNAVAILABLE", "Payment provider unavailable");
     }
     if (result.type === "existing") {
-      return successResponse(c, { payment: serializePayment(result.payment) });
+      return successResponse(c, {
+        payment: serializePayment(result.payment),
+        checkoutUrl: result.payment.checkoutUrl,
+      });
     }
 
     return successResponse(

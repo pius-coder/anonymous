@@ -41,8 +41,14 @@ export function AuthDrawer({
     else setInternalOpen(v);
   };
 
+  const triggerDisabled =
+    trigger?.props && typeof trigger.props === "object" && "disabled" in trigger.props
+      ? Boolean((trigger.props as { disabled?: unknown }).disabled)
+      : false;
   const triggerWithClick = trigger
-    ? cloneElement(trigger, { onClick: () => setShown(true) } as Record<string, unknown>)
+    ? cloneElement(trigger, {
+        onClick: triggerDisabled ? undefined : () => setShown(true),
+      } as Record<string, unknown>)
     : null;
 
   const content = (

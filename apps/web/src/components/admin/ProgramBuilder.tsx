@@ -64,9 +64,9 @@ function SortableRoundCard({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className="flex items-center gap-3 border-2 border-border bg-card p-3 shadow-sm"
+      className="premium-panel flex items-center gap-3 p-3 transition hover:-translate-y-0.5"
     >
-      <button {...attributes} {...listeners} className="cursor-grab font-head text-muted-foreground" aria-label="Réordonner">
+      <button {...attributes} {...listeners} className="grid size-9 cursor-grab place-items-center rounded-xl border border-white/10 bg-black/20 font-head text-white/45 hover:text-white" aria-label="Réordonner">
         ⠿
       </button>
       <span className="font-head text-2xl text-[--arena-pink]">#{index + 1}</span>
@@ -140,7 +140,7 @@ export function ProgramBuilder({
         </Button>
       </div>
 
-      <aside className="lg:sticky lg:top-4 h-fit space-y-3 border-2 border-border bg-card p-4 shadow-md">
+      <aside className="premium-floating h-fit space-y-4 p-4 lg:sticky lg:top-4">
         <h3 className="font-head text-lg">Funnel d&apos;effectifs</h3>
         {[
           { label: `Session pleine (${maxPlayers})`, steps: funnelMax },
@@ -168,7 +168,7 @@ export function ProgramBuilder({
             </p>
           </div>
         ))}
-        <div className="border-t-2 border-border pt-3">
+        <div className="border-t border-white/10 pt-3">
           <p className="text-xs text-muted-foreground">Gagnants configurés : {winnersCount}</p>
           {coherent ? (
             <Badge className="bg-[--arena-green] text-black">✔ Programme cohérent</Badge>

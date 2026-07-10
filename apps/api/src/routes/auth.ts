@@ -24,6 +24,7 @@ import {
   resetPasswordSchema,
 } from "../auth/validation.js";
 import { errorResponse, successResponse } from "../lib/responses.js";
+import { validationErrorDetails } from "../lib/validation.js";
 
 const auth = new Hono<{ Variables: AuthVariables }>();
 
@@ -32,7 +33,13 @@ const validationHook = (
   c: Parameters<typeof errorResponse>[0],
 ) => {
   if (!result.success) {
-    return errorResponse(c, 400, "VALIDATION_ERROR", "Validation failed");
+    return errorResponse(
+      c,
+      400,
+      "VALIDATION_ERROR",
+      "Certains champs sont invalides",
+      validationErrorDetails(result.error),
+    );
   }
 };
 
@@ -75,13 +82,22 @@ auth.post("/register", zValidator("json", registerSchema, validationHook), async
   ]);
 
   if (existingEmail) {
-    return errorResponse(c, 409, "EMAIL_ALREADY_USED", "Email is already used");
+    return errorResponse(c, 409, "EMAIL_ALREADY_USED", "Cet email est déjà utilisé", {
+      fields: { email: ["Cet email est déjà utilisé."] },
+      email: ["Cet email est déjà utilisé."],
+    });
   }
   if (existingPhone) {
-    return errorResponse(c, 409, "PHONE_ALREADY_USED", "Phone is already used");
+    return errorResponse(c, 409, "PHONE_ALREADY_USED", "Ce numéro est déjà utilisé", {
+      fields: { phone: ["Ce numéro est déjà utilisé."] },
+      phone: ["Ce numéro est déjà utilisé."],
+    });
   }
   if (existingUsername) {
-    return errorResponse(c, 409, "USERNAME_ALREADY_USED", "Username is already used");
+    return errorResponse(c, 409, "USERNAME_ALREADY_USED", "Ce pseudo est déjà pris", {
+      fields: { username: ["Ce pseudo est déjà pris."] },
+      username: ["Ce pseudo est déjà pris."],
+    });
   }
 
   const passwordHash = await hashPassword(input.password);

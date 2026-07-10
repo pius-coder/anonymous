@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/retroui/c
 import { Input } from "@/components/retroui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/retroui/native-select";
 import { Textarea } from "@/components/retroui/textarea";
-import type { AdminSession, MiniGameDefinition } from "@/app/admin/admin-types";
+import type { AdminSession, MiniGameDefinition } from "@/services/admin/types";
 
 function useAdminAction() {
   const router = useRouter();

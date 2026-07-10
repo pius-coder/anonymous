@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { adminApiGet } from "../admin-api";
-import type { ComplianceGate, ComplianceGateStatus } from "../admin-types";
+import { AdminService } from "@/services/admin/AdminService";
 import { ComplianceGateActions } from "@/components/admin/ComplianceGateActions";
 import { Badge } from "@/components/retroui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/retroui/card";
@@ -9,21 +8,21 @@ export const metadata: Metadata = {
   title: "Conformite | Admin",
 };
 
-const STATUS_LABEL: Record<ComplianceGateStatus, string> = {
+const STATUS_LABEL: Record<string, string> = {
   BLOCKED: "Bloque",
   PASSED: "Valide",
   WAIVED: "Deroge",
 };
 
-const STATUS_VARIANT: Record<ComplianceGateStatus, "destructive" | "default" | "outline"> = {
+const STATUS_VARIANT: Record<string, "destructive" | "default" | "outline"> = {
   BLOCKED: "destructive",
   PASSED: "default",
   WAIVED: "outline",
 };
 
 export default async function AdminCompliancePage() {
-  const result = await adminApiGet<{ gates: ComplianceGate[] }>("/v1/admin/compliance/gates");
-  const gates = result?.gates ?? [];
+  const admin = new AdminService();
+  const gates = await admin.getComplianceGates();
 
   return (
     <div className="space-y-6">

@@ -178,8 +178,36 @@ describe("auth routes", () => {
     });
 
     expect(res.status).toBe(409);
-    const body = (await res.json()) as Record<string, { code: string }>;
+    const body = (await res.json()) as Record<
+      string,
+      { code: string; details?: { email?: string[]; fields?: { email?: string[] } } }
+    >;
     expect(body.error.code).toBe("EMAIL_ALREADY_USED");
+    expect(body.error.details?.email?.[0]).toContain("email");
+    expect(body.error.details?.fields?.email?.[0]).toContain("email");
+  });
+
+  it("returns granular validation details on invalid register payload", async () => {
+    const res = await app.request("/v1/auth/register", {
+      method: "POST",
+      body: JSON.stringify({
+        email: "not-an-email",
+        password: "short",
+        username: "x",
+      }),
+      headers: { "content-type": "application/json" },
+    });
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as Record<
+      string,
+      { code: string; details?: { fields?: Record<string, string[]>; email?: string[] } }
+    >;
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+    expect(body.error.details?.fields?.email?.[0]).toBeTruthy();
+    expect(body.error.details?.fields?.password?.[0]).toBeTruthy();
+    expect(body.error.details?.fields?.username?.[0]).toBeTruthy();
+    expect(body.error.details?.email?.[0]).toBe(body.error.details?.fields?.email?.[0]);
   });
 
   it("logs in with valid credentials and rotates any incoming session token", async () => {

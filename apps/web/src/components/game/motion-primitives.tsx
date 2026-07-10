@@ -58,8 +58,8 @@ export function CountdownRing({
   const dashOffset = circumference * (1 - state.progress);
 
   return (
-    <div className={cn("relative inline-grid place-items-center", className)} aria-label={label}>
-      <svg viewBox="0 0 112 112" className="size-28 -rotate-90">
+    <div className={cn("relative inline-grid size-28 place-items-center", className)} aria-label={label}>
+      <svg viewBox="0 0 112 112" className="size-full -rotate-90">
         <circle cx="56" cy="56" r={radius} fill="#fff7e8" stroke="#000" strokeWidth="8" />
         <motion.circle
           cx="56"

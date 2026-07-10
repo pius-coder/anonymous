@@ -58,12 +58,12 @@ export function SafeZonesGame({
   return (
     <div className="game-surface flex h-full min-h-0 flex-col items-center gap-3 p-3 md:justify-center">
       <div className="flex w-full max-w-[min(94vw,560px)] items-center justify-between">
-        <div className="border-2 border-border bg-card px-3 py-1 shadow-sm">
+        <div className="premium-toolbar px-3 py-1.5">
           <span className="font-head text-sm">CASES SÛRES : </span>
           <span className="font-head text-lg text-[--arena-green]">{safeCells.length}</span>
         </div>
         <CountdownRing deadlineEpochMs={lockAtEpochMs} totalMs={10_000} className="size-16" />
-        <div className="border-2 border-border bg-card px-3 py-1 shadow-sm">
+        <div className="premium-toolbar px-3 py-1.5">
           <span className="font-head text-sm">👥 </span>
           <span className="font-head text-lg">{alive}</span>
         </div>
@@ -88,7 +88,7 @@ export function SafeZonesGame({
               role="gridcell"
               disabled={!isSafe || locked || readOnly}
               onPointerDown={() => claim(cell)}
-              className={`relative border-2 border-border touch-manipulation select-none ${
+              className={`relative rounded-xl border border-white/14 touch-manipulation select-none ${
                 isSafe ? "shadow-sm" : ""
               } ${!isSafe && locked ? "animate-red-flash" : ""}`}
               style={{
@@ -121,7 +121,7 @@ export function SafeZonesGame({
                     animate={{ scale: 1 }}
                     exit={{ scale: 0, opacity: 0 }}
                     transition={{ type: "spring", damping: 15 }}
-                    className="absolute inset-1 flex items-center justify-center border-2 border-border font-head text-[10px] md:text-xs"
+                    className="absolute inset-1 flex items-center justify-center rounded-lg border border-white/25 font-head text-[10px] shadow-lg md:text-xs"
                     style={{
                       backgroundColor: p.userId === youUserId ? "var(--primary)" : "var(--secondary)",
                       color: "#fff",

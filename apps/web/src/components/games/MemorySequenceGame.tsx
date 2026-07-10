@@ -95,7 +95,7 @@ export function MemorySequenceGame({ incomingSequence, onSubmit, level, showSpee
 
   return (
     <div className="game-surface flex h-full min-h-0 flex-col items-center justify-center gap-6 p-4">
-      <div className="flex items-center gap-4">
+      <div className="premium-toolbar flex items-center gap-4 px-4 py-2">
         <span className="font-head text-lg text-muted-foreground">NIVEAU</span>
         <span className="font-head text-4xl text-[--arena-gold]">{level}</span>
       </div>
@@ -121,7 +121,7 @@ export function MemorySequenceGame({ incomingSequence, onSubmit, level, showSpee
               disabled={phase !== "INPUT" || readOnly}
               onPointerDown={() => press(tile.id)}
               whileTap={{ scale: 0.94 }}
-              className="border-4 border-border shadow-md select-none touch-manipulation disabled:cursor-not-allowed"
+              className="select-none touch-manipulation rounded-[1.35rem] border border-white/18 shadow-[0_1px_0_rgb(255_255_255/0.18)_inset,0_14px_28px_rgb(0_0_0/0.3)] disabled:cursor-not-allowed"
               style={{
                 backgroundColor: tile.color,
                 filter: lit
@@ -141,7 +141,7 @@ export function MemorySequenceGame({ incomingSequence, onSubmit, level, showSpee
         {Array.from({ length: seqLen }).map((_, i) => (
           <div
             key={i}
-            className="size-3 border-2 border-border"
+            className="size-3 rounded-full border border-white/18 shadow-sm"
             style={{ backgroundColor: i < input.length ? "var(--arena-green)" : "var(--muted)" }}
           />
         ))}

@@ -125,6 +125,26 @@ describe("payment routes", () => {
     });
   });
 
+  it("returns checkoutUrl when a pending Fapshi payment already exists", async () => {
+    paymentMocks.initiatePaymentForRegistration.mockResolvedValueOnce({
+      type: "existing",
+      payment: payment({ checkoutUrl: "https://checkout.example/existing" }),
+    });
+
+    const res = await app.request("/v1/payments/fapshi/initiate", {
+      method: "POST",
+      body: JSON.stringify({ registrationId: "registration-1" }),
+      headers: {
+        "content-type": "application/json",
+        cookie: `${SESSION_COOKIE_NAME}=session-token`,
+      },
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { checkoutUrl?: string } };
+    expect(body.data.checkoutUrl).toBe("https://checkout.example/existing");
+  });
+
   it("rejects invalid Fapshi webhook secret", async () => {
     const res = await app.request("/v1/webhooks/fapshi", {
       method: "POST",

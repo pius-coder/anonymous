@@ -5,9 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/retroui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/retroui/alert";
 import { LiveRoomShell } from "@/components/live/LiveRoomShell";
+import type { LiveSnapshot } from "@/hooks/useGameRoom";
 import { apiGet, apiPost, type ApiError } from "@/lib/api";
 import { translateError } from "@/lib/errors.fr";
 import { juice } from "@/lib/juice";
+import { useSession } from "@/lib/useSession";
 
 type LobbyResponse = {
   session: {
@@ -35,6 +37,7 @@ type LobbyResponse = {
 export function LobbyPage() {
   const params = useParams<{ code: string }>();
   const router = useRouter();
+  const { user } = useSession();
   const [data, setData] = useState<LobbyResponse | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [checkingIn, setCheckingIn] = useState(false);
@@ -84,7 +87,7 @@ export function LobbyPage() {
 
   const isCheckedIn = data.registration.status === "CHECKED_IN" || data.registration.status === "IN_ROOM";
   const isLive = data.session.status === "LIVE";
-  const snap = {
+  const snap: LiveSnapshot = {
     phase: isLive ? "LOBBY" : "WAITING_START",
     roundNum: 0,
     deadlineEpochMs: 0,
@@ -92,6 +95,7 @@ export function LobbyPage() {
     currentGameKey: "",
     currentGameFamily: "",
     currentGameName: "",
+    groups: [],
     players: data.players.map((player) => ({
       userId: player.userId,
       displayName: player.displayName,
@@ -124,6 +128,7 @@ export function LobbyPage() {
       status="connected"
       snap={snap}
       currentGameName={data.session.name}
+      currentUserId={user?.id}
       chatMessages={[]}
       onMove={() => {}}
       onChat={() => {}}

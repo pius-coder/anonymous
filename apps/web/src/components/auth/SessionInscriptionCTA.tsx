@@ -89,6 +89,7 @@ export function SessionInscriptionCTA({
       session={session}
       open={regOpen}
       onOpenChange={setRegOpen}
+      triggerDisabled={disabled}
       trigger={
         <Button size="lg" disabled={disabled} className="h-10 px-4">
           {registration?.status === "PAYMENT_PENDING" ? "Payer" : "S'inscrire à cette session"}

@@ -36,7 +36,7 @@ function Pips({ n, total }: { n: number; total: number }) {
       {Array.from({ length: total }).map((_, i) => (
         <div
           key={i}
-          className="size-3 border-2 border-border"
+          className="size-3 rounded-full border border-white/25 shadow-sm"
           style={{ backgroundColor: i < n ? "var(--arena-gold)" : "transparent" }}
         />
       ))}
@@ -58,8 +58,8 @@ export function ReactionDuelGame({
   const [phase, dispatch] = useReducer(duelReducer, "WAIT");
 
   useEffect(() => {
-    if (armed) dispatch("arm");
-  }, [armed]);
+    if (armed && !lastResult) dispatch("arm");
+  }, [armed, lastResult]);
   useEffect(() => {
     if (signalOn) {
       dispatch("signal");
@@ -86,12 +86,12 @@ export function ReactionDuelGame({
       type="button"
       onPointerDown={tap}
       disabled={readOnly}
-      className="relative flex h-full w-full flex-col touch-manipulation select-none outline-none"
+      className="relative flex h-full w-full flex-col overflow-hidden rounded-[1.5rem] border border-white/15 touch-manipulation select-none shadow-[0_1px_0_rgb(255_255_255/0.12)_inset,0_24px_70px_rgb(0_0_0/0.38)] outline-none"
       style={{ backgroundColor: bg, transition: "background-color 80ms" }}
       aria-label="Zone de réaction — tape dès que l'écran devient vert"
     >
       <div className="flex flex-1 flex-col items-center justify-center gap-2 md:absolute md:left-0 md:top-0 md:h-full md:w-1/3">
-        <div className="size-14 border-4 border-border bg-secondary font-head text-xl flex items-center justify-center text-secondary-foreground">
+        <div className="grid size-14 place-items-center rounded-2xl border border-white/20 bg-secondary font-head text-xl text-secondary-foreground shadow-lg">
           {opponent.name.slice(0, 2).toUpperCase()}
         </div>
         <span className="font-head text-sm text-foreground/80">{opponent.name}</span>
@@ -109,7 +109,7 @@ export function ReactionDuelGame({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ type: "spring", damping: 14 }}
-            className="px-6 text-center font-head text-4xl md:text-7xl text-white drop-shadow-[3px_3px_0_var(--border)]"
+            className="px-6 text-center font-head text-4xl md:text-7xl text-white drop-shadow-[0_8px_24px_rgb(0_0_0/0.55)]"
           >
             {phase === "WAIT" && !lastResult && "PRÉPARE-TOI"}
             {phase === "WAIT" && lastResult && (
@@ -127,7 +127,7 @@ export function ReactionDuelGame({
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-2 md:absolute md:right-0 md:top-0 md:h-full md:w-1/3">
-        <div className="size-14 border-4 border-border bg-primary font-head text-xl flex items-center justify-center text-primary-foreground">
+        <div className="grid size-14 place-items-center rounded-2xl border border-white/20 bg-primary font-head text-xl text-primary-foreground shadow-lg">
           {you.name.slice(0, 2).toUpperCase()}
         </div>
         <span className="font-head text-sm text-foreground/80">{you.name} (toi)</span>

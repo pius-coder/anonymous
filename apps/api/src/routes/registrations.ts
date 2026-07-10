@@ -4,6 +4,7 @@ import { prisma, SessionRegistrationStatus } from "@session-jeu/db";
 import { requireAuth } from "../auth/session.js";
 import type { AuthVariables } from "../auth/session.js";
 import { errorResponse, successResponse } from "../lib/responses.js";
+import { validationErrorDetails } from "../lib/validation.js";
 import {
   activeRegistrationStatuses,
   cancelRegistrationSchema,
@@ -16,9 +17,18 @@ import { resolvePublicSessionId } from "../sessions/resolveSession.js";
 
 const registrations = new Hono<{ Variables: AuthVariables }>();
 
-const validationHook = (result: { success: boolean }, c: Parameters<typeof errorResponse>[0]) => {
+const validationHook = (
+  result: { success: boolean; error?: unknown },
+  c: Parameters<typeof errorResponse>[0],
+) => {
   if (!result.success) {
-    return errorResponse(c, 400, "VALIDATION_ERROR", "Validation failed");
+    return errorResponse(
+      c,
+      400,
+      "VALIDATION_ERROR",
+      "Certains champs sont invalides",
+      validationErrorDetails(result.error),
+    );
   }
 };
 

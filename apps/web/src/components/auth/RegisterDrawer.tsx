@@ -35,17 +35,36 @@ function formatXaf(amount: number, currency: string) {
   return xafNf.format(amount) + " " + currency;
 }
 
+function sessionAccessHref(session: RegisterSessionInput, registration?: { status: string } | null) {
+  if (
+    session.status === "LIVE" &&
+    (registration?.status === "CHECKED_IN" || registration?.status === "IN_ROOM")
+  ) {
+    return `/session/${session.code}/live`;
+  }
+  if (
+    registration?.status === "PAID" ||
+    registration?.status === "CHECKED_IN" ||
+    registration?.status === "IN_ROOM"
+  ) {
+    return `/session/${session.code}/lobby`;
+  }
+  return `/session/${session.code}`;
+}
+
 export function RegisterDrawer({
   session,
   open,
   onOpenChange,
   trigger,
+  triggerDisabled = false,
   onRegistered,
 }: {
   session: RegisterSessionInput;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   trigger?: React.ReactElement;
+  triggerDisabled?: boolean;
   onRegistered?: () => void;
 }) {
   const isMobile = useIsMobile();
@@ -173,7 +192,7 @@ export function RegisterDrawer({
           <Button
             onClick={() => {
               onRegistered?.();
-              router.push(`/session/${session.code}`);
+              router.push(sessionAccessHref(session, { status: "PAID" }));
             }}
           >
             Voir la session
@@ -190,7 +209,7 @@ export function RegisterDrawer({
           <Button
             onClick={() => {
               onRegistered?.();
-              router.push(`/session/${session.code}`);
+              router.push(sessionAccessHref(session, existingReg));
             }}
           >
             Voir la session
@@ -302,8 +321,11 @@ export function RegisterDrawer({
     <>
       {trigger && (
         <span
+          aria-disabled={triggerDisabled}
+          className={triggerDisabled ? "pointer-events-none inline-flex" : "inline-flex"}
           onClick={(e) => {
             e.stopPropagation();
+            if (triggerDisabled) return;
             resetForOpen();
             onOpenChange?.(true);
           }}

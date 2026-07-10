@@ -3,31 +3,19 @@
 @import "shadcn/tailwind.css";
 
 @theme inline {
-  --font-head: var(
-    --font-display,
-    Impact,
-    "Arial Black",
-    "Haettenschweiler",
-    "Franklin Gothic Bold",
-    system-ui,
-    sans-serif
-  );
-  --font-sans:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-head: var(--font-display, "Arial Black", Impact, system-ui, sans-serif);
+  --font-sans: var(--font-body, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
   --font-alt: var(--font-display, "Courier New", monospace);
-  --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
-    monospace;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 
-  --radius: 0;
-
-  --shadow-xs: 1px 1px 0 0 var(--border);
-  --shadow-sm: 2px 2px 0 0 var(--border);
-  --shadow: 3px 3px 0 0 var(--border);
-  --shadow-md: 4px 4px 0 0 var(--border);
-  --shadow-lg: 6px 6px 0 0 var(--border);
-  --shadow-xl: 10px 10px 0 1px var(--border);
-  --shadow-2xl: 16px 16px 0 1px var(--border);
+  --radius: 1.125rem;
+  --shadow-xs: var(--shadow-contact);
+  --shadow-sm: var(--shadow-control);
+  --shadow: var(--shadow-raised);
+  --shadow-md: var(--shadow-raised);
+  --shadow-lg: var(--shadow-floating);
+  --shadow-xl: var(--shadow-overlay);
+  --shadow-2xl: var(--shadow-critical);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -62,92 +50,132 @@
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-sm: 0.65rem;
+  --radius-md: 0.85rem;
+  --radius-lg: 1.125rem;
+  --radius-xl: 1.4rem;
+  --radius-2xl: 1.75rem;
+  --radius-3xl: 2.1rem;
+  --radius-4xl: 2.6rem;
 }
 
 :root {
-  /* ===== Palette Squid Game — theme unique sombre ===== */
-  /* Fond : noir bleute profond (dortoir/arene) */
-  --background: #0e0f13;
-  --foreground: #f4f1ea;
-
-  /* Cartes : ardoise sombre, bordures noires epaisses conservees */
-  --card: #181a20;
-  --card-foreground: #f4f1ea;
-  --popover: #181a20;
-  --popover-foreground: #f4f1ea;
-
-  /* PRIMARY = rose garde Squid Game */
+  /* Core retro arena palette */
+  --background: #090a0f;
+  --foreground: #f7f4ed;
+  --card: #151821;
+  --card-foreground: #f7f4ed;
+  --popover: #191c26;
+  --popover-foreground: #f7f4ed;
   --primary: #ed1b76;
-  --primary-hover: #ff2d87;
+  --primary-hover: #ff3b8f;
   --primary-foreground: #ffffff;
-
-  /* SECONDARY = teal joueurs */
   --secondary: #0f9b8e;
   --secondary-foreground: #ffffff;
-
-  --muted: #22242c;
-  --muted-foreground: #9a978c;
-
-  /* ACCENT = teal sombre (survet des joueurs) */
-  --accent: #037a76;
+  --muted: #242833;
+  --muted-foreground: #aaa9a4;
+  --accent: #156f72;
   --accent-foreground: #ffffff;
-
-  /* DESTRUCTIVE = rouge elimination (alerte rouge) */
   --destructive: #e63946;
   --destructive-foreground: #ffffff;
-
-  --border: #000000;
-  --input: #181a20;
-  --ring: #ed1b76;
+  --border: rgb(255 255 255 / 13%);
+  --input: rgb(20 23 32 / 82%);
+  --ring: #ff4c9c;
 
   --chart-1: #ed1b76;
   --chart-2: #0f9b8e;
   --chart-3: #e63946;
-  --chart-4: #f4f1ea;
-  --chart-5: #9a978c;
+  --chart-4: #ffd12e;
+  --chart-5: #9e7cff;
 
-  /* Tokens arene (utilises par les mini-jeux) */
   --arena-pink: #ed1b76;
   --arena-teal: #0f9b8e;
   --arena-green: #98f56c;
-  --arena-gold: #ffd12e; /* cagnotte / victoire */
-  --arena-danger: #e63946; /* signal danger, 1-2-3 soleil */
-  --arena-safe: #2ec27e; /* signal safe */
-  --arena-ink: #08090c;
+  --arena-gold: #ffd12e;
+  --arena-violet: #9e7cff;
+  --arena-cyan: #64d9ff;
+  --arena-danger: #e63946;
+  --arena-safe: #2ec27e;
+  --arena-ink: #07080c;
 
-  --radius: 0;
+  /* Premium surface system — macOS-inspired depth, not desktop windows. */
+  --surface-base: rgb(13 15 22 / 92%);
+  --surface-raised: rgb(25 28 39 / 88%);
+  --surface-floating: rgb(30 34 47 / 91%);
+  --surface-overlay: rgb(20 22 31 / 95%);
+  --surface-highlight: rgb(255 255 255 / 10%);
+  --surface-stroke: rgb(255 255 255 / 14%);
+  --surface-stroke-strong: rgb(255 255 255 / 22%);
+  --surface-shadow: rgb(0 0 0 / 52%);
+  --glass-blur: 20px;
 
-  --sidebar: #12141a;
-  --sidebar-foreground: #f4f1ea;
+  --shadow-contact:
+    0 1px 0 rgb(255 255 255 / 10%) inset,
+    0 -1px 0 rgb(0 0 0 / 25%) inset,
+    0 1px 2px rgb(0 0 0 / 22%);
+  --shadow-control:
+    0 1px 0 rgb(255 255 255 / 13%) inset,
+    0 -1px 0 rgb(0 0 0 / 28%) inset,
+    0 3px 8px rgb(0 0 0 / 28%);
+  --shadow-raised:
+    0 1px 0 rgb(255 255 255 / 12%) inset,
+    0 -1px 0 rgb(0 0 0 / 32%) inset,
+    0 8px 22px rgb(0 0 0 / 30%),
+    0 20px 54px rgb(0 0 0 / 16%);
+  --shadow-floating:
+    0 1px 0 rgb(255 255 255 / 15%) inset,
+    0 -1px 0 rgb(0 0 0 / 36%) inset,
+    0 12px 34px rgb(0 0 0 / 40%),
+    0 34px 90px rgb(0 0 0 / 30%);
+  --shadow-overlay:
+    0 1px 0 rgb(255 255 255 / 16%) inset,
+    0 22px 55px rgb(0 0 0 / 50%),
+    0 55px 130px rgb(0 0 0 / 38%);
+  --shadow-critical:
+    0 0 0 1px rgb(230 57 70 / 45%),
+    0 0 34px rgb(230 57 70 / 22%),
+    0 34px 100px rgb(0 0 0 / 58%);
+
+  --sidebar: rgb(14 16 23 / 94%);
+  --sidebar-foreground: #f7f4ed;
   --sidebar-primary: #ed1b76;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #22242c;
-  --sidebar-accent-foreground: #f4f1ea;
-  --sidebar-border: #000000;
-  --sidebar-ring: #ed1b76;
+  --sidebar-accent: rgb(255 255 255 / 7%);
+  --sidebar-accent-foreground: #f7f4ed;
+  --sidebar-border: rgb(255 255 255 / 12%);
+  --sidebar-ring: #ff4c9c;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   html,
   body {
     @apply bg-background text-foreground;
     min-height: 100%;
     color-scheme: dark;
   }
+
   html {
     @apply font-sans;
     background: var(--background);
   }
+
+  body {
+    background:
+      radial-gradient(circle at 18% -8%, rgb(237 27 118 / 15%), transparent 31rem),
+      radial-gradient(circle at 88% 12%, rgb(15 155 142 / 13%), transparent 36rem),
+      linear-gradient(180deg, #0b0c12 0%, #08090e 58%, #06070a 100%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: rgb(237 27 118 / 45%);
+    color: white;
+  }
+
   h1,
   h2,
   h3,
@@ -156,103 +184,315 @@
   [data-slot="button"] {
     @apply font-head;
   }
+
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+
+  * {
+    scrollbar-color: rgb(237 27 118 / 75%) rgb(255 255 255 / 5%);
+    scrollbar-width: thin;
+  }
+}
+
+@layer components {
+  .premium-surface,
+  [data-slot="card"],
+  [data-slot="dialog-content"],
+  [data-slot="sheet-content"],
+  [data-slot="drawer-content"],
+  [data-slot="popover-content"],
+  [data-slot="dropdown-menu-content"] {
+    position: relative;
+    border: 1px solid var(--surface-stroke);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 8%), transparent 25%),
+      linear-gradient(135deg, rgb(237 27 118 / 3%), rgb(15 155 142 / 3%)),
+      var(--surface-raised);
+    box-shadow: var(--shadow-raised);
+    backdrop-filter: blur(var(--glass-blur)) saturate(125%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(125%);
+  }
+
+  [data-slot="card"] {
+    border-radius: 1.35rem;
+  }
+
+  [data-slot="dialog-content"],
+  [data-slot="sheet-content"],
+  [data-slot="drawer-content"] {
+    box-shadow: var(--shadow-overlay);
+  }
+
+  [data-slot="button"] {
+    border: 1px solid rgb(255 255 255 / 16%);
+    border-radius: 0.85rem;
+    box-shadow: var(--shadow-control);
+    font-weight: 700;
+    letter-spacing: 0.015em;
+    transition:
+      transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+      filter 160ms ease,
+      box-shadow 160ms ease,
+      border-color 160ms ease;
+  }
+
+  [data-slot="button"]:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.07) saturate(1.04);
+    border-color: rgb(255 255 255 / 28%);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 16%) inset,
+      0 -1px 0 rgb(0 0 0 / 30%) inset,
+      0 8px 20px rgb(0 0 0 / 34%);
+  }
+
+  [data-slot="button"]:active:not(:disabled) {
+    transform: translateY(1px) scale(0.992);
+    box-shadow: var(--shadow-contact);
+  }
+
+  [data-slot="input"],
+  [data-slot="textarea"],
+  [data-slot="select-trigger"],
+  [data-slot="combobox-input"] {
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 0.85rem;
+    background:
+      linear-gradient(180deg, rgb(0 0 0 / 17%), transparent),
+      rgb(8 10 15 / 70%);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 7%),
+      0 1px 3px rgb(0 0 0 / 35%) inset;
+  }
+
+  [data-slot="input"]:focus,
+  [data-slot="textarea"]:focus,
+  [data-slot="select-trigger"]:focus-visible {
+    border-color: rgb(255 76 156 / 70%);
+    box-shadow:
+      0 0 0 3px rgb(237 27 118 / 15%),
+      0 1px 0 rgb(255 255 255 / 8%);
+  }
+
+  [data-slot="badge"] {
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 999px;
+    box-shadow: var(--shadow-contact);
+  }
+
+  [data-slot="tabs-list"] {
+    border: 1px solid rgb(255 255 255 / 12%);
+    border-radius: 1rem;
+    background: rgb(0 0 0 / 24%);
+    box-shadow: 0 1px 0 rgb(255 255 255 / 7%) inset;
+  }
+
+  [data-slot="tabs-trigger"] {
+    border-radius: 0.75rem;
+  }
+
+  [data-slot="table-container"],
+  [data-slot="table"] {
+    border-radius: 1rem;
+  }
+
+  [data-slot="table-row"] {
+    transition: background-color 140ms ease;
+  }
+
+  [data-slot="table-row"]:hover {
+    background: rgb(255 255 255 / 4%);
+  }
+
+  [data-slot="sidebar-inner"] {
+    border: 1px solid rgb(255 255 255 / 10%);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 5%), transparent 24%),
+      var(--sidebar);
+    box-shadow: var(--shadow-floating);
+    backdrop-filter: blur(22px) saturate(120%);
+  }
+
+  .premium-panel {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--surface-stroke);
+    border-radius: 1.35rem;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 8%), transparent 28%),
+      var(--surface-raised);
+    box-shadow: var(--shadow-raised);
+    backdrop-filter: blur(18px) saturate(120%);
+  }
+
+  .premium-panel::before,
+  .premium-surface::before {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0.5px;
+    z-index: 0;
+    border-radius: inherit;
+    box-shadow: 0 1px 0 rgb(255 255 255 / 8%) inset;
+  }
+
+  .premium-panel > *,
+  .premium-surface > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .premium-floating {
+    border: 1px solid var(--surface-stroke-strong);
+    border-radius: 1.5rem;
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 10%), transparent 32%),
+      var(--surface-floating);
+    box-shadow: var(--shadow-floating);
+    backdrop-filter: blur(24px) saturate(130%);
+  }
+
+  .premium-toolbar {
+    border: 1px solid rgb(255 255 255 / 12%);
+    border-radius: 1.05rem;
+    background: rgb(10 12 18 / 74%);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 9%) inset,
+      0 9px 28px rgb(0 0 0 / 32%);
+    backdrop-filter: blur(18px) saturate(120%);
+  }
+
+  .premium-inset {
+    border: 1px solid rgb(255 255 255 / 9%);
+    border-radius: 1rem;
+    background: rgb(0 0 0 / 22%);
+    box-shadow:
+      0 1px 5px rgb(0 0 0 / 38%) inset,
+      0 1px 0 rgb(255 255 255 / 5%);
+  }
+
+  .retro-title {
+    letter-spacing: -0.035em;
+    text-transform: uppercase;
+    text-wrap: balance;
+    text-shadow: 0 2px 0 rgb(0 0 0 / 36%);
+  }
+
+  .status-dot {
+    display: inline-block;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 999px;
+    background: currentColor;
+    box-shadow: 0 0 12px currentColor;
+  }
+
+  .safe-area-bottom {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  .safe-area-top {
+    padding-top: max(0.75rem, env(safe-area-inset-top));
+  }
 }
 
 @keyframes marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
 @keyframes scanline {
-  0% {
-    transform: translateY(-100%);
-    opacity: 0;
-  }
-  15% {
-    opacity: 0.35;
-  }
-  100% {
-    transform: translateY(100%);
-    opacity: 0;
-  }
+  0% { transform: translateY(-100%); opacity: 0; }
+  15% { opacity: 0.25; }
+  100% { transform: translateY(100%); opacity: 0; }
 }
 
-/* Pulsation danger : bordure/fond rouge qui bat (phase danger, deadline < 5s) */
 @keyframes danger-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgb(230 57 70 / 0.7);
-  }
-  50% {
-    box-shadow: 0 0 0 12px rgb(230 57 70 / 0);
-  }
+  0%, 100% { box-shadow: 0 0 0 0 rgb(230 57 70 / 0.7); }
+  50% { box-shadow: 0 0 0 12px rgb(230 57 70 / 0); }
 }
 
-/* Flash plein ecran a l'elimination */
 @keyframes red-flash {
-  0% {
-    opacity: 0;
-  }
-  20% {
-    opacity: 0.85;
-  }
-  100% {
-    opacity: 0;
-  }
+  0% { opacity: 0; }
+  20% { opacity: 0.85; }
+  100% { opacity: 0; }
 }
 
-/* Tremblement (mauvaise reponse, rejet) */
 @keyframes shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  20% {
-    transform: translateX(-6px);
-  }
-  40% {
-    transform: translateX(6px);
-  }
-  60% {
-    transform: translateX(-4px);
-  }
-  80% {
-    transform: translateX(4px);
-  }
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
 }
 
-@utility animate-marquee {
-  animation: marquee 30s linear infinite;
+@keyframes soft-float {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -5px, 0); }
 }
-@utility animate-scanline {
-  animation: scanline 4.5s linear infinite;
+
+@keyframes signal-glow {
+  0%, 100% { opacity: 0.55; transform: scale(0.96); }
+  50% { opacity: 1; transform: scale(1.03); }
 }
-@utility animate-danger-pulse {
-  animation: danger-pulse 1s ease-out infinite;
-}
-@utility animate-red-flash {
-  animation: red-flash 600ms ease-out forwards;
-}
-@utility animate-shake {
-  animation: shake 350ms ease-in-out;
-}
+
+@utility animate-marquee { animation: marquee 30s linear infinite; }
+@utility animate-scanline { animation: scanline 4.5s linear infinite; }
+@utility animate-danger-pulse { animation: danger-pulse 1s ease-out infinite; }
+@utility animate-red-flash { animation: red-flash 600ms ease-out forwards; }
+@utility animate-shake { animation: shake 350ms ease-in-out; }
+@utility animate-soft-float { animation: soft-float 5s ease-in-out infinite; }
+@utility animate-signal-glow { animation: signal-glow 1.8s ease-in-out infinite; }
 
 @utility game-surface {
   background:
-    linear-gradient(90deg, rgb(244 241 234 / 0.04) 1px, transparent 1px),
-    linear-gradient(rgb(244 241 234 / 0.04) 1px, transparent 1px), var(--background);
-  background-size: 22px 22px;
+    linear-gradient(90deg, rgb(244 241 234 / 0.028) 1px, transparent 1px),
+    linear-gradient(rgb(244 241 234 / 0.028) 1px, transparent 1px),
+    radial-gradient(circle at 50% 0%, rgb(237 27 118 / 8%), transparent 52%),
+    var(--background);
+  background-size: 26px 26px, 26px 26px, auto, auto;
 }
 
-/* Motif formes Squid Game ○△□ en filigrane (hero, briefing) */
 @utility shapes-watermark {
-  background-image: radial-gradient(
-    circle at 20% 30%,
-    rgb(237 27 118 / 0.06) 0 40px,
-    transparent 41px
-  );
+  background-image:
+    radial-gradient(circle at 20% 30%, rgb(237 27 118 / 0.055) 0 40px, transparent 41px),
+    linear-gradient(45deg, transparent 47%, rgb(15 155 142 / 0.04) 48% 52%, transparent 53%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (max-width: 640px) {
+  :root {
+    --glass-blur: 14px;
+  }
+
+  .premium-panel,
+  .premium-floating,
+  [data-slot="card"],
+  [data-slot="dialog-content"],
+  [data-slot="sheet-content"],
+  [data-slot="drawer-content"] {
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 10%) inset,
+      0 10px 32px rgb(0 0 0 / 36%);
+  }
 }

@@ -1,4 +1,4 @@
-import { MapSchema, Schema, type } from "@colyseus/schema";
+import { ArraySchema, MapSchema, Schema, type } from "@colyseus/schema";
 
 export class LivePlayer extends Schema {
   @type("string") userId: string = "";
@@ -19,6 +19,21 @@ export class LivePlayer extends Schema {
   @type("string") teamId: string = "";
   @type("string") pairId: string = "";
   @type("string") role: string = "";
+  @type("string") socialGroupId: string = "";
+  @type("string") socialRole: string = "NONE";
+}
+
+export class LiveGroup extends Schema {
+  @type("string") id: string = "";
+  @type("string") name: string = "";
+  @type("string") leaderId: string = "";
+  @type(["string"]) memberIds = new ArraySchema<string>();
+  @type("number") maxMembers: number = 4;
+  @type("string") accent: string = "pink";
+  @type("number") zoneX: number = 500;
+  @type("number") zoneY: number = 350;
+  @type("number") zoneRadius: number = 110;
+  @type("boolean") locked: boolean = false;
 }
 
 export class LiveRoomState extends Schema {
@@ -34,4 +49,5 @@ export class LiveRoomState extends Schema {
   @type("number") maxRounds: number = 3;
   @type("string") sessionStatus: string = "PLAYING";
   @type({ map: LivePlayer }) players = new MapSchema<LivePlayer>();
+  @type({ map: LiveGroup }) groups = new MapSchema<LiveGroup>();
 }
