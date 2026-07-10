@@ -35,6 +35,7 @@ export type AdminSession = {
   prizePoolBps: number;
   winnerSplitBps: number[];
   providerFeeBps: number;
+  selectedMiniGameIds: string[] | null;
   configVersion: number;
   startsAt: string | null;
   registrationClosesAt: string | null;

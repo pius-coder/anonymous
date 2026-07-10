@@ -12,7 +12,7 @@ const winnerSplitSchema = z
   .min(1)
   .max(10)
   .refine((splits) => splits.reduce((total, split) => total + split, 0) === 10000, {
-    message: "winnerSplitBps must sum to 10000",
+    message: "La somme des parts doit etre egale a 10000",
   });
 
 export const createAdminSessionSchema = z
@@ -33,6 +33,7 @@ export const createAdminSessionSchema = z
     prizePoolBps: bpsSchema.default(DEFAULT_PRIZE_POOL_BPS),
     winnerSplitBps: winnerSplitSchema.default([...DEFAULT_WINNER_SPLIT_BPS]),
     providerFeeBps: bpsSchema.default(DEFAULT_PROVIDER_FEE_BPS),
+    selectedMiniGameIds: z.array(z.string()).optional(),
     startsAt: z.iso.datetime().optional(),
     registrationClosesAt: z.iso.datetime().optional(),
     reason: z.string().trim().min(3).max(500).optional(),
@@ -54,6 +55,7 @@ export const updateAdminSessionSchema = z
     prizePoolBps: bpsSchema.optional(),
     winnerSplitBps: winnerSplitSchema.optional(),
     providerFeeBps: bpsSchema.optional(),
+    selectedMiniGameIds: z.array(z.string()).nullable().optional(),
     startsAt: z.iso.datetime().nullable().optional(),
     registrationClosesAt: z.iso.datetime().nullable().optional(),
     reason: z.string().trim().min(3).max(500),
@@ -97,7 +99,7 @@ function validateCapacity(minPlayers: number, maxPlayers: number, ctx: Refinemen
     ctx.addIssue({
       code: "custom",
       path: ["maxPlayers"],
-      message: "maxPlayers must be greater than or equal to minPlayers",
+      message: "Le max de joueurs doit etre superieur ou egal au min",
     });
   }
 }
@@ -116,7 +118,7 @@ function validateSessionTiming(
     ctx.addIssue({
       code: "custom",
       path: ["startsAt"],
-      message: "startsAt must be in the future",
+      message: "La date de debut doit etre dans le futur",
     });
   }
 
@@ -124,7 +126,7 @@ function validateSessionTiming(
     ctx.addIssue({
       code: "custom",
       path: ["registrationClosesAt"],
-      message: "registrationClosesAt must be before or equal to startsAt",
+      message: "La fin des inscriptions doit etre avant le debut",
     });
   }
 }

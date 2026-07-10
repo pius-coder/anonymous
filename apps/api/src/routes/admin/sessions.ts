@@ -61,7 +61,7 @@ const validationHook = (result: { success: boolean; error?: unknown }, c: Parame
       if (!details[key]) details[key] = [];
       details[key].push(issue.message);
     }
-    return errorResponse(c, 400, "VALIDATION_ERROR", "Validation failed", details);
+    return errorResponse(c, 400, "VALIDATION_ERROR", "Echec de validation", details);
   }
 };
 
@@ -92,6 +92,7 @@ function serializeSession(session: {
   prizePoolBps: number;
   winnerSplitBps: unknown;
   providerFeeBps: number;
+  selectedMiniGameIds: unknown;
   configVersion: number;
   startTime: Date | null;
   registrationClosesAt: Date | null;
@@ -115,6 +116,9 @@ function serializeSession(session: {
     prizePoolBps: session.prizePoolBps,
     winnerSplitBps: parseWinnerSplitBps(session.winnerSplitBps),
     providerFeeBps: session.providerFeeBps,
+    selectedMiniGameIds: Array.isArray(session.selectedMiniGameIds)
+      ? (session.selectedMiniGameIds as string[])
+      : null,
     configVersion: session.configVersion,
     startsAt: session.startTime?.toISOString() ?? null,
     registrationClosesAt: session.registrationClosesAt?.toISOString() ?? null,
@@ -225,6 +229,7 @@ adminSessions.post(
             prizePoolBps: input.prizePoolBps,
             winnerSplitBps: input.winnerSplitBps,
             providerFeeBps: input.providerFeeBps,
+            selectedMiniGameIds: input.selectedMiniGameIds as string[] | undefined,
             startTime: input.startsAt ? new Date(input.startsAt) : null,
             registrationClosesAt: input.registrationClosesAt
               ? new Date(input.registrationClosesAt)
@@ -473,6 +478,10 @@ adminSessions.patch(
         prizePoolBps: input.prizePoolBps ?? existing.prizePoolBps,
         winnerSplitBps: input.winnerSplitBps ?? parseWinnerSplitBps(existing.winnerSplitBps),
         providerFeeBps: input.providerFeeBps ?? existing.providerFeeBps,
+        selectedMiniGameIds:
+          input.selectedMiniGameIds === undefined
+            ? (existing.selectedMiniGameIds as string[] | null | undefined)
+            : input.selectedMiniGameIds,
         startTime:
           input.startsAt === undefined
             ? existing.startTime
@@ -539,6 +548,7 @@ adminSessions.patch(
           prizePoolBps: merged.prizePoolBps,
           winnerSplitBps: merged.winnerSplitBps,
           providerFeeBps: merged.providerFeeBps,
+          selectedMiniGameIds: merged.selectedMiniGameIds === null ? Prisma.DbNull : merged.selectedMiniGameIds,
           startTime: merged.startTime,
           registrationClosesAt: merged.registrationClosesAt,
           configVersion: { increment: 1 },

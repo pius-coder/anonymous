@@ -416,6 +416,7 @@ model GameSession {
   prizePoolBps         Int               @default(6000)
   winnerSplitBps       Json
   providerFeeBps       Int               @default(300)
+  selectedMiniGameIds  Json?
   configVersion        Int               @default(1)
   startTime            DateTime?
   endTime              DateTime?

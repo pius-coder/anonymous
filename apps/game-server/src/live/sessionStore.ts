@@ -332,14 +332,34 @@ export async function startRound(input: {
   const durationMs = input.durationMs ?? DEFAULT_ROUND_DURATION_MS;
   const deadlineAt = new Date(now.getTime() + durationMs);
   const seed = createHash("sha256").update(`${input.sessionId}:${input.roundNum}:game-seed`).digest("hex");
-  const miniGameKey = RECETTE_ROUND_KEYS[(input.roundNum - 1) % RECETTE_ROUND_KEYS.length];
 
   const result = await prisma.$transaction(
     async (tx) => {
-      const miniGameDefinition = await tx.miniGameDefinition.findFirst({
-        where: { key: miniGameKey, enabled: true },
-        orderBy: { version: "desc" },
+      let miniGameKey: string;
+      let miniGameDefinition: Awaited<ReturnType<typeof tx.miniGameDefinition.findFirst>> = null;
+
+      const session = await tx.gameSession.findUnique({
+        where: { id: input.sessionId },
+        select: { selectedMiniGameIds: true },
       });
+
+      if (session?.selectedMiniGameIds && Array.isArray(session.selectedMiniGameIds) && (session.selectedMiniGameIds as string[]).length > 0) {
+        const selectedIds = session.selectedMiniGameIds as string[];
+        const selectedDefId = selectedIds[(input.roundNum - 1) % selectedIds.length];
+        miniGameDefinition = await tx.miniGameDefinition.findUnique({
+          where: { id: selectedDefId },
+        });
+        miniGameKey = miniGameDefinition?.key ?? RECETTE_ROUND_KEYS[(input.roundNum - 1) % RECETTE_ROUND_KEYS.length];
+      } else {
+        miniGameKey = RECETTE_ROUND_KEYS[(input.roundNum - 1) % RECETTE_ROUND_KEYS.length];
+      }
+
+      if (!miniGameDefinition) {
+        miniGameDefinition = await tx.miniGameDefinition.findFirst({
+          where: { key: miniGameKey, enabled: true },
+          orderBy: { version: "desc" },
+        });
+      }
 
       const round = await tx.roundInstance.upsert({
         where: {

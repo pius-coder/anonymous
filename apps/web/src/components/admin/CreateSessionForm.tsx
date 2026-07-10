@@ -53,6 +53,33 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
     winnerSplitBps: "10000",
   });
 
+  const [selectedGameIds, setSelectedGameIds] = useState<string[]>([]);
+
+  function toggleGame(id: string) {
+    setSelectedGameIds((prev) => {
+      if (prev.includes(id)) return prev.filter((gid) => gid !== id);
+      return [...prev, id];
+    });
+  }
+
+  function moveGameUp(index: number) {
+    if (index <= 0) return;
+    setSelectedGameIds((prev) => {
+      const next = [...prev];
+      [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      return next;
+    });
+  }
+
+  function moveGameDown(index: number) {
+    setSelectedGameIds((prev) => {
+      if (index >= prev.length - 1) return prev;
+      const next = [...prev];
+      [next[index], next[index + 1]] = [next[index + 1], next[index]];
+      return next;
+    });
+  }
+
   const financials = useMemo(() => {
     const maxPlayers = formValues.maxPlayers;
     const entryFeeXaf = formValues.entryFeeXaf;
@@ -98,6 +125,7 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
       prizePoolBps: Number(form.get("prizePoolBps") || 6000),
       providerFeeBps: Number(form.get("providerFeeBps") || 300),
       winnerSplitBps,
+      selectedMiniGameIds: selectedGameIds.length > 0 ? selectedGameIds : undefined,
       startsAt: toIso(String(form.get("startsAt") || "")),
       registrationClosesAt: toIso(String(form.get("registrationClosesAt") || "")),
       reason: String(form.get("reason") || "") || "Creation console admin",
@@ -288,31 +316,65 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
 
         <Card>
           <CardHeader>
-            <CardTitle className="font-head text-lg uppercase">Mini-jeux disponibles</CardTitle>
+            <CardTitle className="font-head text-lg uppercase">Selection des mini-jeux</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {miniGames.length === 0 ? (
               <p className="text-muted-foreground">Aucun mini-jeu actif.</p>
             ) : (
-              miniGameGroups.map((group) => (
-                <div key={group.family} className="border-b-2 border-border pb-3 last:border-b-0 last:pb-0">
-                  <p className="font-head text-sm uppercase">
-                    {group.family} · {group.games.length}/6
-                  </p>
-                  <div className="mt-2 space-y-2">
-                    {group.games.map((game) => (
-                      <div key={game.id}>
-                        <p className="font-medium">{game.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {game.playerMode} · v{game.version}
-                        </p>
-                      </div>
-                    ))}
+              <>
+                {selectedGameIds.length > 0 && (
+                  <div className="mb-3 rounded-lg border-2 border-[--arena-green] p-3">
+                    <p className="font-head text-xs uppercase tracking-wider text-[--arena-green]">Selectionnes ({selectedGameIds.length})</p>
+                    <ol className="mt-2 space-y-1">
+                      {selectedGameIds.map((id, index) => {
+                        const game = miniGames.find((g) => g.id === id);
+                        if (!game) return null;
+                        return (
+                          <li key={id} className="flex items-center justify-between gap-2 text-xs">
+                            <span className="font-medium">{index + 1}. {game.name}</span>
+                            <span className="flex gap-1">
+                              <button type="button" onClick={() => moveGameUp(index)} className="text-muted-foreground hover:text-foreground" disabled={index === 0}>↑</button>
+                              <button type="button" onClick={() => moveGameDown(index)} className="text-muted-foreground hover:text-foreground" disabled={index === selectedGameIds.length - 1}>↓</button>
+                              <button type="button" onClick={() => toggleGame(id)} className="text-[--arena-danger] hover:text-red-400">✕</button>
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ol>
                   </div>
-                </div>
-              ))
+                )}
+                {miniGameGroups.map((group) => (
+                  <div key={group.family} className="border-b-2 border-border pb-3 last:border-b-0 last:pb-0">
+                    <p className="font-head text-sm uppercase">
+                      {group.family} · {group.games.length} jeux
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      {group.games.map((game) => {
+                        const isSelected = selectedGameIds.includes(game.id);
+                        return (
+                          <label key={game.id} className={`flex cursor-pointer items-start gap-2 rounded-md p-2 transition-colors ${isSelected ? "bg-accent" : "hover:bg-muted/50"}`}>
+                            <input type="checkbox" checked={isSelected} onChange={() => toggleGame(game.id)} className="mt-0.5" />
+                            <div className="flex-1">
+                              <p className="font-medium">{game.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {game.playerMode} · v{game.version}
+                              </p>
+                            </div>
+                            {isSelected && (
+                              <span className="mt-0.5 text-[10px] text-[--arena-green]">
+                                #{selectedGameIds.indexOf(game.id) + 1}
+                              </span>
+                            )}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </>
             )}
-            <p className="text-[10px] text-muted-foreground">Les mini-jeux sont assignés par round après la création.</p>
+            <p className="text-[10px] text-muted-foreground">Les mini-jeux sont jou&eacute;s dans l&apos;ordre s&eacute;lectionn&eacute;. Par d&eacute;faut (aucun), la rotation standard est utilis&eacute;e.</p>
           </CardContent>
         </Card>
 
