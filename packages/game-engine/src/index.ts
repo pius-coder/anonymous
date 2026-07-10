@@ -1,4 +1,13 @@
 import { createHash } from "node:crypto";
+export {
+  ROUND_ADMISSION_LOCK_BY_FAMILY,
+  admissionLockForFamily,
+  isPreRoundLivePhase,
+  lateAdmissionReason,
+  normalizeMiniGameFamily,
+  type CatalogueMiniGameFamily,
+  type RoundAdmissionLockCode,
+} from "./admission.js";
 
 export const GAME_ENGINE_VERSION = "0.1.0";
 

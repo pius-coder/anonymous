@@ -49,6 +49,8 @@ vi.mock("@session-jeu/db", () => ({
     DRAFT: "DRAFT",
     PUBLISHED: "PUBLISHED",
     ACTIVE: "ACTIVE",
+    WAITING_START: "WAITING_START",
+    LIVE: "LIVE",
     COMPLETED: "COMPLETED",
     CANCELLED: "CANCELLED",
   },
@@ -56,6 +58,8 @@ vi.mock("@session-jeu/db", () => ({
     CREATED: "CREATED",
     PAYMENT_PENDING: "PAYMENT_PENDING",
     PAID: "PAID",
+    CHECKED_IN: "CHECKED_IN",
+    IN_ROOM: "IN_ROOM",
     CANCELLED: "CANCELLED",
     REFUNDED: "REFUNDED",
     EXPIRED: "EXPIRED",
@@ -235,7 +239,7 @@ describe("admin session routes", () => {
     expect(body.data.simulation.grossCollectionXaf).toBe(20_000);
     expect(body.data.simulation.organizationCommissionXaf).toBe(7_760);
     expect(dbMocks.prisma.sessionRegistration.count).toHaveBeenCalledWith({
-      where: { sessionId: "session-1", status: "PAID" },
+      where: { sessionId: "session-1", status: { in: ["PAID", "CHECKED_IN", "IN_ROOM"] } },
     });
   });
 

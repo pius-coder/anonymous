@@ -42,6 +42,8 @@ Pour chaque story technique :
 
 ## Ordre recommande
 
+### Phase 0 — Fondations (features 00-16)
+
 1. `00-initialisation-projet.md`
 2. `01-acquisition-catalogue-public.md`
 3. `02-authentification-compte.md`
@@ -59,6 +61,22 @@ Pour chaque story technique :
 15. `14-notifications-whatsapp.md`
 16. `15-securite-anti-triche-conformite.md`
 17. `16-finalisation-recette-lancement.md`
+
+### Phase 1 — Fondations AAA (17)
+
+18. `17-phase1-fondations.md` — Design system Squid Game, assets (polices Fontsource, 14 SFX, sprite), RetroUI, juice.ts, boucle de rounds serveur completee, runtimes anti-triche, spectateur.
+
+### Phase 2 — Parcours joueur (18)
+
+19. `18-phase2-parcours-joueur.md` — Auth drawer, inscription/paiement, wallet/profil, lobby immersif + useGameRoom, UI des 3 mini-jeux MVP, spectateur, resultats podium.
+
+### Phase 3 — Operateur & lancement (19)
+
+20. `19-phase3-operateur-lancement.md` — Admin RBAC + sidebar, Program Builder avec simulation funnel, controle live, audit/support, PixiJS survie avancee, polish, recette finale 5 parcours Playwright.
+
+### Archive
+
+Les anciens fichiers decoupes (17-22) sont deplaces dans `archive/` pour reference historique.
 
 ## Definition of Ready
 

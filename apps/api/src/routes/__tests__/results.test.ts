@@ -7,6 +7,9 @@ const dbMocks = vi.hoisted(() => ({
       findUnique: vi.fn(),
       update: vi.fn(),
     },
+    gameSession: {
+      findFirst: vi.fn(),
+    },
   },
 }));
 
@@ -102,6 +105,10 @@ describe("player results routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dbMocks.prisma.authSession.findUnique.mockResolvedValue(validAuthSession());
+    dbMocks.prisma.gameSession.findFirst.mockResolvedValue({
+      id: "session-1",
+      code: "session-1",
+    });
     resultMocks.getSessionResultsForPlayer.mockResolvedValue({
       type: "ok",
       session: { id: "session-1" },

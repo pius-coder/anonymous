@@ -2,11 +2,11 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 
 const filesToCheck = [
-  "src/app/page.tsx",
+  "src/app/(client)/page.tsx",
   "src/app/admin/page.tsx",
-  "src/app/catalogue/page.tsx",
-  "src/app/notifications/page.tsx",
-  "src/app/session/[code]/page.tsx",
+  "src/app/(client)/catalogue/page.tsx",
+  "src/app/(client)/notifications/page.tsx",
+  "src/app/(client)/session/[code]/page.tsx",
   "src/components/SessionCard.tsx",
   "src/components/CTAButton.tsx",
 ];
@@ -31,12 +31,12 @@ describe("Forbidden Wording", () => {
 
 describe("Page Exports", () => {
   it("landing page has default export", () => {
-    const content = readFileSync("src/app/page.tsx", "utf-8");
+    const content = readFileSync("src/app/(client)/page.tsx", "utf-8");
     expect(content).toContain("export default");
   });
 
   it("catalogue page has default export", () => {
-    const content = readFileSync("src/app/catalogue/page.tsx", "utf-8");
+    const content = readFileSync("src/app/(client)/catalogue/page.tsx", "utf-8");
     expect(content).toContain("export default");
   });
 
@@ -46,12 +46,12 @@ describe("Page Exports", () => {
   });
 
   it("notifications page has default export", () => {
-    const content = readFileSync("src/app/notifications/page.tsx", "utf-8");
+    const content = readFileSync("src/app/(client)/notifications/page.tsx", "utf-8");
     expect(content).toContain("export default");
   });
 
   it("session detail page has generateMetadata", () => {
-    const content = readFileSync("src/app/session/[code]/page.tsx", "utf-8");
+    const content = readFileSync("src/app/(client)/session/[code]/page.tsx", "utf-8");
     expect(content).toContain("generateMetadata");
   });
 

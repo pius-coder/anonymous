@@ -177,6 +177,7 @@ describe("wallet business logic", () => {
           direction: "DEBIT",
           type: "ENTRY_FEE",
           idempotencyKey: "idem-12345678",
+          paymentId: "payment-1",
         }),
       }),
     );

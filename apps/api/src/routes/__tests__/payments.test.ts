@@ -9,6 +9,7 @@ const dbMocks = vi.hoisted(() => ({
     },
     paymentTransaction: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
     },
   },
 }));
@@ -155,17 +156,22 @@ describe("payment routes", () => {
   });
 
   it("returns own payment status", async () => {
-    dbMocks.prisma.paymentTransaction.findUnique.mockResolvedValue(payment());
+    dbMocks.prisma.paymentTransaction.findFirst.mockResolvedValue(payment());
 
     const res = await app.request("/v1/payments/payment-1/status", {
       headers: { cookie: `${SESSION_COOKIE_NAME}=session-token` },
     });
 
     expect(res.status).toBe(200);
+    expect(dbMocks.prisma.paymentTransaction.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { OR: [{ id: "payment-1" }, { registrationId: "payment-1" }] },
+      }),
+    );
   });
 
   it("forbids reading another player's payment", async () => {
-    dbMocks.prisma.paymentTransaction.findUnique.mockResolvedValue(
+    dbMocks.prisma.paymentTransaction.findFirst.mockResolvedValue(
       payment({ userId: "other-player" }),
     );
 

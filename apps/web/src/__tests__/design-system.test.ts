@@ -33,7 +33,7 @@ describe("Feature 17 design system assets", () => {
   });
 
   it("guards /dev/ui in production", () => {
-    const source = readFileSync("src/app/dev/ui/page.tsx", "utf-8");
+    const source = readFileSync("src/app/(client)/dev/ui/page.tsx", "utf-8");
     expect(source).toContain('process.env.NODE_ENV === "production"');
     expect(source).toContain("notFound()");
   });

@@ -19,11 +19,11 @@ test.describe("Feature 01 — Acquisition et catalogue public", () => {
       await sessionLinks.first().click();
       await expect(page).toHaveURL(/\/session\//);
 
-      await expect(page.getByRole("link", { name: /s'inscrire/i })).toBeVisible();
+      const cta = page.getByRole("button", { name: /s'inscrire/i });
+      await expect(cta).toBeVisible();
 
-      const cta = page.getByRole("link", { name: /s'inscrire/i });
-      const href = await cta.getAttribute("href");
-      expect(href).toContain("/auth/register?next=");
+      await cta.click();
+      await expect(page.getByRole("dialog")).toBeVisible();
     }
   });
 

@@ -10,6 +10,8 @@ vi.mock("@session-jeu/db", () => ({
   SessionRegistrationStatus: {
     PAYMENT_PENDING: "PAYMENT_PENDING",
     PAID: "PAID",
+    CHECKED_IN: "CHECKED_IN",
+    IN_ROOM: "IN_ROOM",
     CANCELLED: "CANCELLED",
   },
   SessionVisibility: { PUBLIC: "PUBLIC", UNLISTED: "UNLISTED", PRIVATE: "PRIVATE" },

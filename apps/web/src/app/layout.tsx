@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import { AppShell } from "@/components/game/app-shell";
 import "./globals.css";
 
 const pixelFont = localFont({
@@ -33,9 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={`${pixelFont.variable} h-full antialiased`}>
-      <body className="min-h-full">
-        <AppShell>{children}</AppShell>
-      </body>
+      <body className="min-h-full">{children}</body>
     </html>
   );
 }

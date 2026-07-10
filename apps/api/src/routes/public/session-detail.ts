@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import { prisma, SessionRegistrationStatus, SessionVisibility } from "@session-jeu/db";
+import { prisma, SessionVisibility } from "@session-jeu/db";
+import { CAPACITY_REGISTRATION_STATUSES } from "../../sessions/statusGroups.js";
 
 const sessionDetail = new Hono();
 
@@ -14,7 +15,7 @@ sessionDetail.get("/:code", async (c) => {
           registrations: {
             where: {
               status: {
-                in: [SessionRegistrationStatus.PAYMENT_PENDING, SessionRegistrationStatus.PAID],
+                in: [...CAPACITY_REGISTRATION_STATUSES],
               },
             },
           },
@@ -67,6 +68,7 @@ sessionDetail.get("/:code", async (c) => {
   return c.json({
     success: true,
     data: {
+      id: session.id,
       code: session.code,
       name: session.name,
       description: session.description,

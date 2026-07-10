@@ -28,7 +28,7 @@ describe("notification reminder queue", () => {
       NOTIFICATION_SEND_JOB,
       expect.objectContaining({ notificationJobId: "notification-1" }),
       expect.objectContaining({
-        jobId: "notification.reminder:session-1:checkin:player-1",
+        jobId: "notification.reminder.session-1.checkin_player-1",
         attempts: 3,
       }),
     );

@@ -1,7 +1,9 @@
 "use client"
 
 import * as React from "react"
+import { useMemo } from "react"
 import { Avatar as AvatarPrimitive } from "@base-ui/react/avatar"
+import { minidenticon } from "minidenticons"
 
 import { cn } from "@/lib/utils"
 
@@ -99,6 +101,46 @@ function AvatarGroupCount({
   )
 }
 
+function minidenticonHash(str: string): number {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0
+  }
+  return Math.abs(hash)
+}
+
+function getRambonParams(seed: string) {
+  const hash = minidenticonHash(seed)
+  const saturation = 55 + (hash % 40)
+  const lightness = 35 + (hash % 30)
+  return { saturation, lightness }
+}
+
+function MinidenticonAvatar({
+  seed,
+  size = "default",
+  className,
+}: {
+  seed: string
+  size?: "default" | "sm" | "lg"
+  className?: string
+}) {
+  const { saturation, lightness } = getRambonParams(seed)
+  const svgURI = useMemo(
+    () => "data:image/svg+xml;utf8," + encodeURIComponent(minidenticon(seed, saturation, lightness)),
+    [seed, saturation, lightness],
+  )
+  return (
+    <Avatar size={size} className={className}>
+      <img
+        src={svgURI}
+        alt={seed}
+        className="aspect-square size-full rounded-full object-cover"
+      />
+    </Avatar>
+  )
+}
+
 export {
   Avatar,
   AvatarImage,
@@ -106,4 +148,5 @@ export {
   AvatarGroup,
   AvatarGroupCount,
   AvatarBadge,
+  MinidenticonAvatar,
 }

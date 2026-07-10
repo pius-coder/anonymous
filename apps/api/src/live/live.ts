@@ -5,8 +5,18 @@ import {
   LivePhase,
   Prisma,
   prisma,
+  RoundAdmissionLock,
+  RoundOutcomeStatus,
+  RoundParticipantStatus,
+  RoundStatus,
   SessionRegistrationStatus,
 } from "@session-jeu/db";
+import {
+  admissionLockForFamily,
+  isPreRoundLivePhase,
+  lateAdmissionReason,
+  type RoundAdmissionLockCode,
+} from "@session-jeu/game-engine";
 import { withSerializableRetry } from "../registrations/sessionRegistration.js";
 
 export const LIVE_RESERVATION_TTL_MS = 60 * 1000;
@@ -27,12 +37,21 @@ export const livePauseBodySchema = z.object({
   reason: z.string().trim().min(3).max(500),
 });
 
+export const adminStartRoundBodySchema = z.object({
+  roundNum: z.number().int().min(1).max(50).optional(),
+  durationMs: z.number().int().min(5_000).max(10 * 60_000).optional(),
+});
+
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("base64url");
 }
 
 function createToken() {
   return randomBytes(32).toString("base64url");
+}
+
+function toRoundAdmissionLock(lock: RoundAdmissionLockCode): RoundAdmissionLock {
+  return lock as RoundAdmissionLock;
 }
 
 export function getGameWsEndpoint() {
@@ -100,7 +119,9 @@ export async function createLiveReservation(input: {
             id: joinToken.registrationId,
             userId: input.userId,
             sessionId: input.sessionId,
-            status: SessionRegistrationStatus.CHECKED_IN,
+            status: {
+              in: [SessionRegistrationStatus.CHECKED_IN, SessionRegistrationStatus.IN_ROOM],
+            },
           },
           include: {
             session: {
@@ -125,6 +146,103 @@ export async function createLiveReservation(input: {
           return { type: "session-not-live" as const };
         }
 
+        const liveState = await tx.liveSessionState.upsert({
+          where: { sessionId: input.sessionId },
+          create: {
+            sessionId: input.sessionId,
+            phase: LivePhase.LOBBY,
+            phaseStartedAt: now,
+          },
+          update: {},
+        });
+
+        const isReconnect = registration.status === SessionRegistrationStatus.IN_ROOM;
+        if (
+          !isReconnect &&
+          !isPreRoundLivePhase(liveState.phase) &&
+          liveState.currentRoundId
+        ) {
+          const round = await tx.roundInstance.findUnique({
+            where: { id: liveState.currentRoundId },
+            include: {
+              miniGameDefinition: {
+                select: { family: true },
+              },
+            },
+          });
+          const family = round?.miniGameDefinition?.family ?? "SOLO";
+          const lockCode = admissionLockForFamily(family);
+          const admissionLock = toRoundAdmissionLock(lockCode);
+          const reason = lateAdmissionReason(lockCode);
+
+          await tx.roundParticipant.upsert({
+            where: {
+              roundId_userId: {
+                roundId: liveState.currentRoundId,
+                userId: input.userId,
+              },
+            },
+            create: {
+              sessionId: input.sessionId,
+              roundId: liveState.currentRoundId,
+              userId: input.userId,
+              status: RoundParticipantStatus.NO_SHOW,
+              admissionLock,
+              lockedOutAt: now,
+              lockReason: reason,
+            },
+            update: {
+              status: RoundParticipantStatus.NO_SHOW,
+              admissionLock,
+              lockedOutAt: now,
+              lockReason: reason,
+            },
+          });
+
+          await tx.roundOutcome.upsert({
+            where: {
+              roundId_userId: {
+                roundId: liveState.currentRoundId,
+                userId: input.userId,
+              },
+            },
+            create: {
+              sessionId: input.sessionId,
+              roundId: liveState.currentRoundId,
+              userId: input.userId,
+              status: RoundOutcomeStatus.ELIMINATED,
+              reason,
+            },
+            update: {
+              status: RoundOutcomeStatus.ELIMINATED,
+              reason,
+            },
+          });
+
+          await tx.auditLog.create({
+            data: {
+              userId: input.userId,
+              action: "player.late-no-show",
+              entity: "RoundInstance",
+              entityId: liveState.currentRoundId,
+              newData: {
+                sessionId: input.sessionId,
+                phase: liveState.phase,
+                admissionLock,
+                reason,
+              },
+            },
+          });
+
+          return {
+            type: "live-entry-locked" as const,
+            phase: liveState.phase,
+            roundId: liveState.currentRoundId,
+            admissionLock,
+            reason,
+          };
+        }
+
         const consumedJoinToken = await tx.joinToken.update({
           where: { id: joinToken.id },
           data: { consumedAt: now },
@@ -136,16 +254,6 @@ export async function createLiveReservation(input: {
             status: SessionRegistrationStatus.IN_ROOM,
             inRoomAt: now,
           },
-        });
-
-        const liveState = await tx.liveSessionState.upsert({
-          where: { sessionId: input.sessionId },
-          create: {
-            sessionId: input.sessionId,
-            phase: LivePhase.BRIEFING,
-            phaseStartedAt: now,
-          },
-          update: {},
         });
 
         const reservation = await tx.liveReservation.create({
@@ -346,6 +454,85 @@ export async function resumeLiveSession(input: {
         });
 
         return { type: "ok" as const, liveState: updated };
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        maxWait: 5000,
+        timeout: 10000,
+      },
+    ),
+  );
+}
+
+export async function authorizeLiveRoundStart(input: {
+  adminUserId: string;
+  sessionId: string;
+  roundNum?: number;
+  durationMs?: number;
+  now?: Date;
+}) {
+  const now = input.now ?? new Date();
+
+  return withSerializableRetry(() =>
+    prisma.$transaction(
+      async (tx) => {
+        const session = await tx.gameSession.findUnique({
+          where: { id: input.sessionId },
+          select: { id: true, status: true },
+        });
+        if (!session) return { type: "not-found" as const };
+        if (session.status !== GameSessionStatus.LIVE) {
+          return { type: "session-not-live" as const };
+        }
+
+        const liveState = await tx.liveSessionState.upsert({
+          where: { sessionId: input.sessionId },
+          create: {
+            sessionId: input.sessionId,
+            phase: LivePhase.BRIEFING,
+            phaseStartedAt: now,
+          },
+          update: {
+            phase: LivePhase.BRIEFING,
+            previousPhase: null,
+            pausedAt: null,
+            pauseReason: null,
+            phaseStartedAt: now,
+          },
+        });
+
+        const nextRoundNum =
+          input.roundNum ??
+          ((await tx.roundInstance.count({
+            where: { sessionId: input.sessionId, status: { not: RoundStatus.PENDING } },
+          })) + 1);
+
+        await tx.auditLog.create({
+          data: {
+            userId: input.adminUserId,
+            action: "live.round-start-requested",
+            entity: "GameSession",
+            entityId: input.sessionId,
+            newData: {
+              roundNum: nextRoundNum,
+              durationMs: input.durationMs ?? null,
+              phase: liveState.phase,
+            },
+          },
+        });
+
+        return {
+          type: "ok" as const,
+          liveState,
+          command: {
+            type: "start-round" as const,
+            sessionId: input.sessionId,
+            roundNum: nextRoundNum,
+            durationMs: input.durationMs,
+            requestedBy: input.adminUserId,
+            requestedAt: now.toISOString(),
+          },
+        };
       },
       {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,

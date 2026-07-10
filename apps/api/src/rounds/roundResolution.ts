@@ -12,8 +12,8 @@ import {
   Prisma,
   prisma,
   RoundOutcomeStatus,
+  RoundParticipantStatus,
   RoundStatus,
-  SessionRegistrationStatus,
 } from "@session-jeu/db";
 import { withSerializableRetry } from "../registrations/sessionRegistration.js";
 
@@ -163,12 +163,10 @@ export async function finalizeRound(input: FinalizeRoundInput) {
           return { type: "round-not-locked" as const, status: round.status };
         }
 
-        const participants = await tx.sessionRegistration.findMany({
+        const participants = await tx.roundParticipant.findMany({
           where: {
-            sessionId: round.sessionId,
-            status: {
-              in: [SessionRegistrationStatus.IN_ROOM, SessionRegistrationStatus.CHECKED_IN],
-            },
+            roundId: round.id,
+            status: RoundParticipantStatus.ACTIVE,
           },
           select: { userId: true },
           orderBy: { userId: "asc" },

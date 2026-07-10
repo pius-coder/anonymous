@@ -19,10 +19,27 @@ describe("pure-reaction-duel runtime", () => {
     expect(pureReactionDuelRuntime.key).toBe("pure-reaction-duel");
   });
 
-  it("throws if not exactly two participants", () => {
+  it("throws if fewer than two participants", () => {
     expect(() =>
       pureReactionDuelRuntime.resolve({ ...baseInput(), participants: ["p1"] }),
-    ).toThrow("pure-reaction-duel requires exactly two participants");
+    ).toThrow("pure-reaction-duel requires at least two participants");
+  });
+
+  it("supports group reaction ranking inside a shared live session", () => {
+    const result = pureReactionDuelRuntime.resolve(
+      baseInput({
+        participants: ["p1", "p2", "p3", "p4"],
+        config: { signalDelayRangeMs: [2000, 2000], falseStartPenaltyMs: 1000 },
+        actions: [
+          { playerId: "p1", actionNonce: "n1", submittedAt: "2026-07-09T00:00:03Z", payload: { clickedAtMs: 2300 } },
+          { playerId: "p2", actionNonce: "n2", submittedAt: "2026-07-09T00:00:03Z", payload: { clickedAtMs: 2200 } },
+          { playerId: "p3", actionNonce: "n3", submittedAt: "2026-07-09T00:00:03Z", payload: { clickedAtMs: 2400 } },
+        ],
+      }),
+    );
+    expect(result.qualifiedIds).toHaveLength(2);
+    expect(result.eliminatedIds).toHaveLength(2);
+    expect(result.evidence[0].type).toBe("runtime.pure-reaction-duel.group");
   });
 
   it("produces deterministic output from same seed and actions", () => {

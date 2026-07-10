@@ -1,3 +1,4 @@
+import { readFileSync } from "fs";
 import { describe, it, expect } from "vitest";
 
 describe("Web App", () => {
@@ -12,11 +13,10 @@ describe("Web App", () => {
   });
 
   it("should have correct dev scripts", () => {
-    const scripts = {
-      dev: "next dev --port 3000",
-      build: "next build",
-      start: "next start",
+    const pkg = JSON.parse(readFileSync("package.json", "utf-8")) as {
+      scripts: Record<string, string>;
     };
-    expect(scripts.dev).toContain("--port 3000");
+    expect(pkg.scripts.dev).toContain("--hostname 0.0.0.0");
+    expect(pkg.scripts.dev).toContain("--port 3000");
   });
 });

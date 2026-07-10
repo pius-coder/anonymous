@@ -10,7 +10,7 @@ const dbMocks = vi.hoisted(() => {
     roundInstance: {
       findUnique: vi.fn(),
     },
-    sessionRegistration: {
+    roundParticipant: {
       findMany: vi.fn(),
     },
     roundResult: {
@@ -51,11 +51,17 @@ vi.mock("@session-jeu/db", () => ({
     QUALIFIED: "QUALIFIED",
     ELIMINATED: "ELIMINATED",
   },
+  RoundParticipantStatus: {
+    ACTIVE: "ACTIVE",
+  },
   RoundStatus: {
     COMPLETED: "COMPLETED",
     ACTIVE: "ACTIVE",
   },
   SessionRegistrationStatus: {
+    CREATED: "CREATED",
+    PAYMENT_PENDING: "PAYMENT_PENDING",
+    PAID: "PAID",
     CHECKED_IN: "CHECKED_IN",
     IN_ROOM: "IN_ROOM",
   },
@@ -115,7 +121,7 @@ describe("round resolution service", () => {
         },
       ],
     });
-    dbMocks.tx.sessionRegistration.findMany.mockResolvedValue([
+    dbMocks.tx.roundParticipant.findMany.mockResolvedValue([
       { userId: "player-1" },
       { userId: "player-2" },
     ]);

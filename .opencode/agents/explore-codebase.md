@@ -1,7 +1,7 @@
 ---
 description: "Fast codebase exploration agent. Finds existing patterns, files, utilities, and related code. Reports file paths and line numbers. Used by APEX analyze phase."
 mode: subagent
-model: anthropic/claude-sonnet-4-6
+model: opencode/deepseek-v4-flash-free
 permission:
   edit: deny
   bash: ask

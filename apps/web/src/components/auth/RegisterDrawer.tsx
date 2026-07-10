@@ -18,11 +18,13 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/retroui/to
 import { useIsMobile } from "@/hooks/use-mobile";
 import { apiGet, apiPost, type ApiError } from "@/lib/api";
 import { translateError } from "@/lib/errors.fr";
+import { randomNonce } from "@/lib/nonce";
 export type RegisterSessionInput = {
   id: string;
   code: string;
   title: string;
   entryFeeXaf: number;
+  status?: string;
 };
 
 type Wallet = { balanceXaf: number; currency: string; isFrozen: boolean };
@@ -54,16 +56,26 @@ export function RegisterDrawer({
   const [error, setError] = useState<ApiError | null>(null);
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
+  const [existingReg, setExistingReg] = useState<{ id: string; status: string } | null>(null);
+  const [checking, setChecking] = useState(false);
 
-  const idempotencyKey = useMemo(() => crypto.randomUUID(), []);
+  const idempotencyKey = useMemo(() => randomNonce("reg"), []);
   const walletSufficient = !!wallet && wallet.balanceXaf >= session.entryFeeXaf && !wallet.isFrozen;
 
   const resetForOpen = () => {
     setError(null);
     setStep(0);
     setDone(false);
+    setExistingReg(null);
+    setChecking(true);
     void apiGet<{ wallet: Wallet }>("/wallet/me").then((r) => {
       if (r.ok) setWallet(r.data.wallet);
+    });
+    void apiGet<{ registration: { id: string; status: string } }>(
+      `/sessions/${session.id}/registration`,
+    ).then((r) => {
+      if (r.ok) setExistingReg(r.data.registration);
+      setChecking(false);
     });
   };
 
@@ -93,9 +105,16 @@ export function RegisterDrawer({
   const handleConfirm = async () => {
     setPending(true);
     setError(null);
-    const reg = await startRegister();
+    const reg = existingReg?.status === "PAYMENT_PENDING" ? existingReg : await startRegister();
     if (!reg || "code" in reg) {
       setPending(false);
+      if (reg && reg.code === "ALREADY_REGISTERED") {
+        setError(null);
+        const already = (
+          reg.details as { registration?: { id: string; status: string } } | undefined
+        )?.registration;
+        if (already) setExistingReg(already);
+      }
       return;
     }
     const registration = reg;
@@ -150,6 +169,23 @@ export function RegisterDrawer({
           <p className="font-head text-2xl font-black uppercase text-[--arena-green]">Inscrit !</p>
           <p className="text-sm text-muted-foreground">
             Tu es inscrit à <strong>{session.title}</strong>. Pense à te signaler (check-in) avant le début.
+          </p>
+          <Button
+            onClick={() => {
+              onRegistered?.();
+              router.push(`/session/${session.code}`);
+            }}
+          >
+            Voir la session
+          </Button>
+        </div>
+      ) : checking ? (
+        <p className="text-sm text-muted-foreground">Vérification…</p>
+      ) : existingReg && existingReg.status !== "PAYMENT_PENDING" ? (
+        <div className="grid gap-3 text-center">
+          <p className="font-head text-2xl font-black uppercase text-[--arena-green]">Déjà inscrit</p>
+          <p className="text-sm text-muted-foreground">
+            Tu es déjà inscrit à <strong>{session.title}</strong> (statut : {existingReg.status}).
           </p>
           <Button
             onClick={() => {

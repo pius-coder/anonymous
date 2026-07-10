@@ -1,7 +1,7 @@
 ---
 description: "Web search agent for approaches, best practices, and gotchas. Researches common patterns and implementation strategies. Used by APEX for external knowledge."
 mode: subagent
-model: anthropic/claude-sonnet-4-6
+model: opencode/deepseek-v4-flash-free
 permission:
   edit: deny
   bash: allow

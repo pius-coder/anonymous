@@ -206,7 +206,7 @@ export async function queueNotificationSafely(input: QueueNotificationInput) {
 }
 
 export function notificationReminderJobId(input: { sessionId: string; type: string }) {
-  return `notification.reminder:${input.sessionId}:${input.type}`;
+  return `notification.reminder.${input.sessionId}.${input.type}`.replace(/:/g, "_");
 }
 
 export async function processNotificationSend(input: { notificationJobId: string; now?: Date }) {

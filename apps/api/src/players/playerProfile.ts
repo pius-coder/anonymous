@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { minidenticon } from "minidenticons";
 import {
   GameResultStatus,
   GameSessionStatus,
@@ -84,6 +85,14 @@ function normalizeUsername(username: string) {
 
 export function isValidUsername(username: string) {
   return USERNAME_PATTERN.test(username);
+}
+
+function generateIdenticonDataUri(seed: string): string {
+  const hash = seed.split("").reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+  const saturation = 55 + (Math.abs(hash) % 40);
+  const lightness = 35 + (Math.abs(hash) % 30);
+  const svg = minidenticon(seed, saturation, lightness);
+  return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
 }
 
 function defaultUsernameForUser(userId: string) {
@@ -202,10 +211,12 @@ export async function getOrCreatePlayerProfile(userId: string) {
     };
   }
 
+  const autoUsername = defaultUsernameForUser(userId);
   const profile = await prisma.playerProfile.create({
     data: {
       userId,
-      username: defaultUsernameForUser(userId),
+      username: autoUsername,
+      avatarUrl: generateIdenticonDataUri(autoUsername),
     },
     include: { user: { select: { statsSnapshot: true } } },
   });
@@ -235,6 +246,7 @@ export async function updatePlayerProfile(input: {
           data: {
             userId: input.userId,
             username: defaultUsernameForUser(input.userId),
+            avatarUrl: generateIdenticonDataUri(defaultUsernameForUser(input.userId)),
           },
         }));
 
@@ -354,13 +366,7 @@ function historyBucket(input: {
     return "cancelled";
   }
   if (input.sessionStatus === GameSessionStatus.COMPLETED) return "completed";
-  if (
-    input.sessionStatus === GameSessionStatus.ACTIVE ||
-    input.sessionStatus === GameSessionStatus.WAITING_START ||
-    input.sessionStatus === GameSessionStatus.LIVE
-  ) {
-    return "live";
-  }
+  if (input.sessionStatus === GameSessionStatus.LIVE) return "live";
   if (input.startTime && input.startTime > input.now) return "future";
   return "future";
 }

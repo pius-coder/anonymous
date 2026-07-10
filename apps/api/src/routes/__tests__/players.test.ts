@@ -52,6 +52,9 @@ vi.mock("@session-jeu/db", () => ({
     NO_SHOW: "NO_SHOW",
     CANCELLED: "CANCELLED",
     REFUNDED: "REFUNDED",
+    PAID: "PAID",
+    CHECKED_IN: "CHECKED_IN",
+    IN_ROOM: "IN_ROOM",
   },
 }));
 

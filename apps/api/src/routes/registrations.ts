@@ -12,6 +12,7 @@ import {
   serializeRegistration,
   sessionIdParamsSchema,
 } from "../registrations/sessionRegistration.js";
+import { resolvePublicSessionId } from "../sessions/resolveSession.js";
 
 const registrations = new Hono<{ Variables: AuthVariables }>();
 
@@ -28,7 +29,8 @@ registrations.post(
   async (c) => {
     const user = c.get("user");
     const { id } = c.req.valid("param");
-    const result = await registerForSession({ userId: user.id, sessionId: id });
+    const sessionId = await resolvePublicSessionId(id);
+    const result = await registerForSession({ userId: user.id, sessionId });
 
     if (result.type === "not-found") {
       return errorResponse(c, 404, "SESSION_NOT_FOUND", "Session not found");
@@ -65,9 +67,10 @@ registrations.get(
   async (c) => {
     const user = c.get("user");
     const { id } = c.req.valid("param");
+    const sessionId = await resolvePublicSessionId(id);
     const registration = await prisma.sessionRegistration.findFirst({
       where: {
-        sessionId: id,
+        sessionId,
         userId: user.id,
         status: { in: [...activeRegistrationStatuses] },
       },

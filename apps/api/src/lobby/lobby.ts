@@ -163,6 +163,57 @@ export async function getLobbyForPlayer(input: { userId: string; sessionId: stri
   }
 
   const presence = await markLobbyPresence(input);
+  const [paid, checkedIn, inRoom] = await Promise.all([
+    prisma.sessionRegistration.count({
+      where: {
+        sessionId: input.sessionId,
+        status: {
+          in: [
+            SessionRegistrationStatus.PAID,
+            SessionRegistrationStatus.CHECKED_IN,
+            SessionRegistrationStatus.IN_ROOM,
+          ],
+        },
+      },
+    }),
+    prisma.sessionRegistration.count({
+      where: {
+        sessionId: input.sessionId,
+        status: {
+          in: [SessionRegistrationStatus.CHECKED_IN, SessionRegistrationStatus.IN_ROOM],
+        },
+      },
+    }),
+    prisma.sessionRegistration.count({
+      where: {
+        sessionId: input.sessionId,
+        status: SessionRegistrationStatus.IN_ROOM,
+      },
+    }),
+  ]);
+  const players = await prisma.sessionRegistration.findMany({
+    where: {
+      sessionId: input.sessionId,
+      status: {
+        in: [
+          SessionRegistrationStatus.PAID,
+          SessionRegistrationStatus.CHECKED_IN,
+          SessionRegistrationStatus.IN_ROOM,
+        ],
+      },
+    },
+    select: {
+      userId: true,
+      status: true,
+      user: {
+        select: {
+          name: true,
+          profile: { select: { username: true, avatarUrl: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
   await prisma.auditLog.create({
     data: {
       userId: input.userId,
@@ -177,7 +228,15 @@ export async function getLobbyForPlayer(input: { userId: string; sessionId: stri
     type: "ok" as const,
     session: registration.session,
     registration,
-    presence,
+    players: players.map((player, index) => ({
+      userId: player.userId,
+      displayName: player.user.profile?.username ?? player.user.name ?? "Player",
+      avatarUrl: player.user.profile?.avatarUrl ?? "",
+      registrationStatus: player.status,
+      x: 210 + (index % 4) * 180,
+      y: 170 + Math.floor(index / 4) * 135,
+    })),
+    presence: { ...presence, paid, checkedIn, inRoom },
   };
 }
 
@@ -344,7 +403,9 @@ export async function issueJoinToken(input: { userId: string; sessionId: string;
     where: {
       userId: input.userId,
       sessionId: input.sessionId,
-      status: SessionRegistrationStatus.CHECKED_IN,
+      status: {
+        in: [SessionRegistrationStatus.CHECKED_IN, SessionRegistrationStatus.IN_ROOM],
+      },
     },
     include: {
       session: { select: { id: true, status: true } },
@@ -355,6 +416,9 @@ export async function issueJoinToken(input: { userId: string; sessionId: string;
   if (!registration) return { type: "not-checked-in" as const };
   if (registration.session.status === GameSessionStatus.CANCELLED) {
     return { type: "session-cancelled" as const };
+  }
+  if (registration.session.status !== GameSessionStatus.LIVE) {
+    return { type: "session-not-live" as const };
   }
 
   const token = createJoinTokenValue();
@@ -408,7 +472,9 @@ export async function consumeJoinToken(input: { token: string; now?: Date }) {
         await tx.sessionRegistration.updateMany({
           where: {
             id: record.registrationId,
-            status: SessionRegistrationStatus.CHECKED_IN,
+            status: {
+              in: [SessionRegistrationStatus.CHECKED_IN, SessionRegistrationStatus.IN_ROOM],
+            },
           },
           data: {
             status: SessionRegistrationStatus.IN_ROOM,

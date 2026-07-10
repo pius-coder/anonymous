@@ -1,7 +1,7 @@
 ---
 description: "Library documentation research agent. Fetches current API docs, code examples, and configuration guides for external libraries and frameworks. Used by APEX when unfamiliar with an API."
 mode: subagent
-model: anthropic/claude-sonnet-4-6
+model: opencode/deepseek-v4-flash-free
 permission:
   edit: deny
   bash: allow

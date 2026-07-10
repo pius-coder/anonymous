@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "@session-jeu/db";
+import { minidenticon } from "minidenticons";
 import { hashPassword, verifyPassword } from "../auth/password.js";
 import {
   PASSWORD_RESET_TTL_MS,
@@ -34,6 +35,14 @@ const validationHook = (
     return errorResponse(c, 400, "VALIDATION_ERROR", "Validation failed");
   }
 };
+
+function generateIdenticonDataUri(seed: string): string {
+  const hash = seed.split("").reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+  const saturation = 55 + (Math.abs(hash) % 40);
+  const lightness = 35 + (Math.abs(hash) % 30);
+  const svg = minidenticon(seed, saturation, lightness);
+  return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+}
 
 function publicUser(user: { id: string; email: string; name: string | null; role: string }) {
   return {
@@ -88,6 +97,7 @@ auth.post("/register", zValidator("json", registerSchema, validationHook), async
         profile: {
           create: {
             username: input.username,
+            avatarUrl: generateIdenticonDataUri(input.username),
           },
         },
         roleAssignments: {

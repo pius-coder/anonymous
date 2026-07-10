@@ -10,6 +10,7 @@ import {
   prisma,
 } from "@session-jeu/db";
 import type { Context } from "hono";
+import { PAID_ACCESS_REGISTRATION_STATUSES } from "../sessions/statusGroups.js";
 import {
   getClientIp,
   getRequestId,
@@ -34,6 +35,13 @@ export const adminAuditLogsQuerySchema = z.object({
 
 export const adminUserParamsSchema = z.object({
   id: z.string().min(1),
+});
+
+export const adminUsersQuerySchema = z.object({
+  q: z.string().trim().min(1).max(120).optional(),
+  role: z.enum(["PLAYER", "SUPPORT", "FINANCE", "ADMIN", "SUPER_ADMIN"]).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 export const adminActionParamsSchema = z.object({
@@ -126,6 +134,10 @@ export async function getAdminDashboard(role: UserRoleValue) {
     openIncidents,
     openSupportCases,
     pendingActions,
+    totalUsers,
+    activeUsers,
+    playerUsers,
+    operatorUsers,
     pendingPayments,
     successfulPayments,
     failedPayments,
@@ -137,13 +149,19 @@ export async function getAdminDashboard(role: UserRoleValue) {
       where: { status: { in: [GameSessionStatus.ACTIVE, GameSessionStatus.WAITING_START, GameSessionStatus.LIVE] } },
     }),
     prisma.gameSession.count({ where: { status: GameSessionStatus.COMPLETED } }),
-    prisma.sessionRegistration.count({ where: { status: SessionRegistrationStatus.PAID } }),
+    prisma.sessionRegistration.count({
+      where: { status: { in: [...PAID_ACCESS_REGISTRATION_STATUSES] } },
+    }),
     prisma.sessionRegistration.count({ where: { status: SessionRegistrationStatus.NO_SHOW } }),
     prisma.incidentLog.count({ where: { resolvedAt: null } }),
     prisma.supportCase.count({
       where: { status: { in: [SupportCaseStatus.OPEN, SupportCaseStatus.IN_PROGRESS] } },
     }),
     prisma.adminActionApproval.count({ where: { status: AdminActionApprovalStatus.REQUESTED } }),
+    prisma.user.count(),
+    prisma.user.count({ where: { isActive: true } }),
+    prisma.user.count({ where: { role: "PLAYER" } }),
+    prisma.user.count({ where: { role: { in: ["ADMIN", "SUPER_ADMIN", "SUPPORT", "FINANCE"] } } }),
     prisma.paymentTransaction.count({ where: { status: PaymentStatus.PENDING } }),
     prisma.paymentTransaction.count({ where: { status: PaymentStatus.SUCCESSFUL } }),
     prisma.paymentTransaction.count({ where: { status: PaymentStatus.FAILED } }),
@@ -173,6 +191,12 @@ export async function getAdminDashboard(role: UserRoleValue) {
       openCases: openSupportCases,
       pendingActions,
     },
+    users: {
+      total: totalUsers,
+      active: activeUsers,
+      players: playerUsers,
+      operators: operatorUsers,
+    },
     finance: matrix.canViewFinance
       ? {
           payments: {
@@ -186,6 +210,88 @@ export async function getAdminDashboard(role: UserRoleValue) {
           creditsDistributedXaf: prizeLedger._sum.amountXaf ?? 0,
         }
       : null,
+  };
+}
+
+export async function listSupportUsers(input: {
+  q?: string;
+  role?: UserRoleValue;
+  page: number;
+  limit: number;
+}) {
+  const where: Prisma.UserWhereInput = {
+    ...(input.role ? { role: input.role } : {}),
+    ...(input.q
+      ? {
+          OR: [
+            { id: input.q },
+            { email: { contains: input.q, mode: "insensitive" } },
+            { phone: { contains: input.q } },
+            { name: { contains: input.q, mode: "insensitive" } },
+            { profile: { username: { contains: input.q, mode: "insensitive" } } },
+          ],
+        }
+      : {}),
+  };
+  const skip = (input.page - 1) * input.limit;
+  const [total, users] = await Promise.all([
+    prisma.user.count({ where }),
+    prisma.user.findMany({
+      where,
+      skip,
+      take: input.limit,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        email: true,
+        phone: true,
+        name: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        profile: {
+          select: {
+            username: true,
+            avatarUrl: true,
+          },
+        },
+        wallet: {
+          select: {
+            balanceXaf: true,
+            currency: true,
+            isFrozen: true,
+          },
+        },
+        _count: {
+          select: {
+            registrations: true,
+            supportCasesForUser: true,
+          },
+        },
+      },
+    }),
+  ]);
+
+  return {
+    data: users.map((user) => ({
+      id: user.id,
+      email: user.email,
+      phone: user.phone,
+      name: user.name,
+      role: user.role,
+      isActive: user.isActive,
+      createdAt: user.createdAt.toISOString(),
+      profile: user.profile,
+      wallet: user.wallet,
+      registrationsCount: user._count.registrations,
+      supportCasesCount: user._count.supportCasesForUser,
+    })),
+    meta: {
+      total,
+      page: input.page,
+      limit: input.limit,
+      totalPages: Math.ceil(total / input.limit),
+    },
   };
 }
 

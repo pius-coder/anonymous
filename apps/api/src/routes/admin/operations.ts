@@ -9,6 +9,7 @@ import {
   adminActionParamsSchema,
   adminAuditLogsQuerySchema,
   adminUserParamsSchema,
+  adminUsersQuerySchema,
   approveAdminAction,
   approveAdminActionSchema,
   auditContext,
@@ -21,6 +22,7 @@ import {
   getAdminDashboard,
   getSupportUserView,
   listAuditLogs,
+  listSupportUsers,
 } from "../../admin/operations.js";
 import { errorResponse, successResponse } from "../../lib/responses.js";
 
@@ -62,6 +64,24 @@ adminOperations.get(
       limit: query.limit,
     });
     return successResponse(c, auditLogs);
+  },
+);
+
+adminOperations.get(
+  "/support/users",
+  requireAuth,
+  requireRole("ADMIN", "SUPER_ADMIN", "SUPPORT", "FINANCE"),
+  zValidator("query", adminUsersQuerySchema, validationHook),
+  async (c) => {
+    const query = c.req.valid("query");
+    const users = await listSupportUsers({
+      q: query.q,
+      role: query.role,
+      page: query.page,
+      limit: query.limit,
+    });
+
+    return successResponse(c, users);
   },
 );
 

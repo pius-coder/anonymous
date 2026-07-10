@@ -13,6 +13,7 @@ import {
 } from "@session-jeu/db";
 import { withSerializableRetry } from "../registrations/sessionRegistration.js";
 import { queueNotificationSafely } from "../notifications/notifications.js";
+import { PAID_ACCESS_REGISTRATION_STATUSES } from "../sessions/statusGroups.js";
 
 export const DISPUTE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -222,7 +223,7 @@ export async function finalizeSessionResults(input: {
           where: { id: input.sessionId },
           include: {
             registrations: {
-              where: { status: "PAID" },
+              where: { status: { in: [...PAID_ACCESS_REGISTRATION_STATUSES] } },
               select: { userId: true },
             },
             rounds: {
@@ -456,7 +457,7 @@ export async function finalizeSessionResults(input: {
 }
 
 export function creditsDistributionJobId(sessionId: string) {
-  return `credits.distribute:${sessionId}`;
+  return `credits.distribute.${sessionId}`;
 }
 
 export function prizeDistributionIdempotencyKey(input: { sessionId: string; userId: string }) {
