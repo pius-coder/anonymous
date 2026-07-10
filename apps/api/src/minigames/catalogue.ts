@@ -5,6 +5,7 @@ import {
   Prisma,
   prisma,
 } from "@session-jeu/db";
+import { admissionLockForFamily } from "@session-jeu/game-engine";
 
 export type MiniGameDefinitionSeed = {
   key: string;
@@ -700,7 +701,14 @@ export const MVP_MINIGAME_DEFINITIONS: MiniGameDefinitionSeed[] = miniGameBluepr
           requiresNonce: true,
         },
       ],
-      antiCheatPolicy: { ...commonAntiCheat, ...(blueprint.antiCheatExtra ?? {}) },
+      antiCheatPolicy: {
+        ...commonAntiCheat,
+        admissionPolicy: {
+          lockAt: admissionLockForFamily(blueprint.family),
+          lateAfterLock: "ELIMINATE_NO_SHOW",
+        },
+        ...(blueprint.antiCheatExtra ?? {}),
+      },
       clientStateSchema: blueprint.clientStateSchema,
       uiCopy: { objective: blueprint.objective },
     };

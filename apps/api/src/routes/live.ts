@@ -56,6 +56,14 @@ live.post(
     if (result.type === "session-not-live") {
       return errorResponse(c, 409, "SESSION_NOT_LIVE", "Session is not live");
     }
+    if (result.type === "live-entry-locked") {
+      return errorResponse(c, 409, "LIVE_ENTRY_LOCKED", "Current round is already locked", {
+        phase: result.phase,
+        roundId: result.roundId,
+        admissionLock: result.admissionLock,
+        reason: result.reason,
+      });
+    }
 
     return successResponse(c, {
       reservation: {

@@ -86,6 +86,10 @@ describe("Prisma Client", () => {
     expect(prisma.roundDeadline).toBeDefined();
   });
 
+  it("should expose sessionChatMessage model", () => {
+    expect(prisma.sessionChatMessage).toBeDefined();
+  });
+
   it("should expose playerAction model", () => {
     expect(prisma.playerAction).toBeDefined();
   });

@@ -28,4 +28,10 @@ describe("live mini-game surfaces", () => {
       expect(readFileSync(file, "utf-8")).toContain("readOnly");
     }
   });
+
+  it("uses the fullscreen 2D live room shell for lobby and live", () => {
+    expect(readFileSync("src/components/live/LiveRoomShell.tsx", "utf-8")).toContain("fixed inset-0");
+    expect(readFileSync("src/app/(client)/session/[code]/live/page.tsx", "utf-8")).toContain("LiveRoomShell");
+    expect(readFileSync("src/components/lobby/LobbyPage.tsx", "utf-8")).toContain("LiveRoomShell");
+  });
 });

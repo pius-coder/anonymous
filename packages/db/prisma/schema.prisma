@@ -91,6 +91,36 @@ enum RoundOutcomeStatus {
   ELIMINATED
 }
 
+enum RoundParticipantStatus {
+  ACTIVE
+  SPECTATOR
+  NO_SHOW
+  ELIMINATED
+}
+
+enum RoundAdmissionLock {
+  ROUND_START
+  CHALLENGE_REVEAL
+  HAZARD_START
+  MATCHMAKING_LOCK
+  PAIRING_LOCK
+  TEAM_LOCK
+  ROLE_ASSIGNMENT_LOCK
+}
+
+enum SessionChatMessageType {
+  CHAT
+  QUICK
+  PING
+  SYSTEM
+}
+
+enum SessionChatModerationStatus {
+  VISIBLE
+  HIDDEN
+  FLAGGED
+}
+
 enum GameResultStatus {
   WINNER
   ELIMINATED
@@ -258,6 +288,8 @@ model User {
   liveReservations       LiveReservation[]
   playerConnections      PlayerConnection[]
   playerActions          PlayerAction[]
+  roundParticipants      RoundParticipant[]
+  sessionChatMessages    SessionChatMessage[]
   miniGameDefinitions    MiniGameDefinition[]
   disputeRequests        DisputeWindow[]         @relation("DisputeRequestedBy")
   statsSnapshot          PlayerStatsSnapshot?
@@ -405,6 +437,8 @@ model GameSession {
   liveReservations   LiveReservation[]
   playerConnections  PlayerConnection[]
   playerActions      PlayerAction[]
+  roundParticipants  RoundParticipant[]
+  chatMessages       SessionChatMessage[]
   roundDeadlines     RoundDeadline[]
   resolutionLogs     ResolutionLog[]
   roundOutcomes      RoundOutcome[]
@@ -652,6 +686,7 @@ model RoundInstance {
   liveState          LiveSessionState[]
   deadline           RoundDeadline?
   playerActions      PlayerAction[]
+  participants       RoundParticipant[]
   resolutionLog      ResolutionLog?
   outcomes           RoundOutcome[]
   gameEvents         GameEvent[]
@@ -693,6 +728,36 @@ model MiniGameDefinition {
   @@index([createdBy])
 }
 
+model RoundParticipant {
+  id             String                 @id @default(cuid())
+  sessionId      String
+  roundId        String
+  userId         String
+  status         RoundParticipantStatus @default(ACTIVE)
+  admissionLock  RoundAdmissionLock
+  admittedAt     DateTime?
+  lockedOutAt    DateTime?
+  lockReason     String?
+  teamId         String?
+  pairId         String?
+  role           String?
+  metadata       Json?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  session GameSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  round   RoundInstance @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roundId, userId])
+  @@index([sessionId])
+  @@index([userId])
+  @@index([status])
+  @@index([admissionLock])
+  @@index([teamId])
+  @@index([pairId])
+}
+
 model RoundDeadline {
   id         String    @id @default(cuid())
   sessionId  String
@@ -708,6 +773,26 @@ model RoundDeadline {
   @@index([sessionId])
   @@index([deadlineAt])
   @@index([closedAt])
+}
+
+model SessionChatMessage {
+  id               String                      @id @default(cuid())
+  sessionId        String
+  userId           String
+  type             SessionChatMessageType      @default(CHAT)
+  body             String
+  x                Float?
+  y                Float?
+  moderationStatus SessionChatModerationStatus @default(VISIBLE)
+  createdAt        DateTime                    @default(now())
+
+  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@index([userId])
+  @@index([type])
+  @@index([moderationStatus])
 }
 
 model PlayerAction {

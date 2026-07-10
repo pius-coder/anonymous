@@ -169,6 +169,15 @@ const commonMiniGameAntiCheat = {
   sensitiveStateKeysBlocked: ["answer", "answers", "solution", "seed", "targetValue"],
 };
 
+const admissionLockByFamily = {
+  SOLO: "CHALLENGE_REVEAL",
+  DUEL: "MATCHMAKING_LOCK",
+  ALLIANCE: "PAIRING_LOCK",
+  TEAM: "TEAM_LOCK",
+  SURVIVAL: "HAZARD_START",
+  HIDDEN_ROLE: "ROLE_ASSIGNMENT_LOCK",
+} as const;
+
 const configKinds = {
   solo: {
     schema: {
@@ -309,6 +318,10 @@ const minigameDefinitions = miniGameBlueprints.filter(([key]) => RECETTE_MINIGAM
       allowedActions: [{ type: actionType, maxPerWindow, windowMs: 1000, requiresNonce: true }],
       antiCheatPolicy: {
         ...commonMiniGameAntiCheat,
+        admissionPolicy: {
+          lockAt: admissionLockByFamily[family],
+          lateAfterLock: "ELIMINATE_NO_SHOW",
+        },
         ...(positionValidatedActions.has(actionType) ? { positionValidatedServerSide: true } : {}),
         ...(latencyActions.has(actionType) ? { latencyCorrectionRequired: true } : {}),
       },
@@ -534,7 +547,60 @@ async function main() {
     },
   });
 
-  for (const seededPlayer of [player, extraPlayer1, extraPlayer2]) {
+  const recettePlayers = [player, extraPlayer1, extraPlayer2];
+  for (let i = 4; i <= 12; i++) {
+    const seeded = await prisma.user.upsert({
+      where: { email: `recette${i}@session-jeu.com` },
+      update: {
+        passwordHash: playerPasswordHash,
+        name: `Recette ${i}`,
+        role: "PLAYER",
+        isActive: true,
+        profile: {
+          upsert: {
+            update: {
+              username: `recette${i}`,
+              avatarUrl: `https://api.dicebear.com/9.x/pixel-art/svg?seed=recette-${i}`,
+              bio: `Joueur recette ${i}`,
+            },
+            create: {
+              username: `recette${i}`,
+              avatarUrl: `https://api.dicebear.com/9.x/pixel-art/svg?seed=recette-${i}`,
+              bio: `Joueur recette ${i}`,
+            },
+          },
+        },
+      },
+      create: {
+        email: `recette${i}@session-jeu.com`,
+        passwordHash: playerPasswordHash,
+        name: `Recette ${i}`,
+        role: "PLAYER",
+        isActive: true,
+        profile: {
+          create: {
+            username: `recette${i}`,
+            avatarUrl: `https://api.dicebear.com/9.x/pixel-art/svg?seed=recette-${i}`,
+            bio: `Joueur recette ${i}`,
+          },
+        },
+      },
+    });
+    recettePlayers.push(seeded);
+  }
+
+  for (const [index, seededPlayer] of recettePlayers.entries()) {
+    await prisma.playerProfile.upsert({
+      where: { userId: seededPlayer.id },
+      update: {
+        avatarUrl: `https://api.dicebear.com/9.x/pixel-art/svg?seed=recette-${index + 1}`,
+      },
+      create: {
+        userId: seededPlayer.id,
+        username: `recetteprofile${index + 1}`,
+        avatarUrl: `https://api.dicebear.com/9.x/pixel-art/svg?seed=recette-${index + 1}`,
+      },
+    });
     await prisma.wallet.upsert({
       where: { userId: seededPlayer.id },
       update: { balanceXaf: 10000, isFrozen: false },
@@ -643,13 +709,21 @@ async function main() {
     });
   }
 
-  const liveSession = await prisma.gameSession.create({
-    data: {
+  const liveSession = await prisma.gameSession.upsert({
+    where: { code: "RECETTE-LIVE-6" },
+    update: {
+      status: "ACTIVE",
+      minPlayers: 2,
+      maxPlayers: 12,
+      startTime: new Date("2026-07-30T20:00:00Z"),
+      registrationClosesAt: new Date("2026-07-30T19:45:00Z"),
+    },
+    create: {
       code: "RECETTE-LIVE-6",
       name: "Recette live - 6 familles",
       description:
         "Session de recette complete avec Solo, Duel, Alliance, Equipe, Survie et Role cache.",
-      status: "LIVE",
+      status: "ACTIVE",
       minPlayers: 2,
       maxPlayers: 12,
       entryFee: 500,
@@ -659,17 +733,25 @@ async function main() {
       winnerSplitBps: [6000, 3000, 1000],
       providerFeeBps: 300,
       configVersion: 1,
-      startTime: new Date("2026-07-09T20:00:00Z"),
-      registrationClosesAt: new Date("2026-07-09T19:45:00Z"),
+      startTime: new Date("2026-07-30T20:00:00Z"),
+      registrationClosesAt: new Date("2026-07-30T19:45:00Z"),
       visibility: "PUBLIC",
       publishedAt: new Date("2026-07-09T12:00:00Z"),
       createdBy: admin.id,
     },
   });
 
-  for (const seededPlayer of [player, extraPlayer1, extraPlayer2]) {
-    const registration = await prisma.sessionRegistration.create({
-      data: {
+  for (const seededPlayer of recettePlayers) {
+    const registration = await prisma.sessionRegistration.upsert({
+      where: { id: `seed-reg-${seededPlayer.id}-${liveSession.id}` },
+      update: {
+        status: "CHECKED_IN",
+        paidAt: new Date("2026-07-09T12:10:00Z"),
+        checkedInAt: new Date("2026-07-09T19:50:00Z"),
+        inRoomAt: null,
+      },
+      create: {
+        id: `seed-reg-${seededPlayer.id}-${liveSession.id}`,
         userId: seededPlayer.id,
         sessionId: liveSession.id,
         status: "CHECKED_IN",
@@ -687,10 +769,19 @@ async function main() {
     });
   }
 
-  await prisma.liveSessionState.create({
-    data: {
+  await prisma.liveSessionState.upsert({
+    where: { sessionId: liveSession.id },
+    update: {
+      phase: "LOBBY",
+      previousPhase: null,
+      currentRoundId: null,
+      phaseStartedAt: new Date("2026-07-09T20:00:00Z"),
+      pausedAt: null,
+      pauseReason: null,
+    },
+    create: {
       sessionId: liveSession.id,
-      phase: "BRIEFING",
+      phase: "LOBBY",
       phaseStartedAt: new Date("2026-07-09T20:00:00Z"),
     },
   });
@@ -700,8 +791,28 @@ async function main() {
       where: { key, enabled: true },
       orderBy: { version: "desc" },
     });
-    await prisma.roundInstance.create({
-      data: {
+    await prisma.roundInstance.upsert({
+      where: {
+        sessionId_roundNum: {
+          sessionId: liveSession.id,
+          roundNum: index + 1,
+        },
+      },
+      update: {
+        miniGameDefinitionId: definition.id,
+        status: "PENDING",
+        startedAt: null,
+        closedAt: null,
+        resolvedAt: null,
+        configJson: {
+          seed: `seed-${liveSession.code}-${key}`,
+          miniGameKey: key,
+          ...(definition.defaultConfig && typeof definition.defaultConfig === "object"
+            ? (definition.defaultConfig as Record<string, unknown>)
+            : {}),
+        },
+      },
+      create: {
         sessionId: liveSession.id,
         miniGameDefinitionId: definition.id,
         roundNum: index + 1,

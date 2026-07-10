@@ -84,6 +84,9 @@ importers:
       '@session-jeu/db':
         specifier: workspace:^
         version: link:../../packages/db
+      '@session-jeu/game-engine':
+        specifier: workspace:^
+        version: link:../../packages/game-engine
       bullmq:
         specifier: ^5.79.3
         version: 5.79.3

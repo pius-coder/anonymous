@@ -29,6 +29,7 @@ vi.mock("@session-jeu/db", () => ({
     CANCELLED: "CANCELLED",
   },
   LivePhase: {
+    LOBBY: "LOBBY",
     BRIEFING: "BRIEFING",
     PAUSED: "PAUSED",
   },
@@ -192,6 +193,37 @@ describe("live routes", () => {
     });
 
     expect(res.status).toBe(409);
+  });
+
+  it("returns explicit conflict when the current round is locked for late entry", async () => {
+    liveMocks.createLiveReservation.mockResolvedValue({
+      type: "live-entry-locked",
+      phase: "ROUND_ACTIVE",
+      roundId: "round-1",
+      admissionLock: "CHALLENGE_REVEAL",
+      reason: "late-after-challenge-reveal",
+    });
+
+    const res = await app.request("/v1/live/sessions/session-1/reservation", {
+      method: "POST",
+      headers: {
+        cookie: `${SESSION_COOKIE_NAME}=session-token`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ joinToken: "join-token-value" }),
+    });
+
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as {
+      error: { code: string; details: { admissionLock: string; reason: string } };
+    };
+    expect(body.error.code).toBe("LIVE_ENTRY_LOCKED");
+    expect(body.error.details).toEqual(
+      expect.objectContaining({
+        admissionLock: "CHALLENGE_REVEAL",
+        reason: "late-after-challenge-reveal",
+      }),
+    );
   });
 
   it("returns sanitized live state for checked-in player", async () => {

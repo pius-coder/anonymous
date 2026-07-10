@@ -42,6 +42,7 @@ lobby.get(
     return successResponse(c, {
       session: serializeLobbySession(result.session),
       registration: serializeLobbyRegistration(result.registration),
+      players: result.players,
       presence: result.presence,
     });
   },

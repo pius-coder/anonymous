@@ -191,6 +191,29 @@ export async function getLobbyForPlayer(input: { userId: string; sessionId: stri
       },
     }),
   ]);
+  const players = await prisma.sessionRegistration.findMany({
+    where: {
+      sessionId: input.sessionId,
+      status: {
+        in: [
+          SessionRegistrationStatus.PAID,
+          SessionRegistrationStatus.CHECKED_IN,
+          SessionRegistrationStatus.IN_ROOM,
+        ],
+      },
+    },
+    select: {
+      userId: true,
+      status: true,
+      user: {
+        select: {
+          name: true,
+          profile: { select: { username: true, avatarUrl: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
   await prisma.auditLog.create({
     data: {
       userId: input.userId,
@@ -205,6 +228,14 @@ export async function getLobbyForPlayer(input: { userId: string; sessionId: stri
     type: "ok" as const,
     session: registration.session,
     registration,
+    players: players.map((player, index) => ({
+      userId: player.userId,
+      displayName: player.user.profile?.username ?? player.user.name ?? "Player",
+      avatarUrl: player.user.profile?.avatarUrl ?? "",
+      registrationStatus: player.status,
+      x: 210 + (index % 4) * 180,
+      y: 170 + Math.floor(index / 4) * 135,
+    })),
     presence: { ...presence, paid, checkedIn, inRoom },
   };
 }

@@ -11,8 +11,13 @@ const dbMocks = vi.hoisted(() => ({
 }));
 
 const liveMocks = vi.hoisted(() => ({
+  authorizeLiveRoundStart: vi.fn(),
   pauseLiveSession: vi.fn(),
   resumeLiveSession: vi.fn(),
+}));
+
+const liveCommandMocks = vi.hoisted(() => ({
+  publishLiveCommand: vi.fn(),
 }));
 
 vi.mock("@session-jeu/db", () => ({
@@ -42,6 +47,8 @@ vi.mock("../../live/live.js", async () => {
     ...liveMocks,
   };
 });
+
+vi.mock("../../live/liveCommands.js", () => liveCommandMocks);
 
 import { SESSION_COOKIE_NAME, hashOpaqueToken } from "../../auth/session.js";
 import type { AuthVariables } from "../../auth/session.js";
@@ -99,6 +106,40 @@ describe("admin live routes", () => {
       type: "ok",
       liveState: { ...liveState(), phase: "ROUND_ACTIVE", previousPhase: null },
     });
+    liveMocks.authorizeLiveRoundStart.mockResolvedValue({
+      type: "ok",
+      liveState: { ...liveState(), phase: "BRIEFING", previousPhase: null },
+      command: {
+        type: "start-round",
+        sessionId: "session-1",
+        roundNum: 1,
+        requestedBy: "admin-1",
+        requestedAt: "2026-07-08T00:00:00.000Z",
+      },
+    });
+    liveCommandMocks.publishLiveCommand.mockResolvedValue(undefined);
+  });
+
+  it("publishes a live command when admin starts a round", async () => {
+    const res = await app.request("/v1/admin/live/session-1/rounds/start", {
+      method: "POST",
+      headers: {
+        cookie: `${SESSION_COOKIE_NAME}=session-token`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ roundNum: 1 }),
+    });
+
+    expect(res.status).toBe(200);
+    expect(liveMocks.authorizeLiveRoundStart).toHaveBeenCalledWith({
+      adminUserId: "admin-1",
+      sessionId: "session-1",
+      roundNum: 1,
+      durationMs: undefined,
+    });
+    expect(liveCommandMocks.publishLiveCommand).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "start-round", sessionId: "session-1", roundNum: 1 }),
+    );
   });
 
   it("pauses a live session and audits reason through service", async () => {

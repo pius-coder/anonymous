@@ -94,7 +94,7 @@ export function LiveControlActions({ sessionId }: { sessionId: string }) {
       <CardHeader>
         <CardTitle className="font-head text-lg uppercase">Controle live</CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-4 md:grid-cols-3">
+      <CardContent className="grid gap-4 md:grid-cols-4">
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -103,7 +103,18 @@ export function LiveControlActions({ sessionId }: { sessionId: string }) {
           className="space-y-2"
         >
           <Button type="submit" variant="outline" disabled={busy} className="w-full">
-            Demarrer
+            Forcer live
+          </Button>
+        </form>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void run(`/admin/live/${sessionId}/rounds/start`, { roundNum: 1 }, "Round demande");
+          }}
+          className="space-y-2"
+        >
+          <Button type="submit" variant="outline" disabled={busy} className="w-full">
+            Lancer round
           </Button>
         </form>
         <form onSubmit={pause} className="space-y-2">
@@ -132,14 +143,14 @@ export function LiveControlActions({ sessionId }: { sessionId: string }) {
               reason: String(form.get("reason") || ""),
             });
           }}
-          className="space-y-2 md:col-span-3"
+          className="space-y-2 md:col-span-4"
         >
           <ReasonBox />
           <Button type="submit" disabled={busy}>
             Finaliser
           </Button>
         </form>
-        {message && <p className="md:col-span-3 text-sm text-muted-foreground">{message}</p>}
+        {message && <p className="md:col-span-4 text-sm text-muted-foreground">{message}</p>}
       </CardContent>
     </Card>
   );

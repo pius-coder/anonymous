@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useReducer } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { GameShell } from "@/components/lobby/GameShell";
 import { MemorySequenceGame } from "@/components/games/MemorySequenceGame";
 import { ReactionDuelGame } from "@/components/games/ReactionDuelGame";
 import { SafeZonesGame } from "@/components/games/SafeZonesGame";
@@ -10,6 +9,7 @@ import { TrustBridgeGame } from "@/components/games/TrustBridgeGame";
 import { TeamRelayGame } from "@/components/games/TeamRelayGame";
 import { DangerSweepGame } from "@/components/games/DangerSweepGame";
 import { SilentVoteGame } from "@/components/games/SilentVoteGame";
+import { LiveRoomShell } from "@/components/live/LiveRoomShell";
 import { useGameRoom, type LivePlayer } from "@/hooks/useGameRoom";
 import { useSession } from "@/lib/useSession";
 import { juice } from "@/lib/juice";
@@ -27,7 +27,18 @@ export default function LivePage() {
   const params = useParams<{ code: string }>();
   const router = useRouter();
   const { user } = useSession();
-  const { status, snap, lastMessage, currentGame: roundGame, sendAction, errorCode } = useGameRoom(params.code);
+  const {
+    status,
+    snap,
+    lastMessage,
+    currentGame: roundGame,
+    chatMessages,
+    sendAction,
+    sendMove,
+    sendChat,
+    sendPing,
+    errorCode,
+  } = useGameRoom(params.code);
 
   const [eliminated, eliminatedDispatch] = useReducer(eliminateReducer, false);
 
@@ -166,7 +177,7 @@ export default function LivePage() {
 
   if (status === "error") {
     return (
-      <main className="grid min-h-[70vh] place-items-center px-4 text-center">
+      <main className="fixed inset-0 z-50 grid h-dvh place-items-center bg-background px-4 text-center">
         <div>
           <p className="font-head text-2xl font-black uppercase text-[--arena-danger]">Connexion impossible</p>
           <p className="mt-2 text-muted-foreground">
@@ -181,14 +192,17 @@ export default function LivePage() {
   }
 
   return (
-    <GameShell
-      snap={snap}
+    <LiveRoomShell
       status={status}
-      reconnecting={status === "reconnecting"}
+      snap={snap}
+      currentGameName={roundGame?.name}
       eliminated={eliminated}
-      onReconnect={() => eliminatedDispatch("reconnect")}
+      chatMessages={chatMessages}
+      onMove={sendMove}
+      onChat={sendChat}
+      onPing={sendPing}
     >
       {surface}
-    </GameShell>
+    </LiveRoomShell>
   );
 }

@@ -99,7 +99,32 @@ export default async function AdminSessionLivePage(props: {
               <TableBody>
                 {session.registrations.map((registration) => (
                   <TableRow key={registration.id}>
-                    <TableCell>{registration.user.name ?? registration.user.email}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className="grid size-9 overflow-hidden border-2 border-border bg-muted">
+                          {registration.user.profile?.avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={registration.user.profile.avatarUrl}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <span className="place-self-center font-head text-xs">
+                              {(registration.user.profile?.username ?? registration.user.name ?? "P")
+                                .slice(0, 2)
+                                .toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <p className="font-medium">
+                            {registration.user.profile?.username ?? registration.user.name ?? registration.user.email}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{registration.user.email}</p>
+                        </div>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline">{registration.status}</Badge>
                     </TableCell>

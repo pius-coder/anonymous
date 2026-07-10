@@ -50,6 +50,7 @@ const FR: Record<string, string> = {
   JOIN_TOKEN_INVALID: "Ton jeton de connexion est invalide.",
   JOIN_TOKEN_EXPIRED: "Ton jeton de connexion a expiré.",
   JOIN_TOKEN_USED: "Ce jeton de connexion a déjà été utilisé.",
+  LIVE_ENTRY_LOCKED: "Le round en cours est déjà verrouillé pour ce mini-jeu.",
   RECONNECT_WINDOW_EXPIRED: "La fenêtre de reconnexion est dépassée.",
 
   // Rounds / résolution

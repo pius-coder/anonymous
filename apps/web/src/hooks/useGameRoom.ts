@@ -8,10 +8,22 @@ import { randomNonce } from "@/lib/nonce";
 export type LivePlayer = {
   userId: string;
   displayName: string;
+  avatarUrl: string;
   connectionStatus: string;
   role: string;
   submittedAction: boolean;
   isEliminated: boolean;
+  x: number;
+  y: number;
+  facing: string;
+  emote: string;
+  chatBubble: string;
+  chatBubbleUntil: number;
+  lastPing: string;
+  pingX: number;
+  pingY: number;
+  teamId: string;
+  pairId: string;
 };
 
 export type LiveSnapshot = {
@@ -33,6 +45,16 @@ export type RoundGameMessage = {
   publicState?: Record<string, unknown>;
 };
 
+export type LiveChatMessage = {
+  id: string;
+  userId: string;
+  displayName: string;
+  avatarUrl?: string;
+  body: string;
+  type: string;
+  createdAt: string;
+};
+
 export type Status = "connecting" | "connected" | "reconnecting" | "ended" | "error";
 
 export const GAME_ROOM_NAME = "game_session";
@@ -49,6 +71,7 @@ export function useGameRoom(sessionId: string) {
   const [snap, setSnap] = useState<LiveSnapshot | null>(null);
   const [lastMessage, setLastMessage] = useState<{ type: string; data: unknown } | null>(null);
   const [currentGame, setCurrentGame] = useState<RoundGameMessage | null>(null);
+  const [chatMessages, setChatMessages] = useState<LiveChatMessage[]>([]);
   const [errorCode, setErrorCode] = useState<string | null>(null);
 
   useEffect(() => {
@@ -66,6 +89,9 @@ export function useGameRoom(sessionId: string) {
       "action.accepted",
       "action.rejected",
       "session.completed",
+      "brief.started",
+      "chat.message",
+      "ping.spawned",
       "zones.round",
       "zones.locked",
     ];
@@ -139,6 +165,9 @@ export function useGameRoom(sessionId: string) {
         for (const t of messages) {
           room.onMessage(t, (data) => {
             if (t === "round.game") setCurrentGame(data as RoundGameMessage);
+            if (t === "chat.message") {
+              setChatMessages((messages) => [...messages.slice(-39), data as LiveChatMessage]);
+            }
             setLastMessage({ type: t, data });
           });
         }
@@ -166,6 +195,9 @@ export function useGameRoom(sessionId: string) {
             for (const t of messages) {
               r2.onMessage(t, (data) => {
                 if (t === "round.game") setCurrentGame(data as RoundGameMessage);
+                if (t === "chat.message") {
+                  setChatMessages((messages) => [...messages.slice(-39), data as LiveChatMessage]);
+                }
                 setLastMessage({ type: t, data });
               });
             }
@@ -197,5 +229,24 @@ export function useGameRoom(sessionId: string) {
     roomRef.current?.send("action", { type, nonce: randomNonce("act"), payload });
   };
 
-  return { status, snap, lastMessage, currentGame, send, sendAction, errorCode };
+  const sendMove = (point: { x: number; y: number }) => roomRef.current?.send("move", point);
+  const sendChat = (body: string, quick = false) => roomRef.current?.send("chat.send", { body, quick });
+  const sendPing = (type: string, point?: { x: number; y: number }) =>
+    roomRef.current?.send("ping.send", { type, ...(point ?? {}) });
+  const sendEmote = (emote: string) => roomRef.current?.send("emote.send", { emote });
+
+  return {
+    status,
+    snap,
+    lastMessage,
+    currentGame,
+    chatMessages,
+    send,
+    sendAction,
+    sendMove,
+    sendChat,
+    sendPing,
+    sendEmote,
+    errorCode,
+  };
 }

@@ -295,7 +295,15 @@ adminSessions.get(
       include: {
         registrations: {
           include: {
-            user: { select: { id: true, email: true, name: true, role: true } },
+            user: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+                profile: { select: { username: true, avatarUrl: true } },
+              },
+            },
             payment: { select: { id: true, status: true, amountXaf: true, providerTransId: true, createdAt: true } },
           },
           orderBy: { createdAt: "desc" },

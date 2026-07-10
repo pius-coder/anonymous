@@ -49,7 +49,13 @@ export type AdminSessionDetail = AdminSession & {
   registrations: Array<{
     id: string;
     status: string;
-    user: { id: string; email: string; name: string | null; role: string };
+    user: {
+      id: string;
+      email: string;
+      name: string | null;
+      role: string;
+      profile?: { username: string; avatarUrl: string | null } | null;
+    };
     payment: { id: string; status: string; amountXaf: number; providerTransId: string | null; createdAt: string } | null;
     checkedInAt: string | null;
     inRoomAt: string | null;
