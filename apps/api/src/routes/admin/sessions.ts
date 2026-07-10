@@ -52,9 +52,16 @@ const listQuerySchema = z.object({
     .optional(),
 });
 
-const validationHook = (result: { success: boolean }, c: Parameters<typeof errorResponse>[0]) => {
+const validationHook = (result: { success: boolean; error?: unknown }, c: Parameters<typeof errorResponse>[0]) => {
   if (!result.success) {
-    return errorResponse(c, 400, "VALIDATION_ERROR", "Validation failed");
+    const details: Record<string, string[]> = {};
+    const zodError = result.error as { issues?: { path: (string | number | symbol)[]; message: string }[] } | undefined;
+    for (const issue of zodError?.issues ?? []) {
+      const key = issue.path.map(String).join(".") || "_root";
+      if (!details[key]) details[key] = [];
+      details[key].push(issue.message);
+    }
+    return errorResponse(c, 400, "VALIDATION_ERROR", "Validation failed", details);
   }
 };
 
@@ -92,6 +99,8 @@ function serializeSession(session: {
   cancelledAt: Date | null;
   cancellationReason: string | null;
   createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
 }) {
   return {
     id: session.id,
@@ -113,11 +122,14 @@ function serializeSession(session: {
     cancelledAt: session.cancelledAt?.toISOString() ?? null,
     cancellationReason: session.cancellationReason,
     createdBy: session.createdBy,
+    createdAt: session.createdAt.toISOString(),
+    updatedAt: session.updatedAt.toISOString(),
   };
 }
 
 function buildLegacyPrizePool(input: {
   maxPlayers: number;
+  minPlayers: number;
   entryFeeXaf: number;
   providerFeeBps: number;
   prizePoolBps: number;
@@ -125,7 +137,7 @@ function buildLegacyPrizePool(input: {
 }) {
   return calculateSessionFinancials({
     paidRegistrationsCount: input.maxPlayers,
-    minPlayers: input.maxPlayers,
+    minPlayers: input.minPlayers,
     maxPlayers: input.maxPlayers,
     entryFeeXaf: input.entryFeeXaf,
     providerFeeBps: input.providerFeeBps,
@@ -162,7 +174,7 @@ function validatePublishable(session: {
   if (session.entryFeeXaf < 100) {
     return "INVALID_ENTRY_FEE";
   }
-  if (session.prizePoolBps < 0 || session.prizePoolBps > 10000 || session.providerFeeBps > 10000) {
+  if (session.prizePoolBps < 0 || session.prizePoolBps > 10000 || session.providerFeeBps < 0 || session.providerFeeBps > 10000) {
     return "INVALID_BPS";
   }
   if (winnerSplitBps.reduce((total, split) => total + split, 0) !== 10000) {
@@ -185,53 +197,62 @@ adminSessions.post(
     const user = c.get("user");
     const input = c.req.valid("json");
     const code =
-      input.code ?? generateSessionCode(input.name, randomBytes(3).toString("hex").toUpperCase());
+      input.code ?? generateSessionCode(input.name, randomBytes(4).toString("hex").toUpperCase());
     const prizePool = buildLegacyPrizePool({
       maxPlayers: input.maxPlayers,
+      minPlayers: input.minPlayers,
       entryFeeXaf: input.entryFeeXaf,
       providerFeeBps: input.providerFeeBps,
       prizePoolBps: input.prizePoolBps,
       winnerSplitBps: input.winnerSplitBps,
     });
 
-    const session = await prisma.$transaction(async (tx) => {
-      const created = await tx.gameSession.create({
-        data: {
-          code,
-          name: input.name,
-          description: input.description,
-          status: GameSessionStatus.DRAFT,
-          minPlayers: input.minPlayers,
-          maxPlayers: input.maxPlayers,
-          entryFee: input.entryFeeXaf,
-          entryFeeXaf: input.entryFeeXaf,
-          visibility: input.visibility,
-          prizePool,
-          prizePoolBps: input.prizePoolBps,
-          winnerSplitBps: input.winnerSplitBps,
-          providerFeeBps: input.providerFeeBps,
-          startTime: input.startsAt ? new Date(input.startsAt) : null,
-          registrationClosesAt: input.registrationClosesAt
-            ? new Date(input.registrationClosesAt)
-            : null,
-          createdBy: user.id,
-        },
-      });
+    let session;
+    try {
+      session = await prisma.$transaction(async (tx) => {
+        const created = await tx.gameSession.create({
+          data: {
+            code,
+            name: input.name,
+            description: input.description,
+            status: GameSessionStatus.DRAFT,
+            minPlayers: input.minPlayers,
+            maxPlayers: input.maxPlayers,
+            entryFee: input.entryFeeXaf,
+            entryFeeXaf: input.entryFeeXaf,
+            visibility: input.visibility,
+            prizePool,
+            prizePoolBps: input.prizePoolBps,
+            winnerSplitBps: input.winnerSplitBps,
+            providerFeeBps: input.providerFeeBps,
+            startTime: input.startsAt ? new Date(input.startsAt) : null,
+            registrationClosesAt: input.registrationClosesAt
+              ? new Date(input.registrationClosesAt)
+              : null,
+            createdBy: user.id,
+          },
+        });
 
-      await tx.auditLog.create({
-        data: {
-          userId: user.id,
-          action: "session.draft-created",
-          entity: "GameSession",
-          entityId: created.id,
-          reason: input.reason,
-          newData: serializeSession(created),
-          ...auditContext(c),
-        },
-      });
+        await tx.auditLog.create({
+          data: {
+            userId: user.id,
+            action: "session.draft-created",
+            entity: "GameSession",
+            entityId: created.id,
+            reason: input.reason,
+            newData: serializeSession(created),
+            ...auditContext(c),
+          },
+        });
 
-      return created;
-    });
+        return created;
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        return errorResponse(c, 409, "CODE_CONFLICT", `Le code '${code}' est déjà utilisé.`);
+      }
+      throw err;
+    }
 
     return successResponse(c, { session: serializeSession(session) }, 201);
   },
@@ -509,6 +530,7 @@ adminSessions.patch(
           visibility: merged.visibility,
           prizePool: buildLegacyPrizePool({
             maxPlayers: merged.maxPlayers,
+            minPlayers: merged.minPlayers,
             entryFeeXaf: merged.entryFeeXaf,
             providerFeeBps: merged.providerFeeBps,
             prizePoolBps: merged.prizePoolBps,

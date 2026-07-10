@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/api";
 import { Alert, AlertDescription, AlertTitle } from "@/components/retroui/alert";
@@ -27,18 +27,66 @@ function groupMiniGames(miniGames: MiniGameDefinition[]) {
   );
 }
 
+type FieldErrors = Record<string, string[]>;
+
+function parseFieldErrors(error: unknown): { message: string; fields: FieldErrors } {
+  const err = error as { code?: string; message?: string; details?: Record<string, string[]> };
+  if (err?.details && typeof err.details === "object") {
+    return { message: err.message ?? "Erreur de validation", fields: err.details as FieldErrors };
+  }
+  return { message: err?.message ?? "Erreur inconnue", fields: {} };
+}
+
 export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition[] }) {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const miniGameGroups = groupMiniGames(miniGames);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const miniGameGroups = useMemo(() => groupMiniGames(miniGames), [miniGames]);
+
+  const [formValues, setFormValues] = useState({
+    entryFeeXaf: 1000,
+    minPlayers: 2,
+    maxPlayers: 10,
+    prizePoolBps: 6000,
+    providerFeeBps: 300,
+    winnerSplitBps: "10000",
+  });
+
+  const financials = useMemo(() => {
+    const maxPlayers = formValues.maxPlayers;
+    const entryFeeXaf = formValues.entryFeeXaf;
+    const providerFeeBps = formValues.providerFeeBps;
+    const prizePoolBps = formValues.prizePoolBps;
+    const winnerSplitBps = formValues.winnerSplitBps.split(",").map(Number).filter((n) => n > 0);
+    const totalSplit = winnerSplitBps.reduce((a, b) => a + b, 0);
+
+    const grossPerPlayer = entryFeeXaf;
+    const grossTotal = maxPlayers * grossPerPlayer;
+    const estimatedFees = Math.floor((grossTotal * providerFeeBps) / 10000);
+    const netTotal = grossTotal - estimatedFees;
+    const prizePoolXaf = Math.floor((netTotal * prizePoolBps) / 10000);
+    const orgCommission = netTotal - prizePoolXaf;
+    const winnerShares = winnerSplitBps.map((split) =>
+      Math.floor((prizePoolXaf * split) / 10000),
+    );
+
+    return { grossTotal, estimatedFees, netTotal, prizePoolXaf, orgCommission, winnerShares, totalSplit };
+  }, [formValues]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setFieldErrors({});
     setSaving(true);
 
     const form = new FormData(event.currentTarget);
+    const winnerSplitRaw = String(form.get("winnerSplitBps") || "10000");
+    const winnerSplitBps = winnerSplitRaw
+      .split(",")
+      .map((s) => Number(s.trim()))
+      .filter((n) => n > 0);
+
     const payload = {
       code: String(form.get("code") || "").trim().toUpperCase() || undefined,
       name: String(form.get("name") || ""),
@@ -49,7 +97,7 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
       visibility: String(form.get("visibility") || "PRIVATE"),
       prizePoolBps: Number(form.get("prizePoolBps") || 6000),
       providerFeeBps: Number(form.get("providerFeeBps") || 300),
-      winnerSplitBps: [10000],
+      winnerSplitBps,
       startsAt: toIso(String(form.get("startsAt") || "")),
       registrationClosesAt: toIso(String(form.get("registrationClosesAt") || "")),
       reason: String(form.get("reason") || "") || "Creation console admin",
@@ -59,12 +107,20 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
     setSaving(false);
 
     if (!result.ok) {
-      setError(`${result.error.code}: ${result.error.message}`);
+      const parsed = parseFieldErrors(result.error);
+      setError(parsed.message);
+      setFieldErrors(parsed.fields);
       return;
     }
 
     router.push(`/admin/sessions/${result.data.session.id}`);
     router.refresh();
+  }
+
+  function renderFieldError(field: string) {
+    const msgs = fieldErrors[field];
+    if (!msgs?.length) return null;
+    return <p className="mt-1 text-xs font-bold text-[--arena-danger]">{msgs.join(", ")}</p>;
   }
 
   return (
@@ -85,66 +141,128 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
             <label className="grid gap-1 text-sm font-medium">
               Nom
               <Input name="name" required minLength={3} maxLength={120} />
+              {renderFieldError("name")}
             </label>
             <label className="grid gap-1 text-sm font-medium">
-              Code public
-              <Input name="code" minLength={3} maxLength={64} pattern="[A-Za-z0-9-]+" />
+              Code public <span className="text-[10px] text-muted-foreground">(optionnel)</span>
+              <Input name="code" minLength={3} maxLength={64} pattern="[A-Z0-9-]+" />
+              {renderFieldError("code")}
             </label>
           </div>
 
           <label className="grid gap-1 text-sm font-medium">
-            Description
+            Description <span className="text-[10px] text-muted-foreground">(optionnel)</span>
             <Textarea name="description" maxLength={1000} />
+            {renderFieldError("description")}
           </label>
 
           <div className="grid gap-4 md:grid-cols-3">
             <label className="grid gap-1 text-sm font-medium">
               Min joueurs
-              <Input name="minPlayers" type="number" min={2} defaultValue={2} required />
+              <Input
+                name="minPlayers"
+                type="number"
+                min={2}
+                defaultValue={2}
+                required
+                onChange={(e) => setFormValues((v) => ({ ...v, minPlayers: Number(e.target.value) }))}
+              />
+              {renderFieldError("minPlayers")}
             </label>
             <label className="grid gap-1 text-sm font-medium">
               Max joueurs
-              <Input name="maxPlayers" type="number" min={2} defaultValue={10} required />
+              <Input
+                name="maxPlayers"
+                type="number"
+                min={2}
+                defaultValue={10}
+                required
+                onChange={(e) => setFormValues((v) => ({ ...v, maxPlayers: Number(e.target.value) }))}
+              />
+              {renderFieldError("maxPlayers")}
             </label>
             <label className="grid gap-1 text-sm font-medium">
-              Acces
+              Accès
               <NativeSelect name="visibility" className="w-full">
                 <NativeSelectOption value="PRIVATE">PRIVATE</NativeSelectOption>
                 <NativeSelectOption value="UNLISTED">UNLISTED</NativeSelectOption>
                 <NativeSelectOption value="PUBLIC">PUBLIC</NativeSelectOption>
               </NativeSelect>
+              {renderFieldError("visibility")}
             </label>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3">
             <label className="grid gap-1 text-sm font-medium">
               Prix XAF
-              <Input name="entryFeeXaf" type="number" min={100} defaultValue={1000} required />
+              <Input
+                name="entryFeeXaf"
+                type="number"
+                min={100}
+                defaultValue={1000}
+                required
+                onChange={(e) => setFormValues((v) => ({ ...v, entryFeeXaf: Number(e.target.value) }))}
+              />
+              {renderFieldError("entryFeeXaf")}
             </label>
             <label className="grid gap-1 text-sm font-medium">
               Enveloppe bps
-              <Input name="prizePoolBps" type="number" min={0} max={10000} defaultValue={6000} required />
+              <Input
+                name="prizePoolBps"
+                type="number"
+                min={0}
+                max={10000}
+                defaultValue={6000}
+                required
+                onChange={(e) => setFormValues((v) => ({ ...v, prizePoolBps: Number(e.target.value) }))}
+              />
+              {renderFieldError("prizePoolBps")}
             </label>
             <label className="grid gap-1 text-sm font-medium">
               Frais provider bps
-              <Input name="providerFeeBps" type="number" min={0} max={10000} defaultValue={300} required />
+              <Input
+                name="providerFeeBps"
+                type="number"
+                min={0}
+                max={10000}
+                defaultValue={300}
+                required
+                onChange={(e) => setFormValues((v) => ({ ...v, providerFeeBps: Number(e.target.value) }))}
+              />
+              {renderFieldError("providerFeeBps")}
             </label>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <label className="grid gap-1 text-sm font-medium">
-              Debut
+              Debut (UTC) <span className="text-[10px] text-muted-foreground">(optionnel)</span>
               <Input name="startsAt" type="datetime-local" />
+              {renderFieldError("startsAt")}
             </label>
             <label className="grid gap-1 text-sm font-medium">
-              Fin inscriptions
+              Fin inscriptions (UTC) <span className="text-[10px] text-muted-foreground">(optionnel)</span>
               <Input name="registrationClosesAt" type="datetime-local" />
+              {renderFieldError("registrationClosesAt")}
             </label>
           </div>
 
           <label className="grid gap-1 text-sm font-medium">
-            Raison
+            Répartition prize (bps, virgule) <span className="text-[10px] text-muted-foreground">(ex: 10000 ou 5000,3000,2000)</span>
+            <Input
+              name="winnerSplitBps"
+              defaultValue="10000"
+              onChange={(e) => setFormValues((v) => ({ ...v, winnerSplitBps: e.target.value }))}
+            />
+            {renderFieldError("winnerSplitBps")}
+            <p className="text-[10px] text-muted-foreground">
+              Somme: {financials.totalSplit} bps{financials.totalSplit !== 10000 && ` — doit totaliser 10000`}
+            </p>
+          </label>
+
+          <label className="grid gap-1 text-sm font-medium">
+            Raison <span className="text-[10px] text-muted-foreground">(optionnel, audit log)</span>
             <Textarea name="reason" maxLength={500} defaultValue="Creation console admin" />
+            {renderFieldError("reason")}
           </label>
         </CardContent>
       </Card>
@@ -152,7 +270,25 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
       <div className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle className="font-head text-lg uppercase">Mini-jeux actifs</CardTitle>
+            <CardTitle className="font-head text-lg uppercase">Aperçu financier</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="flex justify-between"><span>Brut ({formValues.maxPlayers} × {formValues.entryFeeXaf} XAF)</span><span className="font-mono">{financials.grossTotal.toLocaleString()} XAF</span></div>
+            <div className="flex justify-between text-muted-foreground"><span>Frais ({formValues.providerFeeBps} bps)</span><span className="font-mono">−{financials.estimatedFees.toLocaleString()} XAF</span></div>
+            <div className="flex justify-between font-bold border-t-2 border-border pt-2"><span>Net</span><span className="font-mono">{financials.netTotal.toLocaleString()} XAF</span></div>
+            <div className="flex justify-between text-[--arena-green]"><span>Prize pool ({formValues.prizePoolBps} bps)</span><span className="font-mono">{financials.prizePoolXaf.toLocaleString()} XAF</span></div>
+            <div className="flex justify-between"><span>Commission organisme</span><span className="font-mono">{financials.orgCommission.toLocaleString()} XAF</span></div>
+            {financials.winnerShares.length > 0 && (
+              <div className="border-t-2 border-border pt-2 text-xs text-muted-foreground">
+                <p>Gagnants: {financials.winnerShares.map((s, i) => `${i + 1}er: ${s.toLocaleString()} XAF`).join(", ")}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="font-head text-lg uppercase">Mini-jeux disponibles</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
             {miniGames.length === 0 ? (
@@ -176,6 +312,7 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
                 </div>
               ))
             )}
+            <p className="text-[10px] text-muted-foreground">Les mini-jeux sont assignés par round après la création.</p>
           </CardContent>
         </Card>
 
