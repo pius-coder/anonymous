@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 
 describe("live mini-game surfaces", () => {
   it("wires all six recette game families in the live route", () => {
-    const content = readFileSync("src/app/(client)/session/[code]/live/page.tsx", "utf-8");
+    const content = readFileSync("src/app/(arena)/session/[code]/live/page.tsx", "utf-8");
     for (const key of [
       "memory-sequence",
       "pure-reaction-duel",
@@ -30,13 +30,31 @@ describe("live mini-game surfaces", () => {
   });
 
   it("uses the fullscreen 2D live room shell for lobby and live", () => {
-    expect(readFileSync("src/components/live/LiveRoomShell.tsx", "utf-8")).toContain("fixed inset-0");
-    expect(readFileSync("src/app/(client)/session/[code]/live/page.tsx", "utf-8")).toContain("LiveRoomShell");
+    expect(readFileSync("src/components/live/LiveRoomShell.tsx", "utf-8")).toContain(
+      "fixed inset-0",
+    );
+    expect(readFileSync("src/app/(arena)/session/[code]/live/page.tsx", "utf-8")).toContain(
+      "LiveRoomShell",
+    );
     expect(readFileSync("src/components/lobby/LobbyPage.tsx", "utf-8")).toContain("LiveRoomShell");
   });
 
+  it("keeps lobby state refreshed and shows server health in lobby/live", () => {
+    const lobby = readFileSync("src/components/lobby/LobbyPage.tsx", "utf-8");
+    const live = readFileSync("src/app/(arena)/session/[code]/live/page.tsx", "utf-8");
+    const shell = readFileSync("src/components/live/LiveRoomShell.tsx", "utf-8");
+
+    expect(lobby).toContain("useServerHealth");
+    expect(lobby).toContain("setInterval");
+    expect(lobby).toContain("serverHealth={serverHealth}");
+    expect(live).toContain("useServerHealth");
+    expect(live).toContain("serverHealth={serverHealth}");
+    expect(shell).toContain("serverHealth");
+    expect(shell).toContain("API");
+  });
+
   it("shows all six game families in the UI laboratory", () => {
-    const content = readFileSync("src/app/(client)/dev/ui/GameShowcase.tsx", "utf-8");
+    const content = readFileSync("src/app/(arena)/dev/ui/GameShowcase.tsx", "utf-8");
     for (const family of [
       "Solo",
       "Duel 1v1",
@@ -55,5 +73,4 @@ describe("live mini-game surfaces", () => {
     expect(content).toContain("SocialPanelContent");
     expect(content).toContain("setActivePanel");
   });
-
 });

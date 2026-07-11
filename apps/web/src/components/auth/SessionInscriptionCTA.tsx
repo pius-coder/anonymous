@@ -11,9 +11,11 @@ import { useSession } from "@/lib/useSession";
 export function SessionInscriptionCTA({
   session,
   disabled,
+  disabledReason,
 }: {
   session: RegisterSessionInput;
   disabled?: boolean;
+  disabledReason?: string;
 }) {
   const { user, loading } = useSession();
   const [authOpen, setAuthOpen] = useState(false);
@@ -24,11 +26,10 @@ export function SessionInscriptionCTA({
     if (!user) return;
     void apiGet<{ registration: { id: string; status: string } }>(
       `/sessions/${session.id}/registration`,
-    )
-      .then((result) => {
-        if (result.ok) setRegistration(result.data.registration);
-        else setRegistration(null);
-      })
+    ).then((result) => {
+      if (result.ok) setRegistration(result.data.registration);
+      else setRegistration(null);
+    });
   }, [session.id, user]);
 
   if (loading) {
@@ -39,14 +40,23 @@ export function SessionInscriptionCTA({
     );
   }
 
+  if (disabled) {
+    return (
+      <Button size="lg" disabled className="h-10 px-4">
+        {disabledReason ?? "Inscription indisponible"}
+      </Button>
+    );
+  }
+
   if (!user) {
     return (
       <AuthDrawer
         defaultTab="register"
         open={authOpen}
         onOpenChange={setAuthOpen}
+        next={`/session/${session.code}`}
         trigger={
-          <Button size="lg" disabled={disabled} className="h-10 px-4">
+          <Button size="lg" className="h-10 px-4">
             S&apos;inscrire à cette session
           </Button>
         }
@@ -64,7 +74,10 @@ export function SessionInscriptionCTA({
     );
   }
 
-  if ((registration?.status === "CHECKED_IN" || registration?.status === "IN_ROOM") && session.status === "LIVE") {
+  if (
+    (registration?.status === "CHECKED_IN" || registration?.status === "IN_ROOM") &&
+    session.status === "LIVE"
+  ) {
     return (
       <Link href={`/session/${session.code}/live`}>
         <Button size="lg" disabled={disabled} className="h-10 px-4">
@@ -91,18 +104,19 @@ export function SessionInscriptionCTA({
       onOpenChange={setRegOpen}
       triggerDisabled={disabled}
       trigger={
-        <Button size="lg" disabled={disabled} className="h-10 px-4">
-          {registration?.status === "PAYMENT_PENDING" ? "Payer" : "S'inscrire à cette session"}
+        <Button size="lg" className="h-10 px-4">
+          {registration?.status === "PAYMENT_PENDING"
+            ? "Finaliser le paiement"
+            : "S'inscrire à cette session"}
         </Button>
       }
       onRegistered={() => {
         setRegistration(null);
         void apiGet<{ registration: { id: string; status: string } }>(
           `/sessions/${session.id}/registration`,
-        )
-          .then((result) => {
-            if (result.ok) setRegistration(result.data.registration);
-          });
+        ).then((result) => {
+          if (result.ok) setRegistration(result.data.registration);
+        });
       }}
     />
   );

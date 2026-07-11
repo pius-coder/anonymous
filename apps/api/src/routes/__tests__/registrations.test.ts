@@ -11,7 +11,11 @@ const dbMocks = vi.hoisted(() => {
       findUnique: vi.fn(),
       count: vi.fn(),
       create: vi.fn(),
-      update: vi.fn(),
+      updateMany: vi.fn(),
+      findUniqueOrThrow: vi.fn(),
+    },
+    paymentTransaction: {
+      updateMany: vi.fn(),
     },
     auditLog: {
       create: vi.fn(),
@@ -30,6 +34,7 @@ const dbMocks = vi.hoisted(() => {
       },
       sessionRegistration: {
         findFirst: vi.fn(),
+        findUnique: vi.fn(),
       },
       $transaction: vi.fn(),
     },
@@ -60,10 +65,20 @@ vi.mock("@session-jeu/db", () => ({
     COMPLETED: "COMPLETED",
     CANCELLED: "CANCELLED",
   },
+  SessionVisibility: { PUBLIC: "PUBLIC", UNLISTED: "UNLISTED", PRIVATE: "PRIVATE" },
+  PaymentStatus: {
+    PENDING: "PENDING",
+    EXPIRED: "EXPIRED",
+    SUCCESSFUL: "SUCCESSFUL",
+    FAILED: "FAILED",
+    REFUNDED: "REFUNDED",
+  },
   SessionRegistrationStatus: {
     CREATED: "CREATED",
     PAYMENT_PENDING: "PAYMENT_PENDING",
     PAID: "PAID",
+    CHECKED_IN: "CHECKED_IN",
+    IN_ROOM: "IN_ROOM",
     CANCELLED: "CANCELLED",
     REFUNDED: "REFUNDED",
     EXPIRED: "EXPIRED",
@@ -104,6 +119,7 @@ function activeSession(overrides: Record<string, unknown> = {}) {
   return {
     id: "session-1",
     status: "ACTIVE",
+    visibility: "PUBLIC",
     maxPlayers: 2,
     registrationClosesAt: new Date(Date.now() + 60_000),
     ...overrides,
@@ -144,6 +160,15 @@ describe("registration routes", () => {
     dbMocks.tx.sessionRegistration.findFirst.mockResolvedValue(null);
     dbMocks.tx.sessionRegistration.count.mockResolvedValue(0);
     dbMocks.tx.sessionRegistration.create.mockResolvedValue(registration());
+    dbMocks.prisma.sessionRegistration.findUnique.mockResolvedValue(registration());
+    dbMocks.tx.sessionRegistration.updateMany.mockResolvedValue({ count: 1 });
+    dbMocks.tx.sessionRegistration.findUniqueOrThrow.mockResolvedValue(
+      registration({
+        status: "CANCELLED",
+        cancelledAt: new Date(),
+        cancellationReason: "changed mind",
+      }),
+    );
     dbMocks.tx.auditLog.create.mockResolvedValue({});
     queueMocks.scheduleRegistrationExpiration.mockResolvedValue(undefined);
   });
@@ -215,6 +240,20 @@ describe("registration routes", () => {
     expect(body.error.code).toBe("REGISTRATION_CLOSED");
   });
 
+  it("does not allow direct registration for PRIVATE sessions", async () => {
+    dbMocks.tx.gameSession.findUnique.mockResolvedValue(activeSession({ visibility: "PRIVATE" }));
+
+    const res = await app.request("/v1/sessions/session-1/register", {
+      method: "POST",
+      headers: { cookie: `${SESSION_COOKIE_NAME}=session-token` },
+    });
+
+    expect(res.status).toBe(404);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("SESSION_NOT_FOUND");
+    expect(dbMocks.tx.sessionRegistration.create).not.toHaveBeenCalled();
+  });
+
   it("returns current player registration", async () => {
     dbMocks.prisma.sessionRegistration.findFirst.mockResolvedValue(registration());
 
@@ -247,11 +286,33 @@ describe("registration routes", () => {
 
   it("cancels own pending registration", async () => {
     dbMocks.tx.sessionRegistration.findUnique.mockResolvedValue(registration());
-    dbMocks.tx.sessionRegistration.update.mockResolvedValue(
+
+    const res = await app.request("/v1/registrations/registration-1/cancel", {
+      method: "POST",
+      body: JSON.stringify({ reason: "changed mind" }),
+      headers: {
+        "content-type": "application/json",
+        cookie: `${SESSION_COOKIE_NAME}=session-token`,
+      },
+    });
+
+    expect(res.status).toBe(200);
+    expect(dbMocks.tx.sessionRegistration.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "CANCELLED", cancellationReason: "changed mind" }),
+      }),
+    );
+  });
+
+  it("does not cancel while a Fapshi checkout is still being created", async () => {
+    dbMocks.prisma.sessionRegistration.findUnique.mockResolvedValue(
       registration({
-        status: "CANCELLED",
-        cancelledAt: new Date(),
-        cancellationReason: "changed mind",
+        payment: {
+          id: "payment-1",
+          provider: "FAPSHI",
+          status: "PENDING",
+          providerTransId: null,
+        },
       }),
     );
 
@@ -264,15 +325,16 @@ describe("registration routes", () => {
       },
     });
 
-    expect(res.status).toBe(200);
-    expect(dbMocks.tx.sessionRegistration.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ status: "CANCELLED", cancellationReason: "changed mind" }),
-      }),
-    );
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("PAYMENT_CANCELLATION_PENDING");
+    expect(dbMocks.tx.sessionRegistration.updateMany).not.toHaveBeenCalled();
   });
 
   it("prevents cancelling another player's registration", async () => {
+    dbMocks.prisma.sessionRegistration.findUnique.mockResolvedValue(
+      registration({ userId: "other-player" }),
+    );
     dbMocks.tx.sessionRegistration.findUnique.mockResolvedValue(
       registration({ userId: "other-player" }),
     );
@@ -287,10 +349,13 @@ describe("registration routes", () => {
     });
 
     expect(res.status).toBe(403);
-    expect(dbMocks.tx.sessionRegistration.update).not.toHaveBeenCalled();
+    expect(dbMocks.tx.sessionRegistration.updateMany).not.toHaveBeenCalled();
   });
 
   it("prevents direct cancellation after payment", async () => {
+    dbMocks.prisma.sessionRegistration.findUnique.mockResolvedValue(
+      registration({ status: "PAID", paidAt: new Date() }),
+    );
     dbMocks.tx.sessionRegistration.findUnique.mockResolvedValue(
       registration({ status: "PAID", paidAt: new Date() }),
     );

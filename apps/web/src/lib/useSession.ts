@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { api, apiPost, type ApiError } from "@/lib/api";
 
 export type SessionUser = {
@@ -26,17 +26,47 @@ export type RegisterInput = {
 
 type MeResponse = { user: SessionUser };
 
-const listeners = new Set<(u: SessionUser | null) => void>();
+function compactRegisterInput(input: RegisterInput): RegisterInput {
+  const name = input.name?.trim();
+  const phone = input.phone?.trim();
+  return {
+    email: input.email,
+    password: input.password,
+    username: input.username,
+    ...(name ? { name } : {}),
+    ...(phone ? { phone } : {}),
+  };
+}
+
+const listeners = new Set<() => void>();
 let cache: SessionUser | null = null;
 let initialized = false;
-const broadcast = (u: SessionUser | null) => {
-  cache = u;
-  listeners.forEach((l) => l(u));
+let initialRefresh: Promise<SessionUser | null> | null = null;
+
+const emitChange = () => {
+  listeners.forEach((listener) => listener());
 };
 
+const broadcast = (u: SessionUser | null) => {
+  cache = u;
+  emitChange();
+};
+
+const subscribe = (listener: () => void) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+
+const getUserSnapshot = () => cache;
+const getServerUserSnapshot = () => null;
+const getFetchedSnapshot = () => initialized && initialRefresh === null;
+const getServerFetchedSnapshot = () => false;
+
 export function useSession() {
-  const [user, setUser] = useState<SessionUser | null>(cache);
-  const [fetched, setFetched] = useState(initialized);
+  const user = useSyncExternalStore(subscribe, getUserSnapshot, getServerUserSnapshot);
+  const fetched = useSyncExternalStore(subscribe, getFetchedSnapshot, getServerFetchedSnapshot);
   const loading = !fetched;
 
   const refresh = useCallback(async () => {
@@ -54,14 +84,14 @@ export function useSession() {
   }, []);
 
   useEffect(() => {
-    listeners.add(setUser);
-    if (!initialized) {
-      initialized = true;
-      void refresh().finally(() => setFetched(true));
-    }
-    return () => {
-      listeners.delete(setUser);
-    };
+    if (initialized) return;
+
+    initialized = true;
+    initialRefresh = refresh().finally(() => {
+      initialRefresh = null;
+      emitChange();
+    });
+    emitChange();
   }, [refresh]);
 
   const login = useCallback(async (input: AuthInput): Promise<ApiError | null> => {
@@ -74,7 +104,7 @@ export function useSession() {
   }, []);
 
   const register = useCallback(async (input: RegisterInput): Promise<ApiError | null> => {
-    const res = await apiPost<MeResponse>("/auth/register", input);
+    const res = await apiPost<MeResponse>("/auth/register", compactRegisterInput(input));
     if (res.ok) {
       broadcast(res.data.user);
       return null;

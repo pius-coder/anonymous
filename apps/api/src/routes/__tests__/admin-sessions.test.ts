@@ -426,6 +426,29 @@ describe("admin session routes", () => {
     );
   });
 
+  it("refuses opening registration when the session is no longer publishable", async () => {
+    dbMocks.tx.gameSession.findUnique.mockResolvedValue(
+      session({ status: "PUBLISHED", startTime: new Date(Date.now() - 60_000) }),
+    );
+
+    const res = await app.request("/v1/admin/sessions/session-1/open-registration", {
+      method: "POST",
+      body: JSON.stringify({
+        expectedConfigVersion: 1,
+        reason: "open registrations",
+      }),
+      headers: {
+        "content-type": "application/json",
+        cookie: `${SESSION_COOKIE_NAME}=session-token`,
+      },
+    });
+
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe("INVALID_START_TIME");
+    expect(dbMocks.tx.gameSession.updateMany).not.toHaveBeenCalled();
+  });
+
   it("cancels sessions with reason and audit", async () => {
     const existing = session({ status: "PUBLISHED" });
     const updated = session({

@@ -1,11 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
-import {
-  PaymentStatus,
-  Prisma,
-  SessionRegistrationStatus,
-  prisma,
-} from "@session-jeu/db";
+import { PaymentStatus, Prisma, SessionRegistrationStatus, prisma } from "@session-jeu/db";
+import { hasVerifiedFapshiSuccessAmount } from "@session-jeu/shared";
 import { schedulePaymentReconciliation } from "../queues/paymentReconciliation.js";
 import { scheduleNotificationReminder } from "../queues/notificationReminders.js";
 import { queueNotificationSafely } from "../notifications/notifications.js";
@@ -52,6 +48,34 @@ function externalId() {
   return `pay-${randomBytes(12).toString("hex")}`;
 }
 
+function isPaymentTransactionConflict(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    (error.code === "P2002" || error.code === "P2034")
+  );
+}
+
+async function withSerializablePaymentTransaction<T>(
+  callback: (tx: Prisma.TransactionClient) => Promise<T>,
+) {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await prisma.$transaction(callback, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        maxWait: 5000,
+        timeout: 10000,
+      });
+    } catch (error) {
+      lastError = error;
+      if (!isPaymentTransactionConflict(error) || attempt === 2) throw error;
+    }
+  }
+
+  throw lastError;
+}
+
 function serializePayment(payment: {
   id: string;
   registrationId: string | null;
@@ -95,65 +119,83 @@ export async function initiatePaymentForRegistration(input: {
   registrationId: string;
   redirectUrl?: string;
 }) {
-  const created = await prisma.$transaction(async (tx) => {
-    const registration = await tx.sessionRegistration.findUnique({
-      where: { id: input.registrationId },
-      include: {
-        user: { select: { id: true, email: true } },
-        session: { select: { id: true, name: true, entryFeeXaf: true } },
-        payment: true,
-      },
-    });
+  const created = await (async () => {
+    try {
+      return await withSerializablePaymentTransaction(async (tx) => {
+        const registration = await tx.sessionRegistration.findUnique({
+          where: { id: input.registrationId },
+          include: {
+            user: { select: { id: true, email: true } },
+            session: { select: { id: true, name: true, entryFeeXaf: true } },
+            payment: true,
+          },
+        });
 
-    if (!registration) return { type: "not-found" as const };
-    if (registration.userId !== input.userId) return { type: "forbidden" as const };
-    if (registration.status === SessionRegistrationStatus.EXPIRED)
-      return { type: "expired" as const };
-    if (registration.status !== SessionRegistrationStatus.PAYMENT_PENDING) {
-      return { type: "not-pending" as const };
+        if (!registration) return { type: "not-found" as const };
+        if (registration.userId !== input.userId) return { type: "forbidden" as const };
+        if (registration.status === SessionRegistrationStatus.EXPIRED)
+          return { type: "expired" as const };
+        if (registration.status !== SessionRegistrationStatus.PAYMENT_PENDING) {
+          return { type: "not-pending" as const };
+        }
+        if (registration.paymentDeadlineAt && registration.paymentDeadlineAt <= new Date()) {
+          return { type: "expired" as const };
+        }
+        if (registration.session.entryFeeXaf < FAPSHI_MIN_AMOUNT_XAF) {
+          return { type: "amount-too-low" as const };
+        }
+        const existingPayment = registration.payment;
+        if (existingPayment) {
+          return { type: "existing" as const, payment: existingPayment };
+        }
+
+        const providerExternalId = externalId();
+
+        const payment = await tx.paymentTransaction.create({
+          data: {
+            userId: registration.userId,
+            sessionId: registration.sessionId,
+            registrationId: registration.id,
+            amount: registration.session.entryFeeXaf,
+            amountXaf: registration.session.entryFeeXaf,
+            currency: "XAF",
+            status: PaymentStatus.PENDING,
+            provider: FAPSHI_PROVIDER,
+            providerExternalId,
+            providerStatus: "CREATED",
+            metadata: { registrationId: registration.id },
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            userId: registration.userId,
+            action: "payment.initiated",
+            entity: "PaymentTransaction",
+            entityId: payment.id,
+            newData: serializePayment(payment),
+          },
+        });
+
+        return {
+          type: "created" as const,
+          payment,
+          registration,
+          providerExternalId,
+        };
+      });
+    } catch (error) {
+      if (isPaymentTransactionConflict(error)) {
+        const payment = await prisma.paymentTransaction.findUnique({
+          where: { registrationId: input.registrationId },
+        });
+        if (payment && payment.userId === input.userId) {
+          return { type: "existing" as const, payment };
+        }
+      }
+      throw error;
     }
-    if (registration.paymentDeadlineAt && registration.paymentDeadlineAt <= new Date()) {
-      return { type: "expired" as const };
-    }
-    if (registration.session.entryFeeXaf < FAPSHI_MIN_AMOUNT_XAF) {
-      return { type: "amount-too-low" as const };
-    }
-    if (registration.payment) return { type: "existing" as const, payment: registration.payment };
-
-    const providerExternalId = externalId();
-    const payment = await tx.paymentTransaction.create({
-      data: {
-        userId: registration.userId,
-        sessionId: registration.sessionId,
-        registrationId: registration.id,
-        amount: registration.session.entryFeeXaf,
-        amountXaf: registration.session.entryFeeXaf,
-        currency: "XAF",
-        status: PaymentStatus.PENDING,
-        provider: FAPSHI_PROVIDER,
-        providerExternalId,
-        providerStatus: "CREATED",
-        metadata: { registrationId: registration.id },
-      },
-    });
-
-    await tx.auditLog.create({
-      data: {
-        userId: registration.userId,
-        action: "payment.initiated",
-        entity: "PaymentTransaction",
-        entityId: payment.id,
-        newData: serializePayment(payment),
-      },
-    });
-
-    return {
-      type: "created" as const,
-      payment,
-      registration,
-      providerExternalId,
-    };
-  });
+  })();
 
   if (created.type !== "created") return created;
 
@@ -204,103 +246,132 @@ export async function applyFapshiPaymentStatus(input: {
   now?: Date;
 }) {
   const now = input.now ?? new Date();
-  const result = await prisma.$transaction(
-    async (tx) => {
-      const eventKey = input.eventKey ?? fapshiWebhookEventKey(input.payload);
-      const existingEvent = await tx.webhookEvent.findUnique({ where: { eventKey } });
-      if (existingEvent?.processedAt) return { type: "replay" as const };
+  const result = await withSerializablePaymentTransaction(async (tx) => {
+    const eventKey = input.eventKey ?? fapshiWebhookEventKey(input.payload);
+    const existingEvent = await tx.webhookEvent.findUnique({ where: { eventKey } });
+    if (existingEvent?.processedAt) return { type: "replay" as const };
 
-      const payment = await tx.paymentTransaction.findFirst({
-        where: {
-          OR: [
-            { providerTransId: input.payload.transId },
-            ...(input.payload.externalId ? [{ providerExternalId: input.payload.externalId }] : []),
-          ],
-        },
-        include: { registration: true },
-      });
+    const payment = await tx.paymentTransaction.findFirst({
+      where: {
+        providerTransId: input.payload.transId,
+        ...(input.payload.externalId ? { providerExternalId: input.payload.externalId } : {}),
+      },
+      include: { registration: true },
+    });
 
-      const event =
-        existingEvent ??
-        (await tx.webhookEvent.create({
-          data: {
-            provider: FAPSHI_PROVIDER,
-            eventKey,
-            paymentId: payment?.id,
-            transId: input.payload.transId,
-            status: input.payload.status,
-            payload: input.payload as Prisma.InputJsonValue,
-          },
-        }));
-
-      if (!payment) {
-        await tx.webhookEvent.update({
-          where: { id: event.id },
-          data: { processedAt: now },
-        });
-        return { type: "unknown-payment" as const };
-      }
-
-      const nextStatus = mapFapshiStatus(input.payload.status);
-      const paymentUpdate = await tx.paymentTransaction.update({
-        where: { id: payment.id },
+    const event =
+      existingEvent ??
+      (await tx.webhookEvent.create({
         data: {
-          status: nextStatus,
-          providerTransId: input.payload.transId,
-          providerStatus: input.payload.status,
-          webhookReceivedAt: now,
-          metadata: input.payload as Prisma.InputJsonValue,
+          provider: FAPSHI_PROVIDER,
+          eventKey,
+          paymentId: payment?.id,
+          transId: input.payload.transId,
+          status: input.payload.status,
+          payload: input.payload as Prisma.InputJsonValue,
         },
+      }));
+
+    if (!payment) {
+      await tx.webhookEvent.update({
+        where: { id: event.id },
+        data: { processedAt: now },
       });
+      return { type: "unknown-payment" as const };
+    }
 
-      let registrationPaid = false;
-      if (
-        input.payload.status === "SUCCESSFUL" &&
-        payment.registration?.status === SessionRegistrationStatus.PAYMENT_PENDING
-      ) {
-        await tx.sessionRegistration.update({
-          where: { id: payment.registration.id },
-          data: {
-            status: SessionRegistrationStatus.PAID,
-            paidAt: now,
-          },
-        });
-        registrationPaid = true;
-      }
-
+    const nextStatus = mapFapshiStatus(input.payload.status);
+    if (
+      !hasVerifiedFapshiSuccessAmount({
+        status: input.payload.status,
+        expectedAmountXaf: payment.amountXaf,
+        providerAmountXaf: input.payload.amount,
+      })
+    ) {
       await tx.webhookEvent.update({
         where: { id: event.id },
         data: { paymentId: payment.id, processedAt: now },
       });
-
       await tx.auditLog.create({
         data: {
           userId: payment.userId,
-          action:
-            input.payload.status === "SUCCESSFUL"
-              ? "payment.successful"
-              : input.payload.status === "FAILED"
-                ? "payment.failed"
-                : input.payload.status === "EXPIRED"
-                  ? "payment.expired"
-                  : "payment.webhook-received",
+          action: "payment.amount-verification-failed",
           entity: "PaymentTransaction",
           entityId: payment.id,
           newData: {
-            payment: serializePayment(paymentUpdate),
-            registrationPaid,
+            expectedAmountXaf: payment.amountXaf,
+            providerAmountXaf: input.payload.amount ?? null,
+            providerStatus: input.payload.status,
           },
         },
       });
+      return { type: "amount-verification-failed" as const, payment };
+    }
 
-      return { type: "processed" as const, payment: paymentUpdate, registrationPaid };
-    },
-    {
-      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-      maxWait: 5000,
-      timeout: 10000,
-    },
-  );
+    if (payment.status === PaymentStatus.SUCCESSFUL && nextStatus !== PaymentStatus.SUCCESSFUL) {
+      await tx.webhookEvent.update({
+        where: { id: event.id },
+        data: { paymentId: payment.id, processedAt: now },
+      });
+      return { type: "terminal-ignored" as const, payment };
+    }
+
+    const paymentUpdate = await tx.paymentTransaction.update({
+      where: { id: payment.id },
+      data: {
+        status: nextStatus,
+        providerTransId: input.payload.transId,
+        providerStatus: input.payload.status,
+        webhookReceivedAt: now,
+        metadata: input.payload as Prisma.InputJsonValue,
+      },
+    });
+
+    let registrationPaid = false;
+    if (
+      input.payload.status === "SUCCESSFUL" &&
+      payment.registration?.status === SessionRegistrationStatus.PAYMENT_PENDING
+    ) {
+      const registrationUpdate = await tx.sessionRegistration.updateMany({
+        where: {
+          id: payment.registration.id,
+          status: SessionRegistrationStatus.PAYMENT_PENDING,
+        },
+        data: {
+          status: SessionRegistrationStatus.PAID,
+          paidAt: now,
+        },
+      });
+      registrationPaid = registrationUpdate.count === 1;
+    }
+
+    await tx.webhookEvent.update({
+      where: { id: event.id },
+      data: { paymentId: payment.id, processedAt: now },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        userId: payment.userId,
+        action:
+          input.payload.status === "SUCCESSFUL"
+            ? "payment.successful"
+            : input.payload.status === "FAILED"
+              ? "payment.failed"
+              : input.payload.status === "EXPIRED"
+                ? "payment.expired"
+                : "payment.webhook-received",
+        entity: "PaymentTransaction",
+        entityId: payment.id,
+        newData: {
+          payment: serializePayment(paymentUpdate),
+          registrationPaid,
+        },
+      },
+    });
+
+    return { type: "processed" as const, payment: paymentUpdate, registrationPaid };
+  });
 
   if (
     result.type === "processed" &&

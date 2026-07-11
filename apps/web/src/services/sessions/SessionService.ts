@@ -6,6 +6,7 @@ type CatalogueResponse = {
   total: number;
   page: number;
   limit: number;
+  totalPages: number;
 };
 
 type RegistrationResponse = { id: string; status: string };
@@ -29,18 +30,24 @@ export class SessionService extends BaseApiService {
   }
 
   async register(sessionId: string): Promise<RegistrationResponse> {
-    const { response } = await this.request<RegistrationResponse>(`/v1/sessions/${sessionId}/register`, {
-      method: "POST",
-      authenticated: true,
-    });
+    const { response } = await this.request<RegistrationResponse>(
+      `/v1/sessions/${sessionId}/register`,
+      {
+        method: "POST",
+        authenticated: true,
+      },
+    );
     return response;
   }
 
   async getRegistration(sessionId: string): Promise<RegistrationResponse | null> {
     try {
-      const { response } = await this.request<RegistrationResponse>(`/v1/sessions/${sessionId}/registration`, {
-        authenticated: true,
-      });
+      const { response } = await this.request<RegistrationResponse>(
+        `/v1/sessions/${sessionId}/registration`,
+        {
+          authenticated: true,
+        },
+      );
       return response;
     } catch {
       return null;
@@ -62,9 +69,12 @@ export class SessionService extends BaseApiService {
   }
 
   async getJoinToken(sessionId: string): Promise<string> {
-    const { response } = await this.request<JoinTokenResponse>(`/v1/sessions/${sessionId}/join-token`, {
-      authenticated: true,
-    });
+    const { response } = await this.request<JoinTokenResponse>(
+      `/v1/sessions/${sessionId}/join-token`,
+      {
+        authenticated: true,
+      },
+    );
     return response.joinToken;
   }
 

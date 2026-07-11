@@ -96,7 +96,10 @@ function generateIdenticonDataUri(seed: string): string {
 }
 
 function defaultUsernameForUser(userId: string) {
-  return `player_${userId.replace(/[^a-zA-Z0-9]/g, "").slice(-12).toLowerCase()}`;
+  return `player_${userId
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(-12)
+    .toLowerCase()}`;
 }
 
 function isUniqueConstraintError(error: unknown) {
@@ -107,10 +110,7 @@ function nullableJsonInput(value: Record<string, unknown> | null) {
   return value === null ? Prisma.JsonNull : (value as Prisma.InputJsonObject);
 }
 
-function auditChanges(input: {
-  oldProfile: PlayerProfileRecord;
-  newProfile: PlayerProfileRecord;
-}) {
+function auditChanges(input: { oldProfile: PlayerProfileRecord; newProfile: PlayerProfileRecord }) {
   const oldData: Record<string, unknown> = {};
   const newData: Record<string, unknown> = {};
 
@@ -131,7 +131,10 @@ function serializeStats(stats: PlayerStats | PlayerStatsSnapshotRecord | null | 
     winRate: stats?.winRate ?? 0,
     avgFinalRank: stats?.avgFinalRank ?? null,
     creditsWonXaf: stats?.creditsWonXaf ?? 0,
-    computedAt: "computedAt" in (stats ?? {}) ? serializeDate((stats as PlayerStatsSnapshotRecord).computedAt) : null,
+    computedAt:
+      "computedAt" in (stats ?? {})
+        ? serializeDate((stats as PlayerStatsSnapshotRecord).computedAt)
+        : null,
   };
 }
 
@@ -346,7 +349,7 @@ export async function recomputeSessionPlayerStats(sessionId: string) {
   return Promise.all(results.map((result) => recomputePlayerStats(result.userId)));
 }
 
-function historyBucket(input: {
+export function historyBucket(input: {
   registrationStatus: SessionRegistrationStatus | string;
   sessionStatus: GameSessionStatus | string;
   startTime: Date | null;
@@ -361,6 +364,7 @@ function historyBucket(input: {
   if (
     input.registrationStatus === SessionRegistrationStatus.CANCELLED ||
     input.registrationStatus === SessionRegistrationStatus.REFUNDED ||
+    input.registrationStatus === SessionRegistrationStatus.EXPIRED ||
     input.sessionStatus === GameSessionStatus.CANCELLED
   ) {
     return "cancelled";
@@ -448,7 +452,7 @@ export async function listPlayerHistory(input: {
         updatedAt: registration.updatedAt.toISOString(),
       };
     }),
-    nextCursor: registrations.length > limit ? registrations[limit]?.id ?? null : null,
+    nextCursor: registrations.length > limit ? (registrations[limit]?.id ?? null) : null,
   };
 }
 

@@ -42,6 +42,20 @@ Pour chaque story technique :
 
 ## Ordre recommande
 
+### Source de verite transverse - Dashboard arbitrage
+
+Avant toute reprise des features `09`, `10`, `11`, `12`, `13`, `15` ou de la Phase 3 operateur, lire aussi :
+
+- `../admin-arbitrage/README.md`
+- `../admin-arbitrage/01-reglement-arbitrage.md`
+- `../admin-arbitrage/02-user-stories-dashboard.md`
+- `../admin-arbitrage/03-edge-cases.md`
+- `../admin-arbitrage/04-ui-jeux-dashboard.md`
+- `../admin-arbitrage/05-diagrammes.md`
+- `../admin-arbitrage/06-plan-apex-implementation.md`
+
+Ces documents fixent la source de verite pour le dashboard d'administration/arbitrage, les 120 mini-jeux, les profils P1-P9, le multi-admin, la feuille de match evenementielle, les resultats provisoires/officiels et les edge cases.
+
 ### Phase 0 — Fondations (features 00-16)
 
 1. `00-initialisation-projet.md`

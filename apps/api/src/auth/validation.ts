@@ -17,12 +17,22 @@ export const usernameSchema = z
   .max(32, "Le pseudo doit contenir au plus 32 caractères")
   .regex(/^[a-zA-Z0-9_-]+$/, "Le pseudo peut contenir lettres, chiffres, _ et -");
 
+function optionalTrimmedString(schema: z.ZodString) {
+  return z.preprocess((value) => {
+    if (typeof value !== "string") return value;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  }, schema.optional());
+}
+
 export const registerSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
   username: usernameSchema,
-  name: z.string().trim().min(1, "Le nom affiché ne peut pas être vide").max(100).optional(),
-  phone: z.string().trim().min(6, "Le téléphone doit contenir au moins 6 caractères").max(32).optional(),
+  name: optionalTrimmedString(z.string().min(1, "Le nom affiché ne peut pas être vide").max(100)),
+  phone: optionalTrimmedString(
+    z.string().min(6, "Le téléphone doit contenir au moins 6 caractères").max(32),
+  ),
 });
 
 export const loginSchema = z.object({

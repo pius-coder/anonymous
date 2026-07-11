@@ -8,10 +8,11 @@ import { Field, FieldGroup, FieldLabel, FieldDescription } from "@/components/re
 import { Input } from "@/components/retroui/input";
 import { Alert, AlertTitle, AlertDescription } from "@/components/retroui/alert";
 import { useSession } from "@/lib/useSession";
+import { safeInternalRedirect } from "@/lib/safe-redirect";
 import { translateError, formatRateLimit } from "@/lib/errors.fr";
 import type { ApiError } from "@/lib/api";
 
-export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
+export function LoginForm({ next, onSuccess }: { next?: string; onSuccess?: () => void }) {
   const { login } = useSession();
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -29,10 +30,11 @@ export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
       setError(err);
       return;
     }
-    const next = new URLSearchParams(window.location.search).get("next");
+    const redirectTo = safeInternalRedirect(
+      next ?? new URLSearchParams(window.location.search).get("next"),
+    );
     if (onSuccess) onSuccess();
-    if (next) router.push(next);
-    else router.push("/me/sessions");
+    router.push(redirectTo);
   }
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/retroui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/retroui/alert";
@@ -10,6 +10,7 @@ import { apiGet, apiPost, type ApiError } from "@/lib/api";
 import { translateError } from "@/lib/errors.fr";
 import { juice } from "@/lib/juice";
 import { useSession } from "@/lib/useSession";
+import { useServerHealth } from "@/hooks/useServerHealth";
 
 type LobbyResponse = {
   session: {
@@ -38,21 +39,42 @@ export function LobbyPage() {
   const params = useParams<{ code: string }>();
   const router = useRouter();
   const { user } = useSession();
+  const serverHealth = useServerHealth();
   const [data, setData] = useState<LobbyResponse | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [checkingIn, setCheckingIn] = useState(false);
 
-  const load = () => {
-    apiGet<LobbyResponse>(`/sessions/${params.code}/lobby`).then((res) => {
-      if (res.ok) setData(res.data);
-      else setError(res.error);
-    });
-  };
+  const load = useCallback(
+    (signal?: AbortSignal, silent = false) => {
+      apiGet<LobbyResponse>(`/sessions/${params.code}/lobby`, signal).then((res) => {
+        if (res.ok) {
+          setData(res.data);
+          setError(null);
+        } else if (!silent) {
+          setError(res.error);
+        }
+      });
+    },
+    [params.code],
+  );
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.code]);
+    const initialController = new AbortController();
+    let refreshController: AbortController | null = null;
+
+    load(initialController.signal);
+    const interval = setInterval(() => {
+      refreshController?.abort();
+      refreshController = new AbortController();
+      load(refreshController.signal, true);
+    }, 5_000);
+
+    return () => {
+      initialController.abort();
+      refreshController?.abort();
+      clearInterval(interval);
+    };
+  }, [load]);
 
   const checkIn = async () => {
     setCheckingIn(true);
@@ -82,10 +104,15 @@ export function LobbyPage() {
   }
 
   if (!data) {
-    return <main className="fixed inset-0 z-50 grid h-dvh place-items-center bg-background text-muted-foreground">Chargement du lobby…</main>;
+    return (
+      <main className="fixed inset-0 z-50 grid h-dvh place-items-center bg-background text-muted-foreground">
+        Chargement du lobby…
+      </main>
+    );
   }
 
-  const isCheckedIn = data.registration.status === "CHECKED_IN" || data.registration.status === "IN_ROOM";
+  const isCheckedIn =
+    data.registration.status === "CHECKED_IN" || data.registration.status === "IN_ROOM";
   const isLive = data.session.status === "LIVE";
   const snap: LiveSnapshot = {
     phase: isLive ? "LOBBY" : "WAITING_START",
@@ -129,6 +156,7 @@ export function LobbyPage() {
       snap={snap}
       currentGameName={data.session.name}
       currentUserId={user?.id}
+      serverHealth={serverHealth}
       chatMessages={[]}
       onMove={() => {}}
       onChat={() => {}}
@@ -138,7 +166,9 @@ export function LobbyPage() {
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="font-head text-xl uppercase">{data.session.code}</p>
-            <p className="text-white/60">{data.presence.checkedIn}/{data.session.minPlayers} check-in</p>
+            <p className="text-white/60">
+              {data.presence.checkedIn}/{data.session.minPlayers} check-in
+            </p>
           </div>
           {isCheckedIn && isLive && (
             <Button size="lg" onClick={() => router.push(`/session/${params.code}/live`)}>
@@ -154,7 +184,9 @@ export function LobbyPage() {
         {isCheckedIn && !isLive && (
           <Alert>
             <AlertTitle>En salle d&apos;attente</AlertTitle>
-            <AlertDescription>L&apos;admin peut forcer le live puis lancer le premier round.</AlertDescription>
+            <AlertDescription>
+              L&apos;admin peut forcer le live puis lancer le premier round.
+            </AlertDescription>
           </Alert>
         )}
       </div>

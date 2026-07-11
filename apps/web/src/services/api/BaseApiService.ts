@@ -89,27 +89,31 @@ export abstract class BaseApiService {
     responseSchema?: z.ZodType<T>,
   ): Promise<ApiResponse<T>> {
     if (!response.ok) {
+      let errorData: {
+        error?: { code?: string; message?: string; details?: Record<string, string[] | unknown> };
+        message?: string | string[];
+      } = {};
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = {};
+      }
+
+      if (errorData?.error) {
+        throw ApiError.fromResponse(response, errorData);
+      }
+
       if (response.status === 401) {
         throw new ApiError("UNAUTHENTICATED", "Non authentifié", 401);
       }
 
-      let errorMessage = `HTTP ${response.status}`;
-      try {
-        const errorData = await response.json();
-        if (errorData?.error?.message) {
-          errorMessage = errorData.error.message;
-        } else if (errorData?.message) {
-          errorMessage = Array.isArray(errorData.message)
-            ? errorData.message[0]
-            : errorData.message;
-        } else if (typeof errorData?.error === "string") {
-          errorMessage = errorData.error;
-        }
-      } catch {
-        // Use default
-      }
+      const message = Array.isArray(errorData?.message)
+        ? errorData.message[0]
+        : typeof errorData?.message === "string"
+          ? errorData.message
+          : `HTTP ${response.status}`;
 
-      throw new ApiError("HTTP_ERROR", errorMessage, response.status);
+      throw new ApiError("HTTP_ERROR", message, response.status);
     }
 
     const responseData = await response.json();
@@ -148,9 +152,7 @@ export abstract class BaseApiService {
       ...(body !== undefined && {
         body: JSON.stringify(body),
       }),
-      next: options.tag
-        ? { tags: [options.tag] }
-        : undefined,
+      next: options.tag ? { tags: [options.tag] } : undefined,
     };
 
     const response = await fetch(url, fetchOptions);

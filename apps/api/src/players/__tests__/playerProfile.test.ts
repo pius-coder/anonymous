@@ -51,10 +51,11 @@ vi.mock("@session-jeu/db", () => ({
     NO_SHOW: "NO_SHOW",
     CANCELLED: "CANCELLED",
     REFUNDED: "REFUNDED",
+    EXPIRED: "EXPIRED",
   },
 }));
 
-import { calculatePlayerStats, recomputePlayerStats } from "../playerProfile.js";
+import { calculatePlayerStats, historyBucket, recomputePlayerStats } from "../playerProfile.js";
 
 describe("player profile stats", () => {
   beforeEach(() => {
@@ -78,6 +79,17 @@ describe("player profile stats", () => {
       avgFinalRank: 2,
       creditsWonXaf: 2500,
     });
+  });
+
+  it("classifies expired payment reservations as cancelled history", () => {
+    expect(
+      historyBucket({
+        registrationStatus: "EXPIRED",
+        sessionStatus: "ACTIVE",
+        startTime: new Date("2026-07-20T10:00:00Z"),
+        now: new Date("2026-07-11T10:00:00Z"),
+      }),
+    ).toBe("cancelled");
   });
 
   it("recomputes and upserts the snapshot from GameResult and LedgerEntry", async () => {

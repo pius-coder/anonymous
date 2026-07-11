@@ -33,7 +33,7 @@ describe("Feature 17 design system assets", () => {
   });
 
   it("guards /dev/ui in production", () => {
-    const source = readFileSync("src/app/(client)/dev/ui/page.tsx", "utf-8");
+    const source = readFileSync("src/app/(arena)/dev/ui/page.tsx", "utf-8");
     expect(source).toContain('process.env.NODE_ENV === "production"');
     expect(source).toContain("notFound()");
   });
@@ -54,7 +54,7 @@ describe("Feature 17 design system assets", () => {
   });
 
   it("guards /dev/social in production", () => {
-    const source = readFileSync("src/app/(client)/dev/social/page.tsx", "utf-8");
+    const source = readFileSync("src/app/(arena)/dev/social/page.tsx", "utf-8");
     expect(source).toContain('process.env.NODE_ENV === "production"');
     expect(source).toContain("notFound()");
   });

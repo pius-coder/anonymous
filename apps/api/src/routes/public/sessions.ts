@@ -1,12 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
-import {
-  prisma,
-  GameSessionStatus,
-  Prisma,
-  SessionVisibility,
-} from "@session-jeu/db";
+import { prisma, GameSessionStatus, Prisma, SessionVisibility } from "@session-jeu/db";
 import { PAGINATION_DEFAULTS } from "@session-jeu/shared";
 import { CAPACITY_REGISTRATION_STATUSES } from "../../sessions/statusGroups.js";
 
@@ -50,7 +45,7 @@ sessions.get("/", zValidator("query", querySchema), async (c) => {
     where.status = GameSessionStatus.LIVE;
   }
   if (filter === "open") {
-    where.status = { in: [GameSessionStatus.PUBLISHED, GameSessionStatus.ACTIVE] };
+    where.status = GameSessionStatus.ACTIVE;
   }
   if (filter === "today") {
     where.startTime = { gte: startOfToday(), lte: endOfToday() };
@@ -90,6 +85,7 @@ sessions.get("/", zValidator("query", querySchema), async (c) => {
     status: s.status,
     visibility: s.visibility,
     placesRemaining: Math.max(0, s.maxPlayers - s._count.registrations),
+    registrationCount: s._count.registrations,
   }));
 
   if (filter === "open") {
@@ -104,8 +100,8 @@ sessions.get("/", zValidator("query", querySchema), async (c) => {
 
   return c.json({
     success: true,
-    data,
-    meta: {
+    data: {
+      sessions: data,
       total,
       page,
       limit,

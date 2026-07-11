@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { prisma, SessionVisibility } from "@session-jeu/db";
+import { GameSessionStatus, prisma, SessionVisibility } from "@session-jeu/db";
 import { CAPACITY_REGISTRATION_STATUSES } from "../../sessions/statusGroups.js";
 
 const sessionDetail = new Hono();
@@ -42,8 +42,8 @@ sessionDetail.get("/:code", async (c) => {
       {
         success: false,
         error: {
-          code: "SESSION_NOT_VISIBLE",
-          message: "This session requires an invitation to access",
+          code: "SESSION_NOT_FOUND",
+          message: "Session not found",
         },
       },
       404,
@@ -60,6 +60,27 @@ sessionDetail.get("/:code", async (c) => {
         },
       },
       410,
+    );
+  }
+
+  const publiclyViewableStatuses = [
+    GameSessionStatus.PUBLISHED,
+    GameSessionStatus.ACTIVE,
+    GameSessionStatus.LIVE,
+  ] as const;
+
+  if (
+    !publiclyViewableStatuses.includes(session.status as (typeof publiclyViewableStatuses)[number])
+  ) {
+    return c.json(
+      {
+        success: false,
+        error: {
+          code: "SESSION_NOT_FOUND",
+          message: "Session not found",
+        },
+      },
+      404,
     );
   }
 
