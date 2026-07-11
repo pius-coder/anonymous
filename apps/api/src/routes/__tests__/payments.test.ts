@@ -145,6 +145,29 @@ describe("payment routes", () => {
     expect(body.data.checkoutUrl).toBe("https://checkout.example/existing");
   });
 
+  it("returns a structured provider unavailable error when Fapshi initiate fails", async () => {
+    paymentMocks.initiatePaymentForRegistration.mockResolvedValueOnce({
+      type: "provider-unavailable",
+    });
+
+    const res = await app.request("/v1/payments/fapshi/initiate", {
+      method: "POST",
+      body: JSON.stringify({ registrationId: "registration-1" }),
+      headers: {
+        "content-type": "application/json",
+        cookie: `${SESSION_COOKIE_NAME}=session-token`,
+      },
+    });
+
+    expect(res.status).toBe(502);
+    const body = (await res.json()) as {
+      success: boolean;
+      error: { code: string; message: string };
+    };
+    expect(body.success).toBe(false);
+    expect(body.error.code).toBe("PROVIDER_UNAVAILABLE");
+  });
+
   it("rejects invalid Fapshi webhook secret", async () => {
     const res = await app.request("/v1/webhooks/fapshi", {
       method: "POST",

@@ -1,4 +1,5 @@
-export type SessionStatus = "DRAFT" | "PUBLISHED" | "OPEN" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+export type SessionStatus =
+  "DRAFT" | "PUBLISHED" | "ACTIVE" | "WAITING_START" | "LIVE" | "COMPLETED" | "CANCELLED";
 
 export type CatalogueSession = {
   id: string;

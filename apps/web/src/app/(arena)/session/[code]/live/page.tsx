@@ -11,15 +11,19 @@ import { DangerSweepGame } from "@/components/games/DangerSweepGame";
 import { SilentVoteGame } from "@/components/games/SilentVoteGame";
 import { LiveRoomShell } from "@/components/live/LiveRoomShell";
 import { useGameRoom, type LivePlayer } from "@/hooks/useGameRoom";
+import { useServerHealth } from "@/hooks/useServerHealth";
 import { useSession } from "@/lib/useSession";
 import { juice } from "@/lib/juice";
 import { translateError } from "@/lib/errors.fr";
 
 function eliminateReducer(state: boolean, action: "eliminate" | "reconnect"): boolean {
   switch (action) {
-    case "eliminate": return true;
-    case "reconnect": return false;
-    default: return state;
+    case "eliminate":
+      return true;
+    case "reconnect":
+      return false;
+    default:
+      return state;
   }
 }
 
@@ -27,6 +31,7 @@ export default function LivePage() {
   const params = useParams<{ code: string }>();
   const router = useRouter();
   const { user } = useSession();
+  const serverHealth = useServerHealth();
   const {
     status,
     snap,
@@ -68,7 +73,8 @@ export default function LivePage() {
   const opponent = playerList.find((p: LivePlayer) => p.userId !== user?.id);
   const score = useMemo(() => ({ you: 0, opp: 0 }), []);
 
-  const sequenceData = lastMessage?.type === "sequence.show" ? (lastMessage.data as { steps: number[] }) : null;
+  const sequenceData =
+    lastMessage?.type === "sequence.show" ? (lastMessage.data as { steps: number[] }) : null;
   const zonesData =
     lastMessage?.type === "zones.round"
       ? (lastMessage.data as { safeCells: number[]; lockAtEpochMs: number; gridSize?: number })
@@ -95,10 +101,17 @@ export default function LivePage() {
         />
       );
     }
-    if (roundGame?.key === "pure-reaction-duel" || lastMessage?.type === "signal" || lastMessage?.type === "manche.armed") {
+    if (
+      roundGame?.key === "pure-reaction-duel" ||
+      lastMessage?.type === "signal" ||
+      lastMessage?.type === "manche.armed"
+    ) {
       return (
         <ReactionDuelGame
-          you={{ userId: you?.userId ?? user?.id ?? "", name: you?.displayName ?? user?.email ?? "Toi" }}
+          you={{
+            userId: you?.userId ?? user?.id ?? "",
+            name: you?.displayName ?? user?.email ?? "Toi",
+          }}
           opponent={{
             userId: opponent?.userId ?? "adv",
             name: opponent?.displayName ?? "Adversaire",
@@ -116,7 +129,10 @@ export default function LivePage() {
     if (roundGame?.key === "trust-bridge") {
       return (
         <TrustBridgeGame
-          routes={(publicState.routes as Array<{ id: string; label: string; risk: string }> | undefined) ?? undefined}
+          routes={
+            (publicState.routes as
+              Array<{ id: string; label: string; risk: string }> | undefined) ?? undefined
+          }
           pairs={(publicState.pairs as Array<{ userId: string; pairId: string }> | undefined) ?? []}
           players={playerList}
           youUserId={user?.id ?? ""}
@@ -138,12 +154,28 @@ export default function LivePage() {
     }
     if (roundGame?.key === "danger-sweep") {
       const arena = publicState.arena as { width: number; height: number } | undefined;
-      const sweep = publicState.sweep as { fn: "linear" | "rotate"; t0EpochMs: number; speed: number; width: number } | undefined;
+      const sweep = publicState.sweep as
+        { fn: "linear" | "rotate"; t0EpochMs: number; speed: number; width: number } | undefined;
       return (
         <DangerSweepGame
           arena={arena}
           sweep={sweep}
-          players={(publicState.players as Array<{ userId: string; displayName?: string; x: number; y: number; eliminated?: boolean }> | undefined) ?? livePlayers.map((player, index) => ({ ...player, x: 120 + index * 80, y: 120 + index * 40 }))}
+          players={
+            (publicState.players as
+              | Array<{
+                  userId: string;
+                  displayName?: string;
+                  x: number;
+                  y: number;
+                  eliminated?: boolean;
+                }>
+              | undefined) ??
+            livePlayers.map((player, index) => ({
+              ...player,
+              x: 120 + index * 80,
+              y: 120 + index * 40,
+            }))
+          }
           youUserId={user?.id ?? ""}
           onMove={(point) => sendAction("move", point)}
           readOnly={spectator}
@@ -153,8 +185,12 @@ export default function LivePage() {
     if (roundGame?.key === "silent-vote") {
       return (
         <SilentVoteGame
-          candidates={(publicState.candidates as Array<{ userId: string; displayName: string; hasVoted?: boolean }> | undefined) ?? playerList}
-          voteRound={(publicState.voteRound as number | undefined) ?? (snap?.roundNum ?? 1)}
+          candidates={
+            (publicState.candidates as
+              Array<{ userId: string; displayName: string; hasVoted?: boolean }> | undefined) ??
+            playerList
+          }
+          voteRound={(publicState.voteRound as number | undefined) ?? snap?.roundNum ?? 1}
           youUserId={user?.id ?? ""}
           role={privateRole?.roundId === snap?.currentRoundId ? privateRole : null}
           onVote={(targetUserId) => sendAction("silent-vote", { targetUserId })}
@@ -162,7 +198,11 @@ export default function LivePage() {
         />
       );
     }
-    if (roundGame?.key === "safe-zones" || lastMessage?.type === "zones.round" || lastMessage?.type === "zones.locked") {
+    if (
+      roundGame?.key === "safe-zones" ||
+      lastMessage?.type === "zones.round" ||
+      lastMessage?.type === "zones.locked"
+    ) {
       return (
         <SafeZonesGame
           gridSize={zonesData?.gridSize ?? 5}
@@ -179,7 +219,9 @@ export default function LivePage() {
     }
     return (
       <div className="grid place-items-center text-center">
-        <p className="font-head text-3xl font-black uppercase text-muted-foreground">En attente du serveur…</p>
+        <p className="font-head text-3xl font-black uppercase text-muted-foreground">
+          En attente du serveur…
+        </p>
       </div>
     );
   })();
@@ -188,11 +230,16 @@ export default function LivePage() {
     return (
       <main className="fixed inset-0 z-50 grid h-dvh place-items-center bg-background px-4 text-center">
         <div>
-          <p className="font-head text-2xl font-black uppercase text-[--arena-danger]">Connexion impossible</p>
+          <p className="font-head text-2xl font-black uppercase text-[--arena-danger]">
+            Connexion impossible
+          </p>
           <p className="mt-2 text-muted-foreground">
             {errorCode ? translateError(errorCode) : "Erreur inconnue"}
           </p>
-          <button onClick={() => router.push(`/session/${params.code}/lobby`)} className="mt-4 underline">
+          <button
+            onClick={() => router.push(`/session/${params.code}/lobby`)}
+            className="mt-4 underline"
+          >
             Retour au lobby
           </button>
         </div>
@@ -207,6 +254,7 @@ export default function LivePage() {
       currentGameName={roundGame?.name}
       currentUserId={user?.id}
       eliminated={Boolean(spectator)}
+      serverHealth={serverHealth}
       chatMessages={chatMessages}
       onMove={sendMove}
       onChat={sendChat}

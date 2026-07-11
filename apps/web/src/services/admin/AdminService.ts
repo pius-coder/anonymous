@@ -41,45 +41,59 @@ export class AdminService extends BaseApiService {
   }
 
   async getSession(id: string): Promise<AdminSessionDetail> {
-    const { response } = await this.request<{ session: AdminSessionDetail }>(`/v1/admin/sessions/${id}`, {
+    const { response } = await this.request<{ session: AdminSessionDetail }>(
+      `/v1/admin/sessions/${id}`,
+      {
+        authenticated: true,
+      },
+    );
+    return response.session;
+  }
+
+  async createSession(data: Record<string, unknown>): Promise<AdminSession> {
+    const { response } = await this.request<{ session: AdminSession }>("/v1/admin/sessions", {
+      method: "POST",
+      body: data,
       authenticated: true,
     });
     return response.session;
   }
 
-  async createSession(data: Record<string, unknown>): Promise<AdminSession> {
-    const { response } = await this.request<AdminSession>("/v1/admin/sessions", {
-      method: "POST",
-      body: data,
-      authenticated: true,
-    });
-    return response;
-  }
-
   async updateSession(id: string, data: Record<string, unknown>): Promise<AdminSession> {
-    const { response } = await this.request<AdminSession>(`/v1/admin/sessions/${id}`, {
+    const { response } = await this.request<{ session: AdminSession }>(`/v1/admin/sessions/${id}`, {
       method: "PATCH",
       body: data,
       authenticated: true,
     });
-    return response;
+    return response.session;
   }
 
-  async publishSession(id: string): Promise<void> {
+  async publishSession(
+    id: string,
+    data: { expectedConfigVersion: number; reason: string },
+  ): Promise<void> {
     await this.request(`/v1/admin/sessions/${id}/publish`, {
       method: "POST",
+      body: data,
       authenticated: true,
     });
   }
 
-  async openRegistration(id: string): Promise<void> {
+  async openRegistration(
+    id: string,
+    data: { expectedConfigVersion: number; reason: string },
+  ): Promise<void> {
     await this.request(`/v1/admin/sessions/${id}/open-registration`, {
       method: "POST",
+      body: data,
       authenticated: true,
     });
   }
 
-  async cancelSession(id: string, data: { expectedConfigVersion: number; reason: string }): Promise<void> {
+  async cancelSession(
+    id: string,
+    data: { expectedConfigVersion: number; reason: string },
+  ): Promise<void> {
     await this.request(`/v1/admin/sessions/${id}/cancel`, {
       method: "POST",
       body: data,
@@ -87,7 +101,9 @@ export class AdminService extends BaseApiService {
     });
   }
 
-  async getPayments(params?: Record<string, string | undefined>): Promise<Paginated<PaymentTransaction>> {
+  async getPayments(
+    params?: Record<string, string | undefined>,
+  ): Promise<Paginated<PaymentTransaction>> {
     const { response } = await this.request<Paginated<PaymentTransaction>>("/v1/admin/payments", {
       query: params,
       authenticated: true,
@@ -112,9 +128,12 @@ export class AdminService extends BaseApiService {
   }
 
   async getMinigames(): Promise<MiniGameDefinition[]> {
-    const { response } = await this.request<{ definitions: MiniGameDefinition[] }>("/v1/admin/minigames", {
-      authenticated: true,
-    });
+    const { response } = await this.request<{ definitions: MiniGameDefinition[] }>(
+      "/v1/admin/minigames",
+      {
+        authenticated: true,
+      },
+    );
     return response.definitions;
   }
 
@@ -127,9 +146,12 @@ export class AdminService extends BaseApiService {
   }
 
   async getComplianceGates(): Promise<ComplianceGate[]> {
-    const { response } = await this.request<{ gates: ComplianceGate[] }>("/v1/admin/compliance/gates", {
-      authenticated: true,
-    });
+    const { response } = await this.request<{ gates: ComplianceGate[] }>(
+      "/v1/admin/compliance/gates",
+      {
+        authenticated: true,
+      },
+    );
     return response.gates;
   }
 
@@ -149,18 +171,26 @@ export class AdminService extends BaseApiService {
     return response;
   }
 
-  async getUsers(params?: Record<string, string | undefined>): Promise<Paginated<SupportUserSummary>> {
-    const { response } = await this.request<Paginated<SupportUserSummary>>("/v1/admin/support/users", {
-      query: params,
-      authenticated: true,
-    });
+  async getUsers(
+    params?: Record<string, string | undefined>,
+  ): Promise<Paginated<SupportUserSummary>> {
+    const { response } = await this.request<Paginated<SupportUserSummary>>(
+      "/v1/admin/support/users",
+      {
+        query: params,
+        authenticated: true,
+      },
+    );
     return response;
   }
 
   async getUser(id: string): Promise<SupportUser> {
-    const { response } = await this.request<{ user: SupportUser }>(`/v1/admin/support/users/${id}`, {
-      authenticated: true,
-    });
+    const { response } = await this.request<{ user: SupportUser }>(
+      `/v1/admin/support/users/${id}`,
+      {
+        authenticated: true,
+      },
+    );
     return response.user;
   }
 

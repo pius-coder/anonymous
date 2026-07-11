@@ -40,22 +40,18 @@ const listQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   status: z
-    .enum([
-      "DRAFT",
-      "PUBLISHED",
-      "ACTIVE",
-      "WAITING_START",
-      "LIVE",
-      "COMPLETED",
-      "CANCELLED",
-    ])
+    .enum(["DRAFT", "PUBLISHED", "ACTIVE", "WAITING_START", "LIVE", "COMPLETED", "CANCELLED"])
     .optional(),
 });
 
-const validationHook = (result: { success: boolean; error?: unknown }, c: Parameters<typeof errorResponse>[0]) => {
+const validationHook = (
+  result: { success: boolean; error?: unknown },
+  c: Parameters<typeof errorResponse>[0],
+) => {
   if (!result.success) {
     const details: Record<string, string[]> = {};
-    const zodError = result.error as { issues?: { path: (string | number | symbol)[]; message: string }[] } | undefined;
+    const zodError = result.error as
+      { issues?: { path: (string | number | symbol)[]; message: string }[] } | undefined;
     for (const issue of zodError?.issues ?? []) {
       const key = issue.path.map(String).join(".") || "_root";
       if (!details[key]) details[key] = [];
@@ -178,7 +174,12 @@ function validatePublishable(session: {
   if (session.entryFeeXaf < 100) {
     return "INVALID_ENTRY_FEE";
   }
-  if (session.prizePoolBps < 0 || session.prizePoolBps > 10000 || session.providerFeeBps < 0 || session.providerFeeBps > 10000) {
+  if (
+    session.prizePoolBps < 0 ||
+    session.prizePoolBps > 10000 ||
+    session.providerFeeBps < 0 ||
+    session.providerFeeBps > 10000
+  ) {
     return "INVALID_BPS";
   }
   if (winnerSplitBps.reduce((total, split) => total + split, 0) !== 10000) {
@@ -330,7 +331,15 @@ adminSessions.get(
                 profile: { select: { username: true, avatarUrl: true } },
               },
             },
-            payment: { select: { id: true, status: true, amountXaf: true, providerTransId: true, createdAt: true } },
+            payment: {
+              select: {
+                id: true,
+                status: true,
+                amountXaf: true,
+                providerTransId: true,
+                createdAt: true,
+              },
+            },
           },
           orderBy: { createdAt: "desc" },
         },
@@ -367,8 +376,7 @@ adminSessions.get(
           miniGameId: r.miniGameDefinitionId ?? "",
           miniGameName: r.miniGameDefinition?.name ?? "Mini-jeu",
           configJson: r.configJson,
-          durationMs:
-            r.startTime && r.endTime ? r.endTime.getTime() - r.startTime.getTime() : 0,
+          durationMs: r.startTime && r.endTime ? r.endTime.getTime() - r.startTime.getTime() : 0,
           policy: null,
         })),
         liveState: session.liveState
@@ -464,8 +472,8 @@ adminSessions.patch(
       if (!existing) return { type: "not-found" as const };
 
       const paidRegistrationsCount = await tx.sessionRegistration.count({
-      where: { sessionId: id, status: { in: [...PAID_ACCESS_REGISTRATION_STATUSES] } },
-    });
+        where: { sessionId: id, status: { in: [...PAID_ACCESS_REGISTRATION_STATUSES] } },
+      });
 
       const before = serializeSession(existing);
       const merged = {
@@ -548,7 +556,8 @@ adminSessions.patch(
           prizePoolBps: merged.prizePoolBps,
           winnerSplitBps: merged.winnerSplitBps,
           providerFeeBps: merged.providerFeeBps,
-          selectedMiniGameIds: merged.selectedMiniGameIds === null ? Prisma.DbNull : merged.selectedMiniGameIds,
+          selectedMiniGameIds:
+            merged.selectedMiniGameIds === null ? Prisma.DbNull : merged.selectedMiniGameIds,
           startTime: merged.startTime,
           registrationClosesAt: merged.registrationClosesAt,
           configVersion: { increment: 1 },
@@ -679,6 +688,8 @@ adminSessions.post(
       if (!existing) return { type: "not-found" as const };
       if (existing.status !== GameSessionStatus.PUBLISHED)
         return { type: "invalid-status" as const };
+      const invalidCode = validatePublishable(existing);
+      if (invalidCode) return { type: "invalid" as const, code: invalidCode };
 
       const updatedCount = await tx.gameSession.updateMany({
         where: { id, configVersion: input.expectedConfigVersion },
@@ -710,6 +721,9 @@ adminSessions.post(
       return errorResponse(c, 404, "SESSION_NOT_FOUND", "Session not found");
     if (result.type === "invalid-status") {
       return errorResponse(c, 409, "SESSION_NOT_PUBLISHED", "Session must be published first");
+    }
+    if (result.type === "invalid") {
+      return errorResponse(c, 400, result.code, "Session config is invalid");
     }
     if (result.type === "conflict") {
       return errorResponse(c, 409, "CONFIG_VERSION_CONFLICT", "Session config version conflict");

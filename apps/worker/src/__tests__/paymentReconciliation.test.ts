@@ -4,10 +4,10 @@ const dbMocks = vi.hoisted(() => ({
   prisma: {
     paymentTransaction: {
       findUnique: vi.fn(),
-      update: vi.fn(),
+      updateMany: vi.fn(),
     },
     sessionRegistration: {
-      update: vi.fn(),
+      updateMany: vi.fn(),
     },
     auditLog: {
       create: vi.fn(),
@@ -39,6 +39,7 @@ function payment(overrides: Record<string, unknown> = {}) {
     userId: "player-1",
     providerTransId: "trans-1",
     status: "PENDING",
+    amountXaf: 1000,
     webhookReceivedAt: null,
     registration: {
       id: "registration-1",
@@ -55,11 +56,8 @@ describe("payment reconciliation worker", () => {
     process.env.FAPSHI_API_KEY = "api-key";
     process.env.FAPSHI_BASE_URL = "https://sandbox.example";
     dbMocks.prisma.paymentTransaction.findUnique.mockResolvedValue(payment());
-    dbMocks.prisma.paymentTransaction.update.mockResolvedValue({
-      ...payment(),
-      status: "SUCCESSFUL",
-    });
-    dbMocks.prisma.sessionRegistration.update.mockResolvedValue({});
+    dbMocks.prisma.paymentTransaction.updateMany.mockResolvedValue({ count: 1 });
+    dbMocks.prisma.sessionRegistration.updateMany.mockResolvedValue({ count: 1 });
     dbMocks.prisma.auditLog.create.mockResolvedValue({});
     vi.stubGlobal(
       "fetch",
@@ -82,12 +80,28 @@ describe("payment reconciliation worker", () => {
       status: "SUCCESSFUL",
       registrationPaid: true,
     });
-    expect(dbMocks.prisma.sessionRegistration.update).toHaveBeenCalledWith(
+    expect(dbMocks.prisma.sessionRegistration.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: "registration-1" },
+        where: expect.objectContaining({ id: "registration-1", status: "PAYMENT_PENDING" }),
         data: expect.objectContaining({ status: "PAID", paidAt: expect.any(Date) }),
       }),
     );
+  });
+
+  it("does not settle a successful provider response with a missing amount", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ transId: "trans-1", status: "SUCCESSFUL" }),
+      }),
+    );
+
+    const result = await processPaymentReconciliation({ paymentId: "payment-1" });
+
+    expect(result).toEqual({ reconciled: false, reason: "amount-verification-failed" });
+    expect(dbMocks.prisma.paymentTransaction.updateMany).not.toHaveBeenCalled();
+    expect(dbMocks.prisma.sessionRegistration.updateMany).not.toHaveBeenCalled();
   });
 
   it("does not poll terminal payments", async () => {

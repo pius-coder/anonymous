@@ -9,16 +9,16 @@
 
 ## Résumé exécutif
 
-| # | Gravité | Problème | Cause racine |
-|---|---------|----------|--------------|
-| 1 | 🔴 Bloquant | Toute publication de session PUBLIQUE renvoie `403_COMPLIANCE_GATE_BLOCKED` | Gate de compliance créée `BLOCKED` par défaut, **aucun endpoint ni UI pour la débloquer** |
-| 2 | 🔴 Donnée perdue | Page détail session : `Durée` toujours `0s`, `policy` toujours `null` | Valeurs hardcodées dans l'API (`durationMs: 0`, `policy: null`) |
-| 3 | 🔴 Donnée perdue | Page admin Paiements : "0 transaction" alors qu'il y a des inscriptions PAID | Paiement wallet ne crée pas de `PaymentTransaction` |
-| 4 | 🟠 Affichage | "kjnl jl i" affiché comme statut (valeur corrompue en DB) | `session.status` affiché brut, aucun `formatStatus`, pas de validation enum |
-| 5 | 🟠 Sémantique | Compteur "Inscriptions" users (2) ≠ inscriptions session (1) | Compteur users = TOUTES les `SessionRegistration` (non filtré) vs session = filtré |
-| 6 | 🟡 Cohérence | Types `AdminRole`/`Paginated` dupliqués vs `packages/shared` | Pas de source unique de vérité pour enums/statuts |
-| 7 | 🟡 UX | "Raison obligatoire" répété 3× dans la carte Cycle de vie | Même `placeholder` sur 3 forms identiques |
-| 8 | 🟡 Erreurs | Codes d'erreur API manquants dans `errors.fr.ts` | Traductions non alignées sur les codes réels |
+| #   | Gravité          | Problème                                                                     | Cause racine                                                                              |
+| --- | ---------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 1   | 🔴 Bloquant      | Toute publication de session PUBLIQUE renvoie `403_COMPLIANCE_GATE_BLOCKED`  | Gate de compliance créée `BLOCKED` par défaut, **aucun endpoint ni UI pour la débloquer** |
+| 2   | 🔴 Donnée perdue | Page détail session : `Durée` toujours `0s`, `policy` toujours `null`        | Valeurs hardcodées dans l'API (`durationMs: 0`, `policy: null`)                           |
+| 3   | 🔴 Donnée perdue | Page admin Paiements : "0 transaction" alors qu'il y a des inscriptions PAID | Paiement wallet ne crée pas de `PaymentTransaction`                                       |
+| 4   | 🟠 Affichage     | "kjnl jl i" affiché comme statut (valeur corrompue en DB)                    | `session.status` affiché brut, aucun `formatStatus`, pas de validation enum               |
+| 5   | 🟠 Sémantique    | Compteur "Inscriptions" users (2) ≠ inscriptions session (1)                 | Compteur users = TOUTES les `SessionRegistration` (non filtré) vs session = filtré        |
+| 6   | 🟡 Cohérence     | Types `AdminRole`/`Paginated` dupliqués vs `packages/shared`                 | Pas de source unique de vérité pour enums/statuts                                         |
+| 7   | 🟡 UX            | "Raison obligatoire" répété 3× dans la carte Cycle de vie                    | Même `placeholder` sur 3 forms identiques                                                 |
+| 8   | 🟡 Erreurs       | Codes d'erreur API manquants dans `errors.fr.ts`                             | Traductions non alignées sur les codes réels                                              |
 
 ---
 
@@ -30,7 +30,8 @@
 - `security.ts:151-166` — `assertPublicSessionCompliance()` renvoie `blocked` dès qu'une gate `PUBLIC_LAUNCH` (global) ou `LEGAL_WORDING` (public-session) est `BLOCKED`.
 - `sessions.ts:553-620` (route `POST /:id/publish`) → `sessions.ts:608-616` renvoie `403_COMPLIANCE_GATE_BLOCKED`.
 
-**Diagnostic :** comportement *intentionnel* (checklist légale V1), mais **fonctionnalité incomplète** :
+**Diagnostic :** comportement _intentionnel_ (checklist légale V1), mais **fonctionnalité incomplète** :
+
 - `GET /v1/admin/compliance/gates` existe (`admin/security.ts:20-28`) en **lecture seule**.
 - **Aucun `PATCH`** pour passer une gate en `PASSED`/`WAIVED`.
 - **Aucune UI admin** pour gérer les gates.
@@ -38,6 +39,7 @@
 → Résultat : impossible de publier la moindre session publique en l'état.
 
 **Correction recommandée :**
+
 1. Ajouter `PATCH /v1/admin/compliance/gates/:id` (admin/security.ts) pour basculer `status` → `PASSED`/`WAIVED` avec `decidedById`, `evidence`, audit log.
 2. Ajouter une page admin "Conformité" listant les gates + bouton débloquer.
 3. `errors.fr.ts` : ajouter `403_COMPLIANCE_GATE_BLOCKED`.
@@ -57,6 +59,7 @@ rounds: session.rounds.map((r) => ({
 ```
 
 **Impact :**
+
 - Frontend `apps/web/src/app/admin/sessions/[id]/page.tsx:138` → `Math.round(round.durationMs / 1000)` affiche toujours `0s`.
 - `policy` (AdminSessionDetail, admin-types.ts:66) jamais rempli.
 
@@ -86,6 +89,7 @@ rounds: session.rounds.map((r) => ({
 - Le texte "kjnl jl i" n'existe **dans aucun fichier** (grep = 0) → c'est une **valeur corrompue en base** (seed/test) affichée telle quelle.
 
 **Correction :**
+
 1. Ajouter `formatAdminStatus()` dans `admin-format.ts` (DRAFT→"Brouillon", PUBLISHED→"Publiée", etc.) + fallback "Inconnu".
 2. Utiliser ce helper sur `session.status` et `registration.status`.
 3. Typage : `AdminSession.status` devrait être l'union `GameSessionStatus` et non `string`.
@@ -105,6 +109,7 @@ rounds: session.rounds.map((r) => ({
 → "Test Player" = 2 dans la liste users (2 inscriptions toutes sessions) vs 1 sur la session détail. Deux sémantiques différentes, colonne mal nommée.
 
 **Correction :**
+
 1. Filtrer le compteur users (`status: { in: [PAID, PAYMENT_PENDING, CHECKED_IN, IN_ROOM] }`).
 2. Renommer la colonne "Inscriptions" → "Total inscriptions" + tooltip.
 3. Harmoniser le filtrage entre les deux endpoints.

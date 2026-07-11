@@ -39,6 +39,24 @@ function mapFapshiStatus(status: FapshiProviderStatus) {
   return PaymentStatus.PENDING;
 }
 
+function hasVerifiedFapshiSuccessAmount(input: {
+  status: FapshiProviderStatus;
+  expectedAmountXaf: number;
+  providerAmountXaf: unknown;
+}) {
+  if (input.status !== "SUCCESSFUL") return true;
+  const providerAmountXaf = input.providerAmountXaf;
+
+  return (
+    Number.isSafeInteger(input.expectedAmountXaf) &&
+    input.expectedAmountXaf > 0 &&
+    typeof providerAmountXaf === "number" &&
+    Number.isSafeInteger(providerAmountXaf) &&
+    providerAmountXaf > 0 &&
+    providerAmountXaf === input.expectedAmountXaf
+  );
+}
+
 async function getFapshiPaymentStatus(transId: string) {
   const { apiuser, apikey } = getFapshiCredentials();
   const res = await fetch(`${getFapshiBaseUrl()}/payment-status/${encodeURIComponent(transId)}`, {
@@ -73,8 +91,31 @@ export async function processPaymentReconciliation(
   const provider = await getFapshiPaymentStatus(payment.providerTransId);
   const nextStatus = mapFapshiStatus(provider.status);
 
-  const updated = await prisma.paymentTransaction.update({
-    where: { id: payment.id },
+  if (
+    !hasVerifiedFapshiSuccessAmount({
+      status: provider.status,
+      expectedAmountXaf: payment.amountXaf,
+      providerAmountXaf: provider.amount,
+    })
+  ) {
+    await prisma.auditLog.create({
+      data: {
+        userId: payment.userId,
+        action: "payment.reconciliation-amount-verification-failed",
+        entity: "PaymentTransaction",
+        entityId: payment.id,
+        newData: {
+          expectedAmountXaf: payment.amountXaf,
+          providerAmountXaf: provider.amount ?? null,
+          providerStatus: provider.status,
+        },
+      },
+    });
+    return { reconciled: false, reason: "amount-verification-failed" };
+  }
+
+  const paymentUpdate = await prisma.paymentTransaction.updateMany({
+    where: { id: payment.id, status: PaymentStatus.PENDING },
     data: {
       status: nextStatus,
       providerStatus: provider.status,
@@ -83,19 +124,26 @@ export async function processPaymentReconciliation(
     },
   });
 
+  if (paymentUpdate.count !== 1) {
+    return { reconciled: false, reason: "payment-status-changed" };
+  }
+
   let registrationPaid = false;
   if (
     provider.status === "SUCCESSFUL" &&
     payment.registration?.status === SessionRegistrationStatus.PAYMENT_PENDING
   ) {
-    await prisma.sessionRegistration.update({
-      where: { id: payment.registration.id },
+    const registrationUpdate = await prisma.sessionRegistration.updateMany({
+      where: {
+        id: payment.registration.id,
+        status: SessionRegistrationStatus.PAYMENT_PENDING,
+      },
       data: {
         status: SessionRegistrationStatus.PAID,
         paidAt: now,
       },
     });
-    registrationPaid = true;
+    registrationPaid = registrationUpdate.count === 1;
   }
 
   await prisma.auditLog.create({
@@ -105,12 +153,12 @@ export async function processPaymentReconciliation(
       entity: "PaymentTransaction",
       entityId: payment.id,
       newData: {
-        status: updated.status,
+        status: nextStatus,
         providerStatus: provider.status,
         registrationPaid,
       },
     },
   });
 
-  return { reconciled: true, paymentId: payment.id, status: updated.status, registrationPaid };
+  return { reconciled: true, paymentId: payment.id, status: nextStatus, registrationPaid };
 }

@@ -1,15 +1,24 @@
 import { BaseApiService } from "../api/BaseApiService";
 
-type InitiatePaymentResponse = { paymentId: string; redirectUrl: string };
-type PaymentStatusResponse = { id: string; status: string; amountXaf: number };
+type InitiatePaymentResponse = {
+  payment: { id: string; status: string };
+  checkoutUrl: string | null;
+};
+type PaymentStatusResponse = { payment: { id: string; status: string; amountXaf: number } };
 
 export class PaymentService extends BaseApiService {
-  async initiateFapshiPayment(registrationId: string, redirectUrl: string): Promise<InitiatePaymentResponse> {
-    const { response } = await this.request<InitiatePaymentResponse>("/v1/payments/fapshi/initiate", {
-      method: "POST",
-      body: { registrationId, redirectUrl },
-      authenticated: true,
-    });
+  async initiateFapshiPayment(
+    registrationId: string,
+    redirectUrl: string,
+  ): Promise<InitiatePaymentResponse> {
+    const { response } = await this.request<InitiatePaymentResponse>(
+      "/v1/payments/fapshi/initiate",
+      {
+        method: "POST",
+        body: { registrationId, redirectUrl },
+        authenticated: true,
+      },
+    );
     return response;
   }
 

@@ -25,11 +25,13 @@ export function AuthDrawer({
   onOpenChange,
   defaultTab = "login",
   trigger,
+  next,
 }: {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   defaultTab?: "login" | "register";
   trigger?: React.ReactElement;
+  next?: string;
 }) {
   const isMobile = useIsMobile();
   const [tab, setTab] = useState<"login" | "register">(defaultTab);
@@ -62,10 +64,10 @@ export function AuthDrawer({
         </TabsTrigger>
       </TabsList>
       <TabsContent value="login" className="pt-4">
-        <LoginForm onSuccess={() => setShown(false)} />
+        <LoginForm next={next} onSuccess={() => setShown(false)} />
       </TabsContent>
       <TabsContent value="register" className="pt-4">
-        <RegisterForm onSuccess={() => setShown(false)} />
+        <RegisterForm next={next} onSuccess={() => setShown(false)} />
       </TabsContent>
     </Tabs>
   );

@@ -21,16 +21,18 @@ import { translateError } from "@/lib/errors.fr";
 
 type Payment = {
   id: string;
-  registrationId: string;
+  registrationId: string | null;
   amountXaf: number;
   currency: string;
   status: "PENDING" | "SUCCESSFUL" | "FAILED" | "EXPIRED" | "REFUNDED" | "CREATED";
+  providerStatus: string | null;
+  checkoutUrl: string | null;
   createdAt: string;
   updatedAt: string;
 };
 
 const POLL_MS = 3000;
-const PAYMENT_DEADLINE_MS = 24 * 60 * 60 * 1000;
+const PAYMENT_DEADLINE_MS = 15 * 60 * 1000;
 
 function statusVisual(status: Payment["status"]) {
   switch (status) {
@@ -55,8 +57,7 @@ export default function PaymentStatusPage() {
   const [payment, setPayment] = useState<Payment | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [cancelling, setCancelling] = useState(false);
-  const [deadline] = useState(() => Date.now() + PAYMENT_DEADLINE_MS);
-  const [now, setNow] = useState<number>(0);
+  const [now, setNow] = useState<number>(() => Date.now());
   const aborted = useRef(false);
 
   useEffect(() => {
@@ -72,6 +73,7 @@ export default function PaymentStatusPage() {
       if (aborted.current) return;
       if (res.ok) {
         setPayment(res.data.payment);
+        setError(null);
         if (res.data.payment.status === "SUCCESSFUL") {
           setTimeout(() => router.push(`/me/sessions`), 1200);
           return;
@@ -92,6 +94,11 @@ export default function PaymentStatusPage() {
   }, [id]);
 
   const visual = payment ? statusVisual(payment.status) : null;
+  const isProviderInitFailure =
+    payment?.status === "FAILED" && payment.providerStatus === "INITIATE_FAILED";
+  const deadline = payment
+    ? new Date(payment.createdAt).getTime() + PAYMENT_DEADLINE_MS
+    : now + PAYMENT_DEADLINE_MS;
   const remainingMs = deadline ? Math.max(0, deadline - now) : 0;
   const remainingMin = Math.ceil(remainingMs / 60000);
 
@@ -102,14 +109,18 @@ export default function PaymentStatusPage() {
         <p className="mt-1 text-sm text-muted-foreground">Suivi en temps réel de ta transaction.</p>
 
         {error && (
-          <p className="mt-4 font-bold text-[--arena-danger]">{translateError(error.code, error.status)}</p>
+          <p className="mt-4 font-bold text-[--arena-danger]">
+            {translateError(error.code, error.status)}
+          </p>
         )}
 
         {payment && visual && (
           <div className="mt-6 grid gap-4">
             <div className="flex items-center justify-center gap-3 text-4xl" aria-live="polite">
               <span>{visual.emoji}</span>
-              <span className={`font-head text-2xl font-black uppercase ${visual.tone}`}>{visual.label}</span>
+              <span className={`font-head text-2xl font-black uppercase ${visual.tone}`}>
+                {visual.label}
+              </span>
             </div>
             <dl className="grid gap-1 text-sm">
               <div className="flex justify-between border-b-2 border-border pb-1">
@@ -132,14 +143,28 @@ export default function PaymentStatusPage() {
               </p>
             )}
 
-            {(payment.status === "FAILED" || payment.status === "EXPIRED") && (
-              <div className="grid gap-2">
-                <Badge variant="destructive">À réessayer</Badge>
-                <Link href="/me/sessions" className="w-full">
-                  <Button className="w-full">Retour à mes sessions</Button>
-                </Link>
+            {isProviderInitFailure && (
+              <div className="grid gap-2 rounded border-2 border-[--arena-danger]/50 bg-[--arena-danger]/10 p-3 text-sm">
+                <p className="font-bold text-[--arena-danger]">Prestataire indisponible</p>
+                <p className="text-muted-foreground">
+                  Le paiement n&apos;a pas pu être lancé. Ta place reste consultable depuis tes
+                  sessions.
+                </p>
+                <Button render={<Link href="/me/sessions" />} className="w-full">
+                  Annuler puis recommencer
+                </Button>
               </div>
             )}
+
+            {!isProviderInitFailure &&
+              (payment.status === "FAILED" || payment.status === "EXPIRED") && (
+                <div className="grid gap-2">
+                  <Badge variant="destructive">À réessayer</Badge>
+                  <Button render={<Link href="/me/sessions" />} className="w-full">
+                    Annuler puis recommencer
+                  </Button>
+                </div>
+              )}
 
             {payment.status === "SUCCESSFUL" && (
               <p className="text-center font-bold text-[--arena-green]">Redirection…</p>
@@ -147,7 +172,11 @@ export default function PaymentStatusPage() {
           </div>
         )}
 
-        {(!payment || payment.status === "PENDING" || payment.status === "CREATED") && (
+        {(!payment ||
+          payment.status === "PENDING" ||
+          payment.status === "CREATED" ||
+          payment.status === "FAILED" ||
+          payment.status === "EXPIRED") && (
           <div className="mt-6 flex justify-center">
             <AlertDialog>
               <AlertDialogTrigger render={<Button variant="outline">Annuler le paiement</Button>} />
@@ -155,7 +184,8 @@ export default function PaymentStatusPage() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Annuler le paiement ?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Ton inscription restera en attente et tu pourras réessayer plus tard.
+                    Ton inscription sera annulée. Tu pourras t&apos;inscrire à nouveau tant que la
+                    session accepte des participants.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -166,11 +196,14 @@ export default function PaymentStatusPage() {
                         variant="destructive"
                         disabled={cancelling}
                         onClick={async () => {
-                          if (payment) {
+                          if (payment?.registrationId) {
                             setCancelling(true);
-                            const result = await apiPost(`/registrations/${payment.registrationId}/cancel`, {
-                              reason: "player-cancelled-payment-status-page",
-                            });
+                            const result = await apiPost(
+                              `/registrations/${payment.registrationId}/cancel`,
+                              {
+                                reason: "player-cancelled-payment-status-page",
+                              },
+                            );
                             setCancelling(false);
                             if (!result.ok) {
                               setError(result.error);

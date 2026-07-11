@@ -85,7 +85,10 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
     const entryFeeXaf = formValues.entryFeeXaf;
     const providerFeeBps = formValues.providerFeeBps;
     const prizePoolBps = formValues.prizePoolBps;
-    const winnerSplitBps = formValues.winnerSplitBps.split(",").map(Number).filter((n) => n > 0);
+    const winnerSplitBps = formValues.winnerSplitBps
+      .split(",")
+      .map(Number)
+      .filter((n) => n > 0);
     const totalSplit = winnerSplitBps.reduce((a, b) => a + b, 0);
 
     const grossPerPlayer = entryFeeXaf;
@@ -94,11 +97,17 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
     const netTotal = grossTotal - estimatedFees;
     const prizePoolXaf = Math.floor((netTotal * prizePoolBps) / 10000);
     const orgCommission = netTotal - prizePoolXaf;
-    const winnerShares = winnerSplitBps.map((split) =>
-      Math.floor((prizePoolXaf * split) / 10000),
-    );
+    const winnerShares = winnerSplitBps.map((split) => Math.floor((prizePoolXaf * split) / 10000));
 
-    return { grossTotal, estimatedFees, netTotal, prizePoolXaf, orgCommission, winnerShares, totalSplit };
+    return {
+      grossTotal,
+      estimatedFees,
+      netTotal,
+      prizePoolXaf,
+      orgCommission,
+      winnerShares,
+      totalSplit,
+    };
   }, [formValues]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -115,7 +124,10 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
       .filter((n) => n > 0);
 
     const payload = {
-      code: String(form.get("code") || "").trim().toUpperCase() || undefined,
+      code:
+        String(form.get("code") || "")
+          .trim()
+          .toUpperCase() || undefined,
       name: String(form.get("name") || ""),
       description: String(form.get("description") || "") || undefined,
       minPlayers: Number(form.get("minPlayers") || 2),
@@ -193,7 +205,9 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
                 min={2}
                 defaultValue={2}
                 required
-                onChange={(e) => setFormValues((v) => ({ ...v, minPlayers: Number(e.target.value) }))}
+                onChange={(e) =>
+                  setFormValues((v) => ({ ...v, minPlayers: Number(e.target.value) }))
+                }
               />
               {renderFieldError("minPlayers")}
             </label>
@@ -205,16 +219,20 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
                 min={2}
                 defaultValue={10}
                 required
-                onChange={(e) => setFormValues((v) => ({ ...v, maxPlayers: Number(e.target.value) }))}
+                onChange={(e) =>
+                  setFormValues((v) => ({ ...v, maxPlayers: Number(e.target.value) }))
+                }
               />
               {renderFieldError("maxPlayers")}
             </label>
             <label className="grid gap-1 text-sm font-medium">
               Accès
-              <NativeSelect name="visibility" className="w-full">
-                <NativeSelectOption value="PRIVATE">PRIVATE</NativeSelectOption>
-                <NativeSelectOption value="UNLISTED">UNLISTED</NativeSelectOption>
-                <NativeSelectOption value="PUBLIC">PUBLIC</NativeSelectOption>
+              <NativeSelect name="visibility" defaultValue="PRIVATE" className="w-full">
+                <NativeSelectOption value="PUBLIC">Publique — catalogue</NativeSelectOption>
+                <NativeSelectOption value="UNLISTED">
+                  Lien direct — absente du catalogue
+                </NativeSelectOption>
+                <NativeSelectOption value="PRIVATE">Privée — invitation requise</NativeSelectOption>
               </NativeSelect>
               {renderFieldError("visibility")}
             </label>
@@ -229,12 +247,14 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
                 min={100}
                 defaultValue={1000}
                 required
-                onChange={(e) => setFormValues((v) => ({ ...v, entryFeeXaf: Number(e.target.value) }))}
+                onChange={(e) =>
+                  setFormValues((v) => ({ ...v, entryFeeXaf: Number(e.target.value) }))
+                }
               />
               {renderFieldError("entryFeeXaf")}
             </label>
             <label className="grid gap-1 text-sm font-medium">
-              Enveloppe bps
+              Récompenses internes (bps)
               <Input
                 name="prizePoolBps"
                 type="number"
@@ -242,12 +262,14 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
                 max={10000}
                 defaultValue={6000}
                 required
-                onChange={(e) => setFormValues((v) => ({ ...v, prizePoolBps: Number(e.target.value) }))}
+                onChange={(e) =>
+                  setFormValues((v) => ({ ...v, prizePoolBps: Number(e.target.value) }))
+                }
               />
               {renderFieldError("prizePoolBps")}
             </label>
             <label className="grid gap-1 text-sm font-medium">
-              Frais provider bps
+              Frais paiement estimés (bps)
               <Input
                 name="providerFeeBps"
                 type="number"
@@ -255,7 +277,9 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
                 max={10000}
                 defaultValue={300}
                 required
-                onChange={(e) => setFormValues((v) => ({ ...v, providerFeeBps: Number(e.target.value) }))}
+                onChange={(e) =>
+                  setFormValues((v) => ({ ...v, providerFeeBps: Number(e.target.value) }))
+                }
               />
               {renderFieldError("providerFeeBps")}
             </label>
@@ -268,14 +292,16 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
               {renderFieldError("startsAt")}
             </label>
             <label className="grid gap-1 text-sm font-medium">
-              Fin inscriptions (UTC) <span className="text-[10px] text-muted-foreground">(optionnel)</span>
+              Fin inscriptions (UTC){" "}
+              <span className="text-[10px] text-muted-foreground">(optionnel)</span>
               <Input name="registrationClosesAt" type="datetime-local" />
               {renderFieldError("registrationClosesAt")}
             </label>
           </div>
 
           <label className="grid gap-1 text-sm font-medium">
-            Répartition prize (bps, virgule) <span className="text-[10px] text-muted-foreground">(ex: 10000 ou 5000,3000,2000)</span>
+            Répartition récompenses (bps, virgule){" "}
+            <span className="text-[10px] text-muted-foreground">(ex: 10000 ou 5000,3000,2000)</span>
             <Input
               name="winnerSplitBps"
               defaultValue="10000"
@@ -283,7 +309,8 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
             />
             {renderFieldError("winnerSplitBps")}
             <p className="text-[10px] text-muted-foreground">
-              Somme: {financials.totalSplit} bps{financials.totalSplit !== 10000 && ` — doit totaliser 10000`}
+              Somme: {financials.totalSplit} bps
+              {financials.totalSplit !== 10000 && ` — doit totaliser 10000`}
             </p>
           </label>
 
@@ -301,14 +328,36 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
             <CardTitle className="font-head text-lg uppercase">Aperçu financier</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between"><span>Brut ({formValues.maxPlayers} × {formValues.entryFeeXaf} XAF)</span><span className="font-mono">{financials.grossTotal.toLocaleString()} XAF</span></div>
-            <div className="flex justify-between text-muted-foreground"><span>Frais ({formValues.providerFeeBps} bps)</span><span className="font-mono">−{financials.estimatedFees.toLocaleString()} XAF</span></div>
-            <div className="flex justify-between font-bold border-t-2 border-border pt-2"><span>Net</span><span className="font-mono">{financials.netTotal.toLocaleString()} XAF</span></div>
-            <div className="flex justify-between text-[--arena-green]"><span>Prize pool ({formValues.prizePoolBps} bps)</span><span className="font-mono">{financials.prizePoolXaf.toLocaleString()} XAF</span></div>
-            <div className="flex justify-between"><span>Commission organisme</span><span className="font-mono">{financials.orgCommission.toLocaleString()} XAF</span></div>
+            <div className="flex justify-between">
+              <span>
+                Brut ({formValues.maxPlayers} × {formValues.entryFeeXaf} XAF)
+              </span>
+              <span className="font-mono">{financials.grossTotal.toLocaleString()} XAF</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Frais ({formValues.providerFeeBps} bps)</span>
+              <span className="font-mono">−{financials.estimatedFees.toLocaleString()} XAF</span>
+            </div>
+            <div className="flex justify-between font-bold border-t-2 border-border pt-2">
+              <span>Net</span>
+              <span className="font-mono">{financials.netTotal.toLocaleString()} XAF</span>
+            </div>
+            <div className="flex justify-between text-[--arena-green]">
+              <span>Récompenses internes ({formValues.prizePoolBps} bps)</span>
+              <span className="font-mono">{financials.prizePoolXaf.toLocaleString()} XAF</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Commission organisme</span>
+              <span className="font-mono">{financials.orgCommission.toLocaleString()} XAF</span>
+            </div>
             {financials.winnerShares.length > 0 && (
               <div className="border-t-2 border-border pt-2 text-xs text-muted-foreground">
-                <p>Gagnants: {financials.winnerShares.map((s, i) => `${i + 1}er: ${s.toLocaleString()} XAF`).join(", ")}</p>
+                <p>
+                  Gagnants:{" "}
+                  {financials.winnerShares
+                    .map((s, i) => `${i + 1}er: ${s.toLocaleString()} XAF`)
+                    .join(", ")}
+                </p>
               </div>
             )}
           </CardContent>
@@ -325,18 +374,42 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
               <>
                 {selectedGameIds.length > 0 && (
                   <div className="mb-3 rounded-lg border-2 border-[--arena-green] p-3">
-                    <p className="font-head text-xs uppercase tracking-wider text-[--arena-green]">Selectionnes ({selectedGameIds.length})</p>
+                    <p className="font-head text-xs uppercase tracking-wider text-[--arena-green]">
+                      Selectionnes ({selectedGameIds.length})
+                    </p>
                     <ol className="mt-2 space-y-1">
                       {selectedGameIds.map((id, index) => {
                         const game = miniGames.find((g) => g.id === id);
                         if (!game) return null;
                         return (
                           <li key={id} className="flex items-center justify-between gap-2 text-xs">
-                            <span className="font-medium">{index + 1}. {game.name}</span>
+                            <span className="font-medium">
+                              {index + 1}. {game.name}
+                            </span>
                             <span className="flex gap-1">
-                              <button type="button" onClick={() => moveGameUp(index)} className="text-muted-foreground hover:text-foreground" disabled={index === 0}>↑</button>
-                              <button type="button" onClick={() => moveGameDown(index)} className="text-muted-foreground hover:text-foreground" disabled={index === selectedGameIds.length - 1}>↓</button>
-                              <button type="button" onClick={() => toggleGame(id)} className="text-[--arena-danger] hover:text-red-400">✕</button>
+                              <button
+                                type="button"
+                                onClick={() => moveGameUp(index)}
+                                className="text-muted-foreground hover:text-foreground"
+                                disabled={index === 0}
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => moveGameDown(index)}
+                                className="text-muted-foreground hover:text-foreground"
+                                disabled={index === selectedGameIds.length - 1}
+                              >
+                                ↓
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => toggleGame(id)}
+                                className="text-[--arena-danger] hover:text-red-400"
+                              >
+                                ✕
+                              </button>
                             </span>
                           </li>
                         );
@@ -345,7 +418,10 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
                   </div>
                 )}
                 {miniGameGroups.map((group) => (
-                  <div key={group.family} className="border-b-2 border-border pb-3 last:border-b-0 last:pb-0">
+                  <div
+                    key={group.family}
+                    className="border-b-2 border-border pb-3 last:border-b-0 last:pb-0"
+                  >
                     <p className="font-head text-sm uppercase">
                       {group.family} · {group.games.length} jeux
                     </p>
@@ -353,8 +429,16 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
                       {group.games.map((game) => {
                         const isSelected = selectedGameIds.includes(game.id);
                         return (
-                          <label key={game.id} className={`flex cursor-pointer items-start gap-2 rounded-md p-2 transition-colors ${isSelected ? "bg-accent" : "hover:bg-muted/50"}`}>
-                            <input type="checkbox" checked={isSelected} onChange={() => toggleGame(game.id)} className="mt-0.5" />
+                          <label
+                            key={game.id}
+                            className={`flex cursor-pointer items-start gap-2 rounded-md p-2 transition-colors ${isSelected ? "bg-accent" : "hover:bg-muted/50"}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleGame(game.id)}
+                              className="mt-0.5"
+                            />
                             <div className="flex-1">
                               <p className="font-medium">{game.name}</p>
                               <p className="text-xs text-muted-foreground">
@@ -374,7 +458,10 @@ export function CreateSessionForm({ miniGames }: { miniGames: MiniGameDefinition
                 ))}
               </>
             )}
-            <p className="text-[10px] text-muted-foreground">Les mini-jeux sont jou&eacute;s dans l&apos;ordre s&eacute;lectionn&eacute;. Par d&eacute;faut (aucun), la rotation standard est utilis&eacute;e.</p>
+            <p className="text-[10px] text-muted-foreground">
+              Les mini-jeux sont jou&eacute;s dans l&apos;ordre s&eacute;lectionn&eacute;. Par
+              d&eacute;faut (aucun), la rotation standard est utilis&eacute;e.
+            </p>
           </CardContent>
         </Card>
 

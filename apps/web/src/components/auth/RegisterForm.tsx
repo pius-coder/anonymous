@@ -7,12 +7,13 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/retroui/
 import { Input } from "@/components/retroui/input";
 import { Alert, AlertTitle, AlertDescription } from "@/components/retroui/alert";
 import { useSession } from "@/lib/useSession";
+import { safeInternalRedirect } from "@/lib/safe-redirect";
 import { translateError } from "@/lib/errors.fr";
 import type { ApiError } from "@/lib/api";
 
 type FieldKey = "email" | "password" | "name" | "username" | "phone";
 
-export function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
+export function RegisterForm({ next, onSuccess }: { next?: string; onSuccess?: () => void }) {
   const { register } = useSession();
   const router = useRouter();
   const [form, setForm] = useState({
@@ -28,6 +29,12 @@ export function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
 
   function set(key: FieldKey, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
+    setErrors((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
   }
 
   async function submit(e: React.FormEvent) {
@@ -48,10 +55,11 @@ export function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
       setGeneral(err);
       return;
     }
-    const next = new URLSearchParams(window.location.search).get("next");
+    const redirectTo = safeInternalRedirect(
+      next ?? new URLSearchParams(window.location.search).get("next"),
+    );
     if (onSuccess) onSuccess();
-    if (next) router.push(next);
-    else router.push("/me/sessions");
+    router.push(redirectTo);
   }
 
   return (

@@ -16,6 +16,41 @@ describe("auth validation", () => {
     }
   });
 
+  it("treats blank optional phone and name fields as omitted", () => {
+    const result = registerSchema.safeParse({
+      email: "player@example.com",
+      password: "CorrectHorse2026!",
+      username: "player_2026",
+      name: "   ",
+      phone: "",
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.name).toBeUndefined();
+      expect(result.data.phone).toBeUndefined();
+    }
+  });
+
+  it("trims non-empty phone values and rejects real phone values that are too short", () => {
+    const valid = registerSchema.safeParse({
+      email: "player@example.com",
+      password: "CorrectHorse2026!",
+      username: "player_2026",
+      phone: "  +237 612 345 678  ",
+    });
+    const invalid = registerSchema.safeParse({
+      email: "player@example.com",
+      password: "CorrectHorse2026!",
+      username: "player_2026",
+      phone: "123",
+    });
+
+    expect(valid.success).toBe(true);
+    if (valid.success) expect(valid.data.phone).toBe("+237 612 345 678");
+    expect(invalid.success).toBe(false);
+  });
+
   it("rejects weak register passwords and invalid usernames", () => {
     const result = registerSchema.safeParse({
       email: "player@example.com",

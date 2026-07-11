@@ -44,7 +44,9 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-xs font-medium uppercase text-muted-foreground">{label}</CardTitle>
+        <CardTitle className="text-xs font-medium uppercase text-muted-foreground">
+          {label}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <p className="text-2xl font-semibold">{value}</p>
@@ -55,9 +57,10 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 
 export default function ProfilePage() {
   const { user, loading } = useSession();
+  const userId = user?.id;
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
-  const [loadingData, setLoadingData] = useState(true);
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
 
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -67,15 +70,26 @@ export default function ProfilePage() {
   const [form, setForm] = useState({ username: "", bio: "", avatarUrl: "", isPublic: false });
 
   useEffect(() => {
-    if (loading) return;
-    if (!user) return;
-    apiGet<ProfileResponse>("/players/me")
+    if (loading || !userId) return;
+
+    const controller = new AbortController();
+    const requestedUserId = userId;
+    let active = true;
+    apiGet<ProfileResponse>("/players/me", controller.signal)
       .then((res) => {
+        if (!active) return;
         if (res.ok) setProfile(res.data.profile);
         else setError(res.error);
       })
-      .finally(() => setLoadingData(false));
-  }, [user, loading]);
+      .finally(() => {
+        if (active) setLoadedUserId(requestedUserId);
+      });
+
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [loading, userId]);
 
   function startEdit() {
     if (!profile) return;
@@ -114,7 +128,7 @@ export default function ProfilePage() {
     }
   }
 
-  if (loading || loadingData) {
+  if (loading || (user && loadedUserId !== user.id)) {
     return (
       <main className="px-4 py-10">
         <Skeleton className="mb-6 h-10 w-48" />
@@ -183,7 +197,9 @@ export default function ProfilePage() {
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <p className="truncate font-head text-xl font-black uppercase">@{profile.username}</p>
+                <p className="truncate font-head text-xl font-black uppercase">
+                  @{profile.username}
+                </p>
                 <p className="truncate text-sm text-muted-foreground">{user.email}</p>
                 {user.name && <p className="truncate text-sm">{user.name}</p>}
                 <Badge variant="outline" className="mt-1">
@@ -205,7 +221,9 @@ export default function ProfilePage() {
               </section>
 
               <section>
-                <h3 className="mb-3 text-sm font-semibold uppercase text-muted-foreground">Visibilité</h3>
+                <h3 className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
+                  Visibilité
+                </h3>
                 <Card>
                   <CardContent className="pt-6 text-sm">
                     {profile.isPublic
@@ -216,11 +234,16 @@ export default function ProfilePage() {
               </section>
 
               <section>
-                <h3 className="mb-3 text-sm font-semibold uppercase text-muted-foreground">Statistiques</h3>
+                <h3 className="mb-3 text-sm font-semibold uppercase text-muted-foreground">
+                  Statistiques
+                </h3>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <StatCard label="Sessions" value={profile.stats.sessionsPlayed} />
                   <StatCard label="Victoires" value={profile.stats.sessionsWon} />
-                  <StatCard label="Win rate" value={`${Math.round(profile.stats.winRate * 100)}%`} />
+                  <StatCard
+                    label="Win rate"
+                    value={`${Math.round(profile.stats.winRate * 100)}%`}
+                  />
                   <StatCard
                     label="Crédits gagnés"
                     value={`${new Intl.NumberFormat("fr-FR").format(profile.stats.creditsWonXaf)} XAF`}

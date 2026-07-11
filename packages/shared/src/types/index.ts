@@ -13,6 +13,19 @@ export interface PaginatedResponse<T> {
   };
 }
 
+/**
+ * Public catalogue payload after the API response envelope has been unwrapped.
+ * It intentionally keeps the catalogue's named collection for backwards-compatible
+ * client consumption while exposing the same complete pagination metadata.
+ */
+export interface PublicCatalogueResponse<T> {
+  sessions: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;

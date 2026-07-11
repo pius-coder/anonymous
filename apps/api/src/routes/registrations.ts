@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { prisma, SessionRegistrationStatus } from "@session-jeu/db";
+import { PaymentStatus, prisma, SessionRegistrationStatus } from "@session-jeu/db";
 import { requireAuth } from "../auth/session.js";
 import type { AuthVariables } from "../auth/session.js";
 import { errorResponse, successResponse } from "../lib/responses.js";
@@ -13,6 +13,13 @@ import {
   serializeRegistration,
   sessionIdParamsSchema,
 } from "../registrations/sessionRegistration.js";
+import { applyFapshiPaymentStatus } from "../payments/fapshi.js";
+import {
+  expireFapshiPayment,
+  FAPSHI_PROVIDER,
+  FapshiProviderError,
+  getFapshiPaymentStatus,
+} from "../payments/fapshiClient.js";
 import { resolvePublicSessionId } from "../sessions/resolveSession.js";
 
 const registrations = new Hono<{ Variables: AuthVariables }>();
@@ -105,6 +112,99 @@ registrations.post(
     const { id } = c.req.valid("param");
     const input = c.req.valid("json");
 
+    const cancellationCandidate = await prisma.sessionRegistration.findUnique({
+      where: { id },
+      include: { payment: true },
+    });
+    if (!cancellationCandidate)
+      return errorResponse(c, 404, "REGISTRATION_NOT_FOUND", "Registration not found");
+    if (cancellationCandidate.userId !== user.id) {
+      return errorResponse(
+        c,
+        403,
+        "REGISTRATION_FORBIDDEN",
+        "Registration belongs to another user",
+      );
+    }
+    if (cancellationCandidate.status === SessionRegistrationStatus.PAID) {
+      return errorResponse(
+        c,
+        409,
+        "REGISTRATION_ALREADY_PAID",
+        "Paid registrations cannot be cancelled here",
+      );
+    }
+    if (cancellationCandidate.status !== SessionRegistrationStatus.PAYMENT_PENDING) {
+      return errorResponse(
+        c,
+        409,
+        "REGISTRATION_NOT_CANCELLABLE",
+        "Registration cannot be cancelled",
+      );
+    }
+
+    let providerExpired = false;
+    const payment = cancellationCandidate.payment;
+    if (payment?.provider === FAPSHI_PROVIDER && payment.status === PaymentStatus.PENDING) {
+      if (!payment.providerTransId) {
+        return errorResponse(
+          c,
+          409,
+          "PAYMENT_CANCELLATION_PENDING",
+          "Payment initiation is still in progress",
+        );
+      }
+
+      try {
+        const provider = await expireFapshiPayment(payment.providerTransId);
+        if (provider.status === "SUCCESSFUL") {
+          const settlement = await applyFapshiPaymentStatus({ payload: provider });
+          return errorResponse(
+            c,
+            409,
+            settlement.type === "amount-verification-failed"
+              ? "PAYMENT_UNDER_REVIEW"
+              : "REGISTRATION_ALREADY_PAID",
+            "Payment status changed before cancellation",
+          );
+        }
+        if (provider.status !== "EXPIRED") {
+          return errorResponse(c, 409, "PAYMENT_CANCELLATION_PENDING", "Payment is still pending");
+        }
+        providerExpired = true;
+      } catch (error) {
+        if (!(error instanceof FapshiProviderError) || error.status !== 400) {
+          return errorResponse(c, 502, "PROVIDER_UNAVAILABLE", "Payment provider unavailable");
+        }
+
+        try {
+          const provider = await getFapshiPaymentStatus(payment.providerTransId);
+          if (provider.status === "SUCCESSFUL") {
+            const settlement = await applyFapshiPaymentStatus({ payload: provider });
+            return errorResponse(
+              c,
+              409,
+              settlement.type === "amount-verification-failed"
+                ? "PAYMENT_UNDER_REVIEW"
+                : "REGISTRATION_ALREADY_PAID",
+              "Payment status changed before cancellation",
+            );
+          }
+          if (provider.status !== "EXPIRED") {
+            return errorResponse(
+              c,
+              409,
+              "PAYMENT_CANCELLATION_PENDING",
+              "Payment is still pending",
+            );
+          }
+          providerExpired = true;
+        } catch {
+          return errorResponse(c, 502, "PROVIDER_UNAVAILABLE", "Payment provider unavailable");
+        }
+      }
+    }
+
     const result = await prisma.$transaction(async (tx) => {
       const existing = await tx.sessionRegistration.findUnique({ where: { id } });
       if (!existing) return { type: "not-found" as const };
@@ -114,14 +214,34 @@ registrations.post(
         return { type: "not-cancellable" as const };
       }
 
-      const updated = await tx.sessionRegistration.update({
-        where: { id },
+      const cancellationTime = new Date();
+      const registrationUpdate = await tx.sessionRegistration.updateMany({
+        where: { id, userId: user.id, status: SessionRegistrationStatus.PAYMENT_PENDING },
         data: {
           status: SessionRegistrationStatus.CANCELLED,
-          cancelledAt: new Date(),
+          cancelledAt: cancellationTime,
           cancellationReason: input.reason ?? "player-cancelled-before-payment",
         },
       });
+
+      if (registrationUpdate.count !== 1) {
+        const current = await tx.sessionRegistration.findUnique({ where: { id } });
+        return current?.status === SessionRegistrationStatus.PAID
+          ? { type: "paid" as const }
+          : { type: "not-cancellable" as const };
+      }
+
+      if (providerExpired && payment) {
+        await tx.paymentTransaction.updateMany({
+          where: { id: payment.id, status: PaymentStatus.PENDING },
+          data: {
+            status: PaymentStatus.EXPIRED,
+            providerStatus: "EXPIRED",
+          },
+        });
+      }
+
+      const updated = await tx.sessionRegistration.findUniqueOrThrow({ where: { id } });
 
       await tx.auditLog.create({
         data: {

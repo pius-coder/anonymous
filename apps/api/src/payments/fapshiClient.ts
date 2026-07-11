@@ -90,3 +90,10 @@ export async function initiateFapshiPayment(input: {
 export async function getFapshiPaymentStatus(transId: string) {
   return requestFapshi<FapshiStatusResponse>(`/payment-status/${encodeURIComponent(transId)}`);
 }
+
+export async function expireFapshiPayment(transId: string) {
+  return requestFapshi<FapshiStatusResponse>("/expire-pay", {
+    method: "POST",
+    body: JSON.stringify({ transId }),
+  });
+}

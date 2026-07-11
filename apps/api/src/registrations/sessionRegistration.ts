@@ -3,6 +3,7 @@ import {
   GameSessionStatus,
   Prisma,
   SessionRegistrationStatus,
+  SessionVisibility,
   prisma,
 } from "@session-jeu/db";
 import { scheduleRegistrationExpiration } from "../queues/registrationExpiration.js";
@@ -110,12 +111,16 @@ export async function registerForSession(input: {
           select: {
             id: true,
             status: true,
+            visibility: true,
             maxPlayers: true,
             registrationClosesAt: true,
           },
         });
 
         if (!session) return { type: "not-found" as const };
+        if (session.visibility === SessionVisibility.PRIVATE) {
+          return { type: "not-found" as const };
+        }
         if (session.status === GameSessionStatus.CANCELLED) {
           return { type: "closed" as const, code: "SESSION_CANCELLED" as const };
         }

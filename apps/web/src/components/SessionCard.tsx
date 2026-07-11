@@ -11,6 +11,7 @@ import {
 } from "@/components/retroui/card";
 import { Progress } from "@/components/retroui/progress";
 import { cn } from "@/lib/utils";
+import { sessionStatusLabel, sessionStatusTone } from "@/lib/session-status";
 
 interface SessionCardProps {
   code: string;
@@ -43,35 +44,6 @@ function formatDate(dateStr: string | null): string {
   });
 }
 
-function statusLabel(status: string): string {
-  switch (status) {
-    case "PUBLISHED":
-      return "Inscriptions ouvertes";
-    case "ACTIVE":
-      return "En cours";
-    case "COMPLETED":
-      return "Terminée";
-    case "CANCELLED":
-      return "Annulée";
-    default:
-      return status;
-  }
-}
-
-function statusVariant(status: string): "default" | "secondary" | "destructive" {
-  switch (status) {
-    case "PUBLISHED":
-      return "default";
-    case "ACTIVE":
-      return "secondary";
-    case "COMPLETED":
-    case "CANCELLED":
-      return "destructive";
-    default:
-      return "secondary";
-  }
-}
-
 export default function SessionCard({
   code,
   name,
@@ -93,7 +65,7 @@ export default function SessionCard({
       <CardHeader>
         <CardTitle className="font-head text-xl uppercase">{name}</CardTitle>
         <CardAction>
-          <Badge variant={statusVariant(status)}>{statusLabel(status)}</Badge>
+          <Badge variant={sessionStatusTone(status)}>{sessionStatusLabel(status)}</Badge>
         </CardAction>
       </CardHeader>
       <CardContent className="flex-1 space-y-5">

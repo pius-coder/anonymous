@@ -34,6 +34,16 @@ Sources internes consolidees :
 - `cahier_des_charges_technique_plateforme_sessions_jeu.md`
 - `deep-research-report.md`
 
+Source transverse ajoutee pour les features live/game-engine/catalogue/resultats/admin/securite :
+
+- `docs/admin-arbitrage/README.md`
+- `docs/admin-arbitrage/01-reglement-arbitrage.md`
+- `docs/admin-arbitrage/02-user-stories-dashboard.md`
+- `docs/admin-arbitrage/03-edge-cases.md`
+- `docs/admin-arbitrage/04-ui-jeux-dashboard.md`
+- `docs/admin-arbitrage/05-diagrammes.md`
+- `docs/admin-arbitrage/06-plan-apex-implementation.md`
+
 Sources de recherche principales :
 
 - Next.js docs : https://nextjs.org/docs/llms.txt

@@ -1,8 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/retroui/drawer";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from "@/components/retroui/drawer";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +34,11 @@ export type RegisterSessionInput = {
 };
 
 type Wallet = { balanceXaf: number; currency: string; isFrozen: boolean };
+type RegistrationState = {
+  id: string;
+  status: string;
+  paymentDeadlineAt?: string | null;
+};
 
 const xafNf = new Intl.NumberFormat("fr-FR");
 
@@ -35,7 +46,10 @@ function formatXaf(amount: number, currency: string) {
   return xafNf.format(amount) + " " + currency;
 }
 
-function sessionAccessHref(session: RegisterSessionInput, registration?: { status: string } | null) {
+function sessionAccessHref(
+  session: RegisterSessionInput,
+  registration?: { status: string } | null,
+) {
   if (
     session.status === "LIVE" &&
     (registration?.status === "CHECKED_IN" || registration?.status === "IN_ROOM")
@@ -70,13 +84,14 @@ export function RegisterDrawer({
   const isMobile = useIsMobile();
   const router = useRouter();
   const [step, setStep] = useState(0);
-  const [method, setMethod] = useState<"fapshi" | "wallet">("wallet");
+  const [method, setMethod] = useState<"fapshi" | "wallet">("fapshi");
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
-  const [existingReg, setExistingReg] = useState<{ id: string; status: string } | null>(null);
+  const [existingReg, setExistingReg] = useState<RegistrationState | null>(null);
   const [checking, setChecking] = useState(false);
+  const methodTouchedRef = useRef(false);
 
   const idempotencyKey = useMemo(() => randomNonce("reg"), []);
   const walletSufficient = !!wallet && wallet.balanceXaf >= session.entryFeeXaf && !wallet.isFrozen;
@@ -86,20 +101,31 @@ export function RegisterDrawer({
     setStep(0);
     setDone(false);
     setExistingReg(null);
+    setMethod("fapshi");
+    methodTouchedRef.current = false;
     setChecking(true);
     void apiGet<{ wallet: Wallet }>("/wallet/me").then((r) => {
-      if (r.ok) setWallet(r.data.wallet);
+      if (r.ok) {
+        setWallet(r.data.wallet);
+        if (
+          !methodTouchedRef.current &&
+          r.data.wallet.balanceXaf >= session.entryFeeXaf &&
+          !r.data.wallet.isFrozen
+        ) {
+          setMethod("wallet");
+        }
+      }
     });
-    void apiGet<{ registration: { id: string; status: string } }>(
-      `/sessions/${session.id}/registration`,
-    ).then((r) => {
-      if (r.ok) setExistingReg(r.data.registration);
-      setChecking(false);
-    });
+    void apiGet<{ registration: RegistrationState }>(`/sessions/${session.id}/registration`).then(
+      (r) => {
+        if (r.ok) setExistingReg(r.data.registration);
+        setChecking(false);
+      },
+    );
   };
 
-  const startRegister = async (): Promise<{ id: string; status: string } | ApiError | null> => {
-    const reg = await apiPost<{ registration: { id: string; status: string } }>(
+  const startRegister = async (): Promise<RegistrationState | ApiError | null> => {
+    const reg = await apiPost<{ registration: RegistrationState }>(
       `/sessions/${session.id}/register`,
     );
     if (!reg.ok) {
@@ -129,9 +155,8 @@ export function RegisterDrawer({
       setPending(false);
       if (reg && reg.code === "ALREADY_REGISTERED") {
         setError(null);
-        const already = (
-          reg.details as { registration?: { id: string; status: string } } | undefined
-        )?.registration;
+        const already = (reg.details as { registration?: RegistrationState } | undefined)
+          ?.registration;
         if (already) setExistingReg(already);
       }
       return;
@@ -152,9 +177,12 @@ export function RegisterDrawer({
       }
       return;
     }
-    const pay = await apiPost<{ payment: { id: string }; checkoutUrl: string }>(
+    const pay = await apiPost<{ payment: { id: string }; checkoutUrl: string | null }>(
       "/payments/fapshi/initiate",
-      { registrationId: registration.id, redirectUrl: `${window.location.origin}/payments/${registration.id}/status` },
+      {
+        registrationId: registration.id,
+        redirectUrl: `${window.location.origin}/payments/${registration.id}/status`,
+      },
     );
     setPending(false);
     if (!pay.ok) {
@@ -187,7 +215,8 @@ export function RegisterDrawer({
         <div className="grid gap-3 text-center">
           <p className="font-head text-2xl font-black uppercase text-[--arena-green]">Inscrit !</p>
           <p className="text-sm text-muted-foreground">
-            Tu es inscrit à <strong>{session.title}</strong>. Pense à te signaler (check-in) avant le début.
+            Tu es inscrit à <strong>{session.title}</strong>. Pense à te signaler (check-in) avant
+            le début.
           </p>
           <Button
             onClick={() => {
@@ -202,7 +231,9 @@ export function RegisterDrawer({
         <p className="text-sm text-muted-foreground">Vérification…</p>
       ) : existingReg && existingReg.status !== "PAYMENT_PENDING" ? (
         <div className="grid gap-3 text-center">
-          <p className="font-head text-2xl font-black uppercase text-[--arena-green]">Déjà inscrit</p>
+          <p className="font-head text-2xl font-black uppercase text-[--arena-green]">
+            Déjà inscrit
+          </p>
           <p className="text-sm text-muted-foreground">
             Tu es déjà inscrit à <strong>{session.title}</strong> (statut : {existingReg.status}).
           </p>
@@ -227,11 +258,14 @@ export function RegisterDrawer({
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Frais d&apos;entrée</dt>
-                  <dd className="font-bold">{formatXaf(session.entryFeeXaf, wallet?.currency ?? "XAF")}</dd>
+                  <dd className="font-bold">
+                    {formatXaf(session.entryFeeXaf, wallet?.currency ?? "XAF")}
+                  </dd>
                 </div>
               </dl>
               <p className="text-xs text-muted-foreground">
-                En t&apos;inscrivant, tu acceptes le règlement de la session. Le paiement sécurise ta place.
+                En t&apos;inscrivant, une place est réservée pendant 15 minutes. Le paiement
+                confirme ta participation.
               </p>
               <Button onClick={() => setStep(1)} className="w-full" size="lg">
                 Continuer
@@ -242,7 +276,22 @@ export function RegisterDrawer({
           {step === 1 && (
             <div className="grid gap-3">
               <h3 className="font-head text-lg font-black uppercase">Paiement</h3>
-              <RadioGroup value={method} onValueChange={(v) => setMethod(v as "fapshi" | "wallet")} className="grid gap-3">
+              {existingReg?.status === "PAYMENT_PENDING" && (
+                <Alert>
+                  <AlertTitle>Place réservée</AlertTitle>
+                  <AlertDescription>
+                    Finalise le paiement avant l&apos;expiration pour garder ta place.
+                  </AlertDescription>
+                </Alert>
+              )}
+              <RadioGroup
+                value={method}
+                onValueChange={(v) => {
+                  methodTouchedRef.current = true;
+                  setMethod(v as "fapshi" | "wallet");
+                }}
+                className="grid gap-3"
+              >
                 <label
                   className={`flex cursor-pointer items-center gap-3 border-2 border-border bg-card p-3 shadow-sm ${
                     method === "wallet" ? "ring-2 ring-primary" : ""
@@ -257,7 +306,13 @@ export function RegisterDrawer({
                   </div>
                   {!walletSufficient && (
                     <Tooltip>
-                      <TooltipTrigger render={<span className="text-xs font-bold text-[--arena-danger]">Insuffisant</span>} />
+                      <TooltipTrigger
+                        render={
+                          <span className="text-xs font-bold text-[--arena-danger]">
+                            Insuffisant
+                          </span>
+                        }
+                      />
                       <TooltipContent>Solde insuffisant ou portefeuille gelé.</TooltipContent>
                     </Tooltip>
                   )}
@@ -293,12 +348,19 @@ export function RegisterDrawer({
             <div className="grid gap-3">
               <h3 className="font-head text-lg font-black uppercase">Confirmation</h3>
               <p className="text-sm text-muted-foreground">
-                Méthode : <strong>{method === "wallet" ? "Portefeuille" : "Mobile Money (Fapshi)"}</strong>
+                Méthode :{" "}
+                <strong>{method === "wallet" ? "Portefeuille" : "Mobile Money (Fapshi)"}</strong>
                 <br />
-                Montant : <strong>{formatXaf(session.entryFeeXaf, wallet?.currency ?? "XAF")}</strong>
+                Montant :{" "}
+                <strong>{formatXaf(session.entryFeeXaf, wallet?.currency ?? "XAF")}</strong>
               </p>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setStep(1)} className="flex-1" disabled={pending}>
+                <Button
+                  variant="outline"
+                  onClick={() => setStep(1)}
+                  className="flex-1"
+                  disabled={pending}
+                >
                   Retour
                 </Button>
                 <Button onClick={handleConfirm} className="flex-1" disabled={pending} size="lg">
@@ -337,7 +399,9 @@ export function RegisterDrawer({
         <Drawer open={open} onOpenChange={handleOpenChange}>
           <DrawerContent>
             <DrawerHeader>
-              <DrawerTitle className="font-head text-2xl font-black uppercase">S&apos;inscrire</DrawerTitle>
+              <DrawerTitle className="font-head text-2xl font-black uppercase">
+                S&apos;inscrire
+              </DrawerTitle>
               <DrawerDescription>Session {session.code}</DrawerDescription>
             </DrawerHeader>
             <div className="px-4 pb-6">{children}</div>
@@ -347,7 +411,9 @@ export function RegisterDrawer({
         <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="font-head text-2xl font-black uppercase">S&apos;inscrire</DialogTitle>
+              <DialogTitle className="font-head text-2xl font-black uppercase">
+                S&apos;inscrire
+              </DialogTitle>
               <DialogDescription>Session {session.code}</DialogDescription>
             </DialogHeader>
             {children}

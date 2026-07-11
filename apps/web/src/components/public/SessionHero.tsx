@@ -4,6 +4,7 @@ import { Badge } from "@/components/retroui/badge";
 import { Button } from "@/components/retroui/button";
 import { SessionInscriptionCTA } from "@/components/auth/SessionInscriptionCTA";
 import { SessionConsoleSvg } from "@/components/game/game-visuals";
+import { canRegisterForSession, sessionStatusLabel } from "@/lib/session-status";
 
 export function SessionHero({
   session,
@@ -16,6 +17,16 @@ export function SessionHero({
   isFull: boolean;
   isClosed: boolean;
 }) {
+  const disabledReason = isClosed
+    ? "Inscriptions fermées"
+    : isFull
+      ? "Session complète"
+      : !canRegisterForSession(session.status)
+        ? session.status === "PUBLISHED"
+          ? "Inscriptions bientôt ouvertes"
+          : "Inscription indisponible"
+        : undefined;
+
   return (
     <section className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:py-14">
       <div className="flex flex-col justify-center">
@@ -25,7 +36,7 @@ export function SessionHero({
           </Button>
         </Link>
         <div className="flex flex-wrap gap-2">
-          <Badge>{session.status}</Badge>
+          <Badge>{sessionStatusLabel(session.status)}</Badge>
           <Badge variant="outline">Code {code}</Badge>
         </div>
         <h1 className="mt-5 text-5xl font-black uppercase leading-none sm:text-6xl">
@@ -45,7 +56,8 @@ export function SessionHero({
               entryFeeXaf: session.entryFee,
               status: session.status,
             }}
-            disabled={isFull || isClosed}
+            disabled={Boolean(disabledReason)}
+            disabledReason={disabledReason}
           />
           <Link href="/catalogue">
             <Button variant="outline" size="lg">

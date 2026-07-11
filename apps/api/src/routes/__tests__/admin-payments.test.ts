@@ -22,6 +22,22 @@ const queueMocks = vi.hoisted(() => ({
 
 vi.mock("@session-jeu/db", () => ({
   prisma: dbMocks.prisma,
+  PaymentStatus: {
+    PENDING: "PENDING",
+    SUCCESSFUL: "SUCCESSFUL",
+    FAILED: "FAILED",
+    EXPIRED: "EXPIRED",
+    REFUNDED: "REFUNDED",
+  },
+  Prisma: {},
+  SessionRegistrationStatus: {
+    CREATED: "CREATED",
+    PAYMENT_PENDING: "PAYMENT_PENDING",
+    PAID: "PAID",
+    CANCELLED: "CANCELLED",
+    REFUNDED: "REFUNDED",
+    EXPIRED: "EXPIRED",
+  },
 }));
 
 vi.mock("../../queues/paymentReconciliation.js", () => queueMocks);

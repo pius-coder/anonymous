@@ -7,6 +7,14 @@ vi.mock("@session-jeu/db", () => ({
       findUnique: vi.fn(),
     },
   },
+  GameSessionStatus: {
+    DRAFT: "DRAFT",
+    PUBLISHED: "PUBLISHED",
+    ACTIVE: "ACTIVE",
+    LIVE: "LIVE",
+    COMPLETED: "COMPLETED",
+    CANCELLED: "CANCELLED",
+  },
   SessionRegistrationStatus: {
     PAYMENT_PENDING: "PAYMENT_PENDING",
     PAID: "PAID",
@@ -94,6 +102,29 @@ describe("GET /v1/public/sessions/:code", () => {
 
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.success).toBe(false);
+  });
+
+  it("should return 404 for DRAFT session even if code is known", async () => {
+    mockPrisma.gameSession.findUnique.mockResolvedValue({
+      code: "DRAFT-001",
+      name: "Draft",
+      description: null,
+      entryFee: 500,
+      maxPlayers: 10,
+      prizePool: 0,
+      startTime: null,
+      endTime: null,
+      status: "DRAFT",
+      visibility: "PUBLIC",
+      _count: { registrations: 0 },
+    } as never);
+
+    const res = await app.request("/v1/public/sessions/DRAFT-001");
+    expect(res.status).toBe(404);
+
+    const body = (await res.json()) as { error: { code: string; message: string } };
+    expect(body.error.code).toBe("SESSION_NOT_FOUND");
+    expect(body.error.message).toBe("Session not found");
   });
 
   it("should return 404 for non-existent session", async () => {

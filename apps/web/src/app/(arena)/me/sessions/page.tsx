@@ -23,7 +23,11 @@ type HistoryEntry = {
   };
   registrationStatus: string;
   bucket: "future" | "live" | "completed" | "cancelled" | "no-show";
-  result: { finalRank: number | null; finalStatus: string | null; prizeWonXaf: number | null } | null;
+  result: {
+    finalRank: number | null;
+    finalStatus: string | null;
+    prizeWonXaf: number | null;
+  } | null;
 };
 
 const BUCKET_LABEL: Record<HistoryEntry["bucket"], string> = {
@@ -35,7 +39,8 @@ const BUCKET_LABEL: Record<HistoryEntry["bucket"], string> = {
 };
 
 function statusColor(status: string) {
-  if (status === "PAID" || status === "CHECKED_IN" || status === "IN_ROOM") return "text-[--arena-green]";
+  if (status === "PAID" || status === "CHECKED_IN" || status === "IN_ROOM")
+    return "text-[--arena-green]";
   if (status === "PAYMENT_PENDING") return "text-[--arena-gold]";
   if (status === "CANCELLED" || status === "REFUNDED") return "text-[--arena-danger]";
   return "text-muted-foreground";
@@ -43,22 +48,34 @@ function statusColor(status: string) {
 
 export default function MySessionsPage() {
   const { user, loading } = useSession();
+  const userId = user?.id;
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [error, setError] = useState<ApiError | null>(null);
-  const [loadingData, setLoadingData] = useState(true);
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (loading) return;
-    if (!user) return;
-    apiGet<{ entries: HistoryEntry[] }>("/players/me/history?limit=50")
+    if (loading || !userId) return;
+
+    const controller = new AbortController();
+    const requestedUserId = userId;
+    let active = true;
+    apiGet<{ entries: HistoryEntry[] }>("/players/me/history?limit=50", controller.signal)
       .then((res) => {
+        if (!active) return;
         if (res.ok) setEntries(res.data.entries);
         else setError(res.error);
       })
-      .finally(() => setLoadingData(false));
-  }, [user, loading]);
+      .finally(() => {
+        if (active) setLoadedUserId(requestedUserId);
+      });
 
-  if (loading || loadingData) {
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [loading, userId]);
+
+  if (loading || (user && loadedUserId !== user.id)) {
     return (
       <main className="px-4 py-10">
         <Skeleton className="mb-6 h-10 w-56" />
@@ -79,12 +96,16 @@ export default function MySessionsPage() {
     );
   }
 
-  const buckets: HistoryEntry["bucket"][] = ["future", "live", "completed"];
+  const buckets: HistoryEntry["bucket"][] = ["future", "live", "completed", "cancelled", "no-show"];
 
   return (
     <main className="px-4 py-10">
       <h1 className="font-head text-4xl font-black uppercase">Mes sessions</h1>
-      {error && <p className="mt-3 font-bold text-[--arena-danger]">{translateError(error.code, error.status)}</p>}
+      {error && (
+        <p className="mt-3 font-bold text-[--arena-danger]">
+          {translateError(error.code, error.status)}
+        </p>
+      )}
 
       <Tabs defaultValue="future" className="mt-6">
         <TabsList>
@@ -106,7 +127,9 @@ export default function MySessionsPage() {
                   {items.map((entry) => (
                     <Card key={entry.registrationId}>
                       <CardHeader className="flex-row items-center justify-between">
-                        <CardTitle className="font-head text-xl uppercase">{entry.session.name}</CardTitle>
+                        <CardTitle className="font-head text-xl uppercase">
+                          {entry.session.name}
+                        </CardTitle>
                         <Badge variant="outline">#{entry.session.code}</Badge>
                       </CardHeader>
                       <CardContent className="flex flex-wrap items-center gap-3">
@@ -117,23 +140,28 @@ export default function MySessionsPage() {
                           <span className="text-sm text-muted-foreground">
                             Rang {entry.result.finalRank ?? "—"} ·{" "}
                             {entry.result.prizeWonXaf
-                              ? new Intl.NumberFormat("fr-FR").format(entry.result.prizeWonXaf) + " XAF"
+                              ? new Intl.NumberFormat("fr-FR").format(entry.result.prizeWonXaf) +
+                                " XAF"
                               : "0 XAF"}
                           </span>
                         )}
                         <div className="ml-auto flex gap-2">
-                          {entry.bucket === "future" && entry.registrationStatus === "PAYMENT_PENDING" && (
-                            <Link href={`/session/${entry.session.code}`}>
-                              <Button size="sm" variant="outline">
-                                Payer
-                              </Button>
-                            </Link>
-                          )}
-                          {entry.bucket === "future" && (entry.registrationStatus === "PAID") && (
-                            <Link href={`/session/${entry.session.code}/lobby`}>
-                              <Button size="sm">Lobby</Button>
-                            </Link>
-                          )}
+                          {entry.bucket === "future" &&
+                            entry.registrationStatus === "PAYMENT_PENDING" && (
+                              <Link href={`/session/${entry.session.code}`}>
+                                <Button size="sm" variant="outline">
+                                  Payer
+                                </Button>
+                              </Link>
+                            )}
+                          {entry.bucket === "future" &&
+                            (entry.registrationStatus === "PAID" ||
+                              entry.registrationStatus === "CHECKED_IN" ||
+                              entry.registrationStatus === "IN_ROOM") && (
+                              <Link href={`/session/${entry.session.code}/lobby`}>
+                                <Button size="sm">Lobby</Button>
+                              </Link>
+                            )}
                           {entry.bucket === "live" && (
                             <Link href={`/session/${entry.session.code}/live`}>
                               <Button size="sm">Rejoindre le live</Button>
