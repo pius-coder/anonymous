@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package sessionjeu.payment.v1;
+
+import "common/v1/shared.proto";
+
+enum PaymentStatus {
+  PAYMENT_STATUS_UNSPECIFIED = 0;
+  PAYMENT_STATUS_PENDING = 1;
+  PAYMENT_STATUS_SUCCESSFUL = 2;
+  PAYMENT_STATUS_FAILED = 3;
+  PAYMENT_STATUS_EXPIRED = 4;
+  PAYMENT_STATUS_REFUNDED = 5;
+}
+
+enum LedgerDirection {
+  LEDGER_DIRECTION_UNSPECIFIED = 0;
+  LEDGER_DIRECTION_CREDIT = 1;
+  LEDGER_DIRECTION_DEBIT = 2;
+}
+
+enum LedgerType {
+  LEDGER_TYPE_UNSPECIFIED = 0;
+  LEDGER_TYPE_ENTRY_FEE = 1;
+  LEDGER_TYPE_PRIZE = 2;
+  LEDGER_TYPE_REFUND = 3;
+  LEDGER_TYPE_BONUS = 4;
+  LEDGER_TYPE_ADJUSTMENT = 5;
+}
+
+message PaymentTransaction {
+  string id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  sessionjeu.common.v1.Money amount = 3;
+  PaymentStatus status = 4;
+  string provider = 5;
+  string provider_external_id = 6;
+  string checkout_url = 7;
+  sessionjeu.common.v1.Timestamp created_at = 8;
+  sessionjeu.common.v1.Timestamp updated_at = 9;
+}
+
+message WalletEntry {
+  string wallet_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  sessionjeu.common.v1.Money balance = 3;
+  string currency = 4;
+}
+
+message LedgerEntry {
+  string id = 1;
+  string wallet_id = 2;
+  sessionjeu.common.v1.Money amount = 3;
+  sessionjeu.common.v1.Money balance_after = 4;
+  LedgerDirection direction = 5;
+  LedgerType type = 6;
+  string description = 7;
+  string idempotency_key = 8;
+  sessionjeu.common.v1.Timestamp created_at = 9;
+}
+
+message ProcessPaymentCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  sessionjeu.common.v1.Money amount = 3;
+  string provider = 4;
+}
+
+message ProcessPaymentResponse {
+  string payment_id = 1;
+  string checkout_url = 2;
+}
+
+message InitiateTransferCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  sessionjeu.common.v1.Money amount = 3;
+  string destination_reference = 4;
+}
+
+message InitiateTransferResponse {
+  string transfer_id = 1;
+}
+
+message PaymentCompletedEvent {
+  string payment_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  PaymentStatus status = 3;
+  sessionjeu.common.v1.Timestamp completed_at = 4;
+}
+
+message GetWalletQuery {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+}
+
+message GetWalletResponse {
+  WalletEntry wallet = 1;
+  repeated LedgerEntry recent_entries = 2;
+}
+
+message GetPaymentHistoryQuery {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message GetPaymentHistoryResponse {
+  repeated PaymentTransaction payments = 1;
+  string next_page_token = 2;
+}

@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package sessionjeu.session.v1;
+
+import "common/v1/shared.proto";
+import "minigame/v1/manifest.proto";
+
+enum PartyVisibility {
+  PARTY_VISIBILITY_UNSPECIFIED = 0;
+  PARTY_VISIBILITY_PUBLIC = 1;
+  PARTY_VISIBILITY_UNLISTED = 2;
+  PARTY_VISIBILITY_PRIVATE = 3;
+}
+
+enum PartyStatus {
+  PARTY_STATUS_UNSPECIFIED = 0;
+  PARTY_STATUS_DRAFT = 1;
+  PARTY_STATUS_SCHEDULED = 2;
+  PARTY_STATUS_PREPARATION_OPEN = 3;
+  PARTY_STATUS_READY_TO_START = 4;
+  PARTY_STATUS_ACTIVE_ROUND = 5;
+  PARTY_STATUS_ROUND_RESOLVING = 6;
+  PARTY_STATUS_ROUND_VERIFICATION = 7;
+  PARTY_STATUS_RESULTS_PUBLISHED = 8;
+  PARTY_STATUS_COMPLETED = 9;
+  PARTY_STATUS_CANCELLED = 10;
+}
+
+message PartyConfig {
+  int32 min_players = 1;
+  int32 max_players = 2;
+  sessionjeu.common.v1.Money entry_fee = 3;
+  PartyVisibility visibility = 4;
+  string name = 5;
+  string description = 6;
+  repeated string selected_minigame_ids = 7;
+}
+
+message CreatePartyCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  PartyConfig config = 2;
+  string created_by = 3;
+}
+
+message CreatePartyResponse {
+  sessionjeu.common.v1.PartyId party_id = 1;
+}
+
+message SchedulePartyCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.Timestamp scheduled_start = 3;
+}
+
+message SchedulePartyResponse {
+  sessionjeu.common.v1.PartyId party_id = 1;
+}
+
+message PartyCreatedEvent {
+  sessionjeu.common.v1.PartyId party_id = 1;
+  PartyConfig config = 2;
+  string created_by = 3;
+  sessionjeu.common.v1.Timestamp created_at = 4;
+}
+
+message PartyScheduledEvent {
+  sessionjeu.common.v1.PartyId party_id = 1;
+  sessionjeu.common.v1.Timestamp scheduled_start = 2;
+}
+
+message GetPartyQuery {
+  sessionjeu.common.v1.PartyId party_id = 1;
+}
+
+message GetPartyResponse {
+  PartyConfig config = 1;
+  PartyStatus status = 2;
+  sessionjeu.common.v1.Timestamp created_at = 3;
+  sessionjeu.common.v1.Timestamp updated_at = 4;
+}
+
+message ListPartiesQuery {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+message ListPartiesResponse {
+  repeated GetPartyResponse parties = 1;
+  string next_page_token = 2;
+}

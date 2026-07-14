@@ -1,0 +1,13 @@
+{
+  "correlation_id": { "value": "corr-001" },
+  "config": {
+    "min_players": 4,
+    "max_players": 20,
+    "entry_fee": { "currency": "XAF", "units": 5000, "nanos": 0 },
+    "visibility": "PARTY_VISIBILITY_PUBLIC",
+    "name": "Session test",
+    "description": "Description de la session",
+    "selected_minigame_ids": ["mg-memory-sequence", "mg-rapid-calculation"]
+  },
+  "created_by": "admin-001"
+}

@@ -1,0 +1,44 @@
+{
+  "get_admin_game_state": {
+    "party_id": { "value": "party-001" }
+  },
+  "admin_game_state": {
+    "config": {
+      "min_players": 4,
+      "max_players": 20,
+      "entry_fee": { "currency": "XAF", "units": 5000, "nanos": 0 },
+      "visibility": "PARTY_VISIBILITY_PUBLIC",
+      "name": "Session test",
+      "description": "Description de la session",
+      "selected_minigame_ids": ["mg-memory-sequence"]
+    },
+    "status": "PARTY_STATUS_PREPARATION_OPEN",
+    "participants": [
+      {
+        "player_id": { "value": "p1" },
+        "name": "Joueur 1",
+        "connection_status": "CONNECTION_STATUS_CONNECTED",
+        "participation_status": "PARTICIPATION_STATUS_ACTIVE",
+        "is_ready": true
+      },
+      {
+        "player_id": { "value": "p2" },
+        "name": "Joueur 2",
+        "connection_status": "CONNECTION_STATUS_DISCONNECTED",
+        "participation_status": "PARTICIPATION_STATUS_JOINED",
+        "is_ready": false
+      }
+    ],
+    "participant_count": 2,
+    "connected_count": 1,
+    "current_round_id": "",
+    "current_phase": "preparation"
+  },
+  "readonly_snapshot": {
+    "party_name": "Session test",
+    "status": "PARTY_STATUS_PREPARATION_OPEN",
+    "participant_count": 2,
+    "round_count": 0,
+    "current_phase": "preparation"
+  }
+}

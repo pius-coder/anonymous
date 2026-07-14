@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package sessionjeu.scoring.v1;
+
+import "common/v1/shared.proto";
+
+enum ScoreStatus {
+  SCORE_STATUS_UNSPECIFIED = 0;
+  SCORE_STATUS_PROVISIONAL = 1;
+  SCORE_STATUS_UNDER_REVIEW = 2;
+  SCORE_STATUS_CORRECTED = 3;
+  SCORE_STATUS_PUBLISHED = 4;
+  SCORE_STATUS_VOIDED = 5;
+}
+
+message PlayerScore {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+  double score = 2;
+  int32 rank = 3;
+  bool eliminated = 4;
+}
+
+message ProvisionalScoreReadyEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  repeated PlayerScore scores = 3;
+  sessionjeu.common.v1.Timestamp computed_at = 4;
+}
+
+message CorrectProvisionalScoreCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string round_id = 2;
+  sessionjeu.common.v1.PlayerId player_id = 3;
+  double corrected_score = 4;
+  string reason = 5;
+  string corrected_by = 6;
+}
+
+message CorrectProvisionalScoreResponse {}
+
+message ScoreCorrectedEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  double previous_score = 3;
+  double corrected_score = 4;
+  string reason = 5;
+  sessionjeu.common.v1.Timestamp corrected_at = 6;
+}
+
+message PublishResultsCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string round_id = 2;
+  sessionjeu.common.v1.PartyId party_id = 3;
+  string published_by = 4;
+}
+
+message PublishResultsResponse {}
+
+message ResultsPublishedEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  repeated PlayerScore final_scores = 3;
+  sessionjeu.common.v1.Timestamp published_at = 4;
+}
+
+message ListProvisionalScoresQuery {
+  string round_id = 1;
+}
+
+message ListProvisionalScoresResponse {
+  repeated PlayerScore scores = 1;
+  ScoreStatus status = 2;
+}
+
+message GetPublishedResultsQuery {
+  sessionjeu.common.v1.PartyId party_id = 1;
+}
+
+message GetPublishedResultsResponse {
+  string round_id = 1;
+  repeated PlayerScore final_scores = 2;
+  sessionjeu.common.v1.Timestamp published_at = 3;
+}

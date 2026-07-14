@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+package sessionjeu.round.v1;
+
+import "common/v1/shared.proto";
+
+enum RoundStatus {
+  ROUND_STATUS_UNSPECIFIED = 0;
+  ROUND_STATUS_PENDING = 1;
+  ROUND_STATUS_ACTIVE = 2;
+  ROUND_STATUS_CLOSED = 3;
+  ROUND_STATUS_RESOLVING = 4;
+  ROUND_STATUS_VERIFIED = 5;
+}
+
+message StartRoundCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  int32 round_number = 3;
+  string minigame_id = 4;
+  string started_by = 5;
+}
+
+message StartRoundResponse {
+  string round_id = 1;
+  sessionjeu.common.v1.Timestamp ends_at = 2;
+}
+
+message SubmitPlayerCommandPayload {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string round_id = 2;
+  sessionjeu.common.v1.PlayerId player_id = 3;
+  string action_type = 4;
+  bytes payload = 5;
+  string action_nonce = 6;
+}
+
+message SubmitPlayerCommandResponse {
+  bool accepted = 1;
+  string reject_reason = 2;
+}
+
+message CloseRoundCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string round_id = 2;
+  string closed_by = 3;
+}
+
+message CloseRoundResponse {}
+
+message RoundStartedEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  int32 round_number = 3;
+  sessionjeu.common.v1.Timestamp started_at = 4;
+  sessionjeu.common.v1.Timestamp ends_at = 5;
+}
+
+message RoundClosedEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  int32 round_number = 3;
+  sessionjeu.common.v1.Timestamp closed_at = 4;
+}
+
+message PlayerActionAcceptedEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  string action_type = 3;
+  sessionjeu.common.v1.Timestamp accepted_at = 4;
+}
+
+message PlayerActionRejectedEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  string action_type = 3;
+  string reason = 4;
+}
+
+message GetRoundStateQuery {
+  string round_id = 1;
+}
+
+message GetRoundStateResponse {
+  sessionjeu.common.v1.PartyId party_id = 1;
+  int32 round_number = 2;
+  RoundStatus status = 3;
+  sessionjeu.common.v1.Timestamp started_at = 4;
+  sessionjeu.common.v1.Timestamp ends_at = 5;
+}

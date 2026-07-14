@@ -1,0 +1,8 @@
+{
+  "uuid": { "value": "550e8400-e29b-41d4-a716-446655440000" },
+  "timestamp": { "seconds": "1760400000", "nanos": 0 },
+  "money": { "currency": "XAF", "units": 5000, "nanos": 0 },
+  "player_id": { "value": "p1" },
+  "party_id": { "value": "party-001" },
+  "round_id": { "value": "round-001" }
+}

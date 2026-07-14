@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+package sessionjeu.minigame.v1;
+
+enum MiniGameFamily {
+  MINI_GAME_FAMILY_UNSPECIFIED = 0;
+  MINI_GAME_FAMILY_SOLO = 1;
+  MINI_GAME_FAMILY_DUEL = 2;
+  MINI_GAME_FAMILY_ALLIANCE = 3;
+  MINI_GAME_FAMILY_TEAM = 4;
+  MINI_GAME_FAMILY_SURVIVAL = 5;
+  MINI_GAME_FAMILY_HIDDEN_ROLE = 6;
+}
+
+enum PlayerMode {
+  PLAYER_MODE_UNSPECIFIED = 0;
+  PLAYER_MODE_SOLO = 1;
+  PLAYER_MODE_DUEL = 2;
+  PLAYER_MODE_GROUP = 3;
+  PLAYER_MODE_TEAM = 4;
+}
+
+message MiniGameManifest {
+  string id = 1;
+  string key = 2;
+  string name = 3;
+  string description = 4;
+  MiniGameFamily family = 5;
+  PlayerMode player_mode = 6;
+  string resolver_id = 7;
+  bool enabled = 8;
+  string version = 9;
+}
+
+message MiniGameConfig {
+  MiniGameManifest manifest = 1;
+  repeated string allowed_actions = 2;
+  string anti_cheat_policy = 3;
+}
+
+message ListMiniGamesQuery {}
+
+message ListMiniGamesResponse {
+  repeated MiniGameManifest manifests = 1;
+}
+
+message GetMiniGameQuery {
+  string minigame_id = 1;
+}
+
+message GetMiniGameResponse {
+  MiniGameConfig config = 1;
+}
