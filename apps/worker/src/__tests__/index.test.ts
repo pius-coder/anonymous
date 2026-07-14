@@ -6,7 +6,7 @@ describe("worker foundation", () => {
     expect(getWorkerFoundation()).toEqual({
       service: "worker",
       foundation: "v0.1",
-      jobs: "planned-only",
+      jobs: "payment-reconciliation",
     });
   });
 });

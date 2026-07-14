@@ -4,7 +4,9 @@ import type { AppEnv } from "./app-env.js";
 import { authRouter } from "./routes/auth.js";
 import { meRouter } from "./routes/me.js";
 import { partyRouter } from "./routes/party.js";
+import { paymentRouter } from "./routes/payment.js";
 import { adminPartyRouter } from "./routes/admin/party.js";
+import { adminPaymentRouter } from "./routes/admin/payment.js";
 
 export const app = new Hono<AppEnv>();
 
@@ -19,7 +21,9 @@ app.get("/health", (c) =>
 app.route("/v1/auth", authRouter);
 app.route("/v1", meRouter);
 app.route("/v1", partyRouter);
+app.route("/v1", paymentRouter);
 app.route("/v1/admin", adminPartyRouter);
+app.route("/v1/admin", adminPaymentRouter);
 
 const port = Number(process.env.PORT) || 3001;
 

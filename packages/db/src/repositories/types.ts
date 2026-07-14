@@ -76,6 +76,28 @@ export type CreatePaymentTransactionData = {
   status?: string;
 };
 
+export type UpdateTransactionStatusData = {
+  status: string;
+  provider?: string;
+  reference?: string;
+};
+
+export type CreateLedgerEntryFullData = {
+  transactionId: string;
+  debit: number;
+  credit: number;
+  balance: number;
+  reason: string;
+  idempotencyKey?: string;
+};
+
+export type ListTransactionsFilter = {
+  skip?: number;
+  take?: number;
+  status?: string;
+  walletId?: string;
+};
+
 export type CreateAuthSessionData = {
   userId: string;
   token: string;
