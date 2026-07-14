@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package sessionjeu.identity.v1;
+
+import "common/v1/shared.proto";
+
+enum UserRole {
+  USER_ROLE_UNSPECIFIED = 0;
+  USER_ROLE_PLAYER = 1;
+  USER_ROLE_ADMIN = 2;
+  USER_ROLE_SUPPORT = 3;
+  USER_ROLE_READONLY = 4;
+}
+
+message User {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  string avatar_url = 4;
+  UserRole role = 5;
+  bool is_active = 6;
+  sessionjeu.common.v1.Timestamp created_at = 7;
+}
+
+message RegisterCommand {
+  string email = 1;
+  string password = 2;
+  string name = 3;
+}
+
+message RegisterResponse {
+  User user = 1;
+  string session_token = 2;
+}
+
+message LoginCommand {
+  string email = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  User user = 1;
+  string session_token = 2;
+}
+
+message LogoutCommand {
+  string session_token = 1;
+}
+
+message AuthenticateQuery {
+  string session_token = 1;
+}
+
+message AuthenticateResponse {
+  User user = 1;
+}

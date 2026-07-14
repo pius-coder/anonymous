@@ -1,0 +1,17 @@
+{
+  "open_preparation": {
+    "correlation_id": { "value": "corr-002" },
+    "party_id": { "value": "party-001" },
+    "announcement_at": { "seconds": "1760400050", "nanos": 0 }
+  },
+  "mark_ready": {
+    "correlation_id": { "value": "corr-003" },
+    "party_id": { "value": "party-001" },
+    "player_id": { "value": "p1" }
+  },
+  "confirm_start": {
+    "correlation_id": { "value": "corr-004" },
+    "party_id": { "value": "party-001" },
+    "confirmed_by": "admin-001"
+  }
+}

@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package sessionjeu.participation.v1;
+
+import "common/v1/shared.proto";
+
+enum ParticipationRole {
+  PARTICIPATION_ROLE_UNSPECIFIED = 0;
+  PARTICIPATION_ROLE_PLAYER = 1;
+  PARTICIPATION_ROLE_OBSERVER = 2;
+  PARTICIPATION_ROLE_ADMIN = 3;
+}
+
+enum ParticipationStatus {
+  PARTICIPATION_STATUS_UNSPECIFIED = 0;
+  PARTICIPATION_STATUS_INVITED = 1;
+  PARTICIPATION_STATUS_JOINED = 2;
+  PARTICIPATION_STATUS_ACTIVE = 3;
+  PARTICIPATION_STATUS_ELIMINATED = 4;
+  PARTICIPATION_STATUS_COMPLETED = 5;
+  PARTICIPATION_STATUS_NO_SHOW = 6;
+}
+
+message AttachParticipationCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.PlayerId player_id = 3;
+  ParticipationRole role = 4;
+}
+
+message AttachParticipationResponse {
+  string participation_id = 1;
+}
+
+message ParticipationAttachedEvent {
+  string participation_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.PlayerId player_id = 3;
+  ParticipationRole role = 4;
+  sessionjeu.common.v1.Timestamp attached_at = 5;
+}
+
+message GetParticipationQuery {
+  string participation_id = 1;
+}
+
+message GetParticipationResponse {
+  sessionjeu.common.v1.PartyId party_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  ParticipationRole role = 3;
+  ParticipationStatus status = 4;
+}
+
+message ListParticipationsQuery {
+  sessionjeu.common.v1.PartyId party_id = 1;
+}
+
+message ListParticipationsResponse {
+  repeated GetParticipationResponse participations = 1;
+}

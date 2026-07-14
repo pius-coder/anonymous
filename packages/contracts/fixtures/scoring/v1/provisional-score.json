@@ -1,0 +1,18 @@
+{
+  "provisional_score_ready": {
+    "round_id": "round-001",
+    "party_id": { "value": "party-001" },
+    "scores": [
+      { "player_id": { "value": "p1" }, "score": 95.5, "rank": 1, "eliminated": false },
+      { "player_id": { "value": "p2" }, "score": 82.0, "rank": 2, "eliminated": false },
+      { "player_id": { "value": "p3" }, "score": 45.0, "rank": 3, "eliminated": true }
+    ],
+    "computed_at": { "seconds": "1760400100", "nanos": 0 }
+  },
+  "publish_results": {
+    "correlation_id": { "value": "corr-004" },
+    "round_id": "round-001",
+    "party_id": { "value": "party-001" },
+    "published_by": "admin-001"
+  }
+}

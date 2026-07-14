@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package sessionjeu.realtime.v1;
+
+import "common/v1/shared.proto";
+
+enum ConnectionStatus {
+  CONNECTION_STATUS_UNSPECIFIED = 0;
+  CONNECTION_STATUS_CONNECTED = 1;
+  CONNECTION_STATUS_DISCONNECTED = 2;
+  CONNECTION_STATUS_RECONNECTING = 3;
+}
+
+message ConnectedEvent {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.Timestamp connected_at = 3;
+}
+
+message DisconnectedEvent {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.Timestamp disconnected_at = 3;
+}
+
+message ReconnectedEvent {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.Timestamp reconnected_at = 3;
+}
+
+message GetPlayerStateQuery {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+}
+
+message PlayerStateSnapshot {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+  ConnectionStatus connection_status = 2;
+  string current_phase = 3;
+  string current_round_id = 4;
+  sessionjeu.common.v1.Timestamp last_heartbeat = 5;
+}
+
+message GetPlayerStateResponse {
+  PlayerStateSnapshot state = 1;
+}
+
+message GetAdminGameSnapshotQuery {
+  sessionjeu.common.v1.PartyId party_id = 1;
+}
+
+message AdminGameSnapshot {
+  message PlayerSummary {
+    sessionjeu.common.v1.PlayerId player_id = 1;
+    ConnectionStatus connection_status = 2;
+    string name = 3;
+  }
+  repeated PlayerSummary participants = 1;
+  string current_phase = 2;
+  int32 participant_count = 3;
+  int32 connected_count = 4;
+}
+
+message GetAdminGameSnapshotResponse {
+  AdminGameSnapshot snapshot = 1;
+}
+
+message RoundStartedEvent {
+  sessionjeu.common.v1.PartyId party_id = 1;
+  string round_id = 2;
+  sessionjeu.common.v1.Timestamp started_at = 3;
+}
+
+message RoundStateSnapshot {
+  string round_id = 1;
+  string phase = 2;
+  sessionjeu.common.v1.Timestamp started_at = 3;
+  sessionjeu.common.v1.Timestamp ends_at = 4;
+}
+
+message GetReadonlySnapshotQuery {
+  sessionjeu.common.v1.PartyId party_id = 1;
+}
+
+message ReadonlySnapshot {
+  string current_phase = 1;
+  int32 participant_count = 2;
+  repeated RoundStateSnapshot rounds = 3;
+}
+
+message GetReadonlySnapshotResponse {
+  ReadonlySnapshot snapshot = 1;
+}
