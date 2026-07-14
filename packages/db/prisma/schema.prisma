@@ -7,3 +7,347 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─────────────────────────────
+// Identity
+// ─────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  avatarUrl String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  authSessions     AuthSession[]
+  roleAssignments  RoleAssignment[]
+  participations   PartyParticipation[]
+  auditLogs        AuditLog[]
+  announcements    Announcement[]
+  notificationJobs NotificationJob[]
+  wallet           Wallet?
+}
+
+model AuthSession {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model RoleAssignment {
+  id        String   @id @default(cuid())
+  userId    String
+  role      String
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([userId])
+}
+
+// ─────────────────────────────
+// Party (session de jeu)
+// ─────────────────────────────
+
+model Party {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  status    String
+  visibility String  @default("public")
+  roundProgram Json?
+  minPlayers Int?
+  maxPlayers Int?
+
+  scheduledAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  participations  PartyParticipation[]
+  rounds          Round[]
+  announcements   Announcement[]
+}
+
+// ─────────────────────────────
+// Participation
+// ─────────────────────────────
+
+model PartyParticipation {
+  id              String   @id @default(cuid())
+  partyId         String
+  userId          String
+  role            String
+  status          String
+  readinessState  String   @default("offline")
+  connectionState String   @default("disconnected")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  party      Party                @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connection RealtimeConnection?
+  rounds     RoundParticipant[]
+  scores     ProvisionalScore[]
+  published  PublishedScore[]
+
+  @@unique([partyId, userId])
+  @@index([partyId])
+  @@index([userId])
+}
+
+// ─────────────────────────────
+// Realtime
+// ─────────────────────────────
+
+model RealtimeConnection {
+  id               String   @id @default(cuid())
+  participationId  String   @unique
+  connectionId     String   @unique
+  state            String
+
+  connectedAt    DateTime @default(now())
+  disconnectedAt DateTime?
+
+  participation PartyParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId])
+}
+
+// ─────────────────────────────
+// Rounds
+// ─────────────────────────────
+
+model Round {
+  id        String   @id @default(cuid())
+  partyId   String
+  number    Int
+  minigame  String
+  status    String
+
+  startedAt DateTime?
+  deadline  DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  party        Party              @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  participants RoundParticipant[]
+  scores       ProvisionalScore[]
+  published    PublishedScore[]
+
+  @@unique([partyId, number])
+  @@index([partyId])
+  @@index([status])
+}
+
+model RoundParticipant {
+  id              String   @id @default(cuid())
+  roundId         String
+  participationId String
+  score           Int?
+  finishedAt      DateTime?
+
+  createdAt DateTime @default(now())
+
+  round        Round              @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  participation PartyParticipation @relation(fields: [participationId], references: [id])
+
+  @@unique([roundId, participationId])
+  @@index([roundId])
+  @@index([participationId])
+}
+
+// ─────────────────────────────
+// Scoring
+// ─────────────────────────────
+
+model ProvisionalScore {
+  id              String   @id @default(cuid())
+  roundId         String
+  participationId String
+  score           Decimal  @default(0)
+  rank            Int?
+  status          String
+  evidence        Json?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  round         Round              @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  participation PartyParticipation @relation(fields: [participationId], references: [id])
+  published     PublishedScore?
+  reviews       ScoreReview[]
+
+  @@unique([roundId, participationId])
+  @@index([roundId])
+  @@index([status])
+}
+
+model PublishedScore {
+  id                 String   @id @default(cuid())
+  provisionalScoreId String   @unique
+  roundId            String
+  participationId    String
+  score              Decimal  @default(0)
+  rank               Int?
+  publishedBy        String
+  publishedAt        DateTime @default(now())
+
+  provisionalScore ProvisionalScore    @relation(fields: [provisionalScoreId], references: [id])
+  round            Round              @relation(fields: [roundId], references: [id])
+  participation    PartyParticipation @relation(fields: [participationId], references: [id])
+
+  @@index([roundId])
+  @@index([participationId])
+}
+
+model ScoreReview {
+  id                 String   @id @default(cuid())
+  provisionalScoreId String
+  reviewedBy         String
+  action             String
+  reason             String?
+  previousScore      Decimal?
+  newScore           Decimal?
+  createdAt          DateTime @default(now())
+
+  provisionalScore ProvisionalScore @relation(fields: [provisionalScoreId], references: [id])
+
+  @@index([provisionalScoreId])
+}
+
+// ─────────────────────────────
+// Audit
+// ─────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────
+// Notifications
+// ─────────────────────────────
+
+model Announcement {
+  id        String   @id @default(cuid())
+  partyId   String?
+  title     String
+  body      String
+  createdBy String
+
+  createdAt DateTime @default(now())
+
+  party  Party? @relation(fields: [partyId], references: [id])
+  author User   @relation(fields: [createdBy], references: [id])
+
+  @@index([partyId])
+}
+
+model NotificationJob {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  payload   Json
+  status    String
+  sentAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  user     User           @relation(fields: [userId], references: [id])
+  deliveries DeliveryLog[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model DeliveryLog {
+  id        String   @id @default(cuid())
+  jobId     String
+  channel   String
+  status    String
+  error     String?
+  deliveredAt DateTime @default(now())
+
+  notificationJob NotificationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([status])
+}
+
+// ─────────────────────────────
+// Payments & Wallet
+// ─────────────────────────────
+
+model Wallet {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  balance   Decimal  @default(0)
+  currency  String   @default("XAF")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User                @relation(fields: [userId], references: [id])
+  payments PaymentTransaction[]
+}
+
+model PaymentTransaction {
+  id          String   @id @default(cuid())
+  walletId    String
+  amount      Decimal
+  type        String
+  provider    String?
+  reference   String?
+  status      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wallet      Wallet       @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  ledgerEntry LedgerEntry?
+
+  @@index([walletId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model LedgerEntry {
+  id            String   @id @default(cuid())
+  transactionId String   @unique
+  debit         Decimal  @default(0)
+  credit        Decimal  @default(0)
+  balance       Decimal
+  reason        String
+
+  createdAt DateTime @default(now())
+
+  transaction PaymentTransaction @relation(fields: [transactionId], references: [id])
+}
