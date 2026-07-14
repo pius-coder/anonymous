@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
+import type { Announcement, NotificationJob } from "@prisma/client";
 import { prisma } from "../prisma.js";
-import type { Announcement, NotificationJob, CreateAnnouncementData, CreateNotificationJobData } from "./types.js";
+import type { CreateAnnouncementData, CreateNotificationJobData } from "./types.js";
 
 export function createAnnouncement(data: CreateAnnouncementData): Promise<Announcement> {
   return prisma.announcement.create({

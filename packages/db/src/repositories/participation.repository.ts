@@ -1,5 +1,6 @@
+import type { PartyParticipation } from "@prisma/client";
 import { prisma } from "../prisma.js";
-import type { PartyParticipation, CreateParticipationData } from "./types.js";
+import type { CreateParticipationData } from "./types.js";
 
 export function createParticipation(data: CreateParticipationData): Promise<PartyParticipation> {
   return prisma.partyParticipation.create({

@@ -1,5 +1,6 @@
+import type { Wallet, PaymentTransaction, LedgerEntry } from "@prisma/client";
 import { prisma } from "../prisma.js";
-import type { Wallet, PaymentTransaction, LedgerEntry, CreateWalletData, CreatePaymentTransactionData } from "./types.js";
+import type { CreateWalletData, CreatePaymentTransactionData } from "./types.js";
 
 export function createWallet(data: CreateWalletData): Promise<Wallet> {
   return prisma.wallet.create({

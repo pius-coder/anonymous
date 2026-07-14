@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
+import type { ProvisionalScore, PublishedScore } from "@prisma/client";
 import { prisma } from "../prisma.js";
-import type { ProvisionalScore, PublishedScore, CreateProvisionalScoreData } from "./types.js";
+import type { CreateProvisionalScoreData } from "./types.js";
 
 export function createProvisionalScore(data: CreateProvisionalScoreData): Promise<ProvisionalScore> {
   return prisma.provisionalScore.create({

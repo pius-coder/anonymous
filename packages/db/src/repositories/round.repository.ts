@@ -1,5 +1,6 @@
+import type { Round } from "@prisma/client";
 import { prisma } from "../prisma.js";
-import type { RoundModel as Round, CreateRoundData } from "./types.js";
+import type { CreateRoundData } from "./types.js";
 
 export function createRound(data: CreateRoundData): Promise<Round> {
   return prisma.round.create({

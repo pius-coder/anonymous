@@ -1,5 +1,6 @@
+import type { User } from "@prisma/client";
 import { prisma } from "../prisma.js";
-import type { User, CreateUserData } from "./types.js";
+import type { CreateUserData } from "./types.js";
 
 export function createUser(data: CreateUserData): Promise<User> {
   return prisma.user.create({ data });

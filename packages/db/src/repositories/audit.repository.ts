@@ -1,5 +1,6 @@
+import type { AuditLog } from "@prisma/client";
 import { prisma } from "../prisma.js";
-import type { AuditLog, CreateAuditLogData } from "./types.js";
+import type { CreateAuditLogData } from "./types.js";
 
 export function createAuditLog(data: CreateAuditLogData): Promise<AuditLog> {
   return prisma.auditLog.create({
