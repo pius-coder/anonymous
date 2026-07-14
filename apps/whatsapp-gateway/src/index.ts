@@ -1,16 +1,18 @@
-export function getGatewayStatus() {
+export type WhatsAppGatewayFoundation = {
+  service: "whatsapp-gateway";
+  foundation: "v0.1";
+  providerIntegration: "planned-only";
+};
+
+export function getWhatsAppGatewayFoundation(): WhatsAppGatewayFoundation {
   return {
     service: "whatsapp-gateway",
-    optional: true,
-    ready: true,
-    provider: "meta-whatsapp-cloud-api",
+    foundation: "v0.1",
+    providerIntegration: "planned-only",
   };
 }
 
-export function isWhatsAppConfigured(env: NodeJS.ProcessEnv = process.env) {
-  return Boolean(env.WHATSAPP_ACCESS_TOKEN && env.WHATSAPP_PHONE_NUMBER_ID);
+if (process.env.NODE_ENV !== "test") {
+  console.log("WhatsApp gateway foundation ready. Provider integration intentionally removed.");
 }
 
-if (process.env.NODE_ENV !== "test") {
-  console.log("WhatsApp Gateway placeholder - optional service ready");
-}

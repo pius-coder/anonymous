@@ -1,22 +1,13 @@
-import { describe, it, expect } from "vitest";
-import { getGatewayStatus, isWhatsAppConfigured } from "../index.js";
+import { describe, expect, it } from "vitest";
+import { getWhatsAppGatewayFoundation } from "../index.js";
 
-describe("WhatsApp Gateway", () => {
-  it("is an optional gateway placeholder", () => {
-    expect(getGatewayStatus()).toMatchObject({
+describe("whatsapp gateway foundation", () => {
+  it("keeps only the provider foundation marker", () => {
+    expect(getWhatsAppGatewayFoundation()).toEqual({
       service: "whatsapp-gateway",
-      optional: true,
-      ready: true,
+      foundation: "v0.1",
+      providerIntegration: "planned-only",
     });
   });
-
-  it("detects whether WhatsApp credentials are configured", () => {
-    expect(
-      isWhatsAppConfigured({
-        WHATSAPP_ACCESS_TOKEN: "token",
-        WHATSAPP_PHONE_NUMBER_ID: "phone-id",
-      } as NodeJS.ProcessEnv),
-    ).toBe(true);
-    expect(isWhatsAppConfigured({} as NodeJS.ProcessEnv)).toBe(false);
-  });
 });
+

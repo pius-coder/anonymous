@@ -1,0 +1,28 @@
+# Documentation v0.1
+
+Cette documentation est la source de verite de reconstruction. Elle ne valide pas le legacy comme architecture cible.
+
+## Lecture obligatoire
+
+1. `00-audit/` decrit l'etat observe, les erreurs et la matrice KEEP/REWRITE/DELETE/UNKNOWN.
+2. `01-product/` fixe le vocabulaire, les acteurs, le cycle de vie produit et le catalogue des mini-jeux.
+3. `02-ux/` separe les parcours administrateur, joueur et observateur lecture seule.
+4. `03-architecture/` decrit la cible technique, les frontieres, le temps reel, Protobuf et l'analyse UML initiale.
+5. `04-layers/` donne le canevas d'ajout, modification et suppression par couche.
+6. `05-workflows/` impose le pipeline des futures features.
+7. `06-roadmap/` decoupe la reconstruction en sprints fonctionnels.
+
+## Decisions v0.1
+
+- La branche `v0.1` a ete creee depuis l'etat courant sale de `feature/rules-lifecycle-v1`, sur validation explicite.
+- Le stream lecture seule cible est un rendu distant par snapshots et evenements, pas une capture video.
+- Le timer peut ouvrir la preparation et declencher des rappels, mais ne demarre jamais automatiquement la partie active.
+- Les contrats reseau cible sont Protobuf, avec Connect pour les APIs navigateur et WebSocket/Colyseus ou transport equivalent pour les evenements live.
+- Le catalogue des 120 mini-jeux est restaure comme inventaire produit dans `01-product/minigame-catalog.md`; chaque mini-jeu reste a revalider avant implementation.
+- Le code source legacy a ete supprime de la fondation `v0.1` apres demande explicite de nettoyage immediat, tout en conservant les packages, applications, lockfiles, configurations et tests de socle.
+
+## Audit HEAD legacy
+
+- `00-audit/head-file-index.md` liste les 928 fichiers suivis dans le `HEAD` legacy.
+- `00-audit/head-forensic-audit.md` analyse le legacy complet : routes, modules, DB, realtime, mini-jeux, erreurs, causes racines et decisions.
+- `03-architecture/uml.md` contient les diagrammes Mermaid de contexte, domaines, etats, sequences, permissions et deploiement logique.

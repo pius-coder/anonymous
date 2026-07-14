@@ -1,13 +1,18 @@
-import { defineServer, defineRoom } from "colyseus";
-import { GameSessionRoom } from "./rooms/GameSessionRoom.js";
+export type GameServerFoundation = {
+  service: "game-server";
+  foundation: "v0.1";
+  realtimeContract: "protobuf-events-planned";
+};
 
-const port = Number(process.env.GAME_PORT) || 2567;
+export function getGameServerFoundation(): GameServerFoundation {
+  return {
+    service: "game-server",
+    foundation: "v0.1",
+    realtimeContract: "protobuf-events-planned",
+  };
+}
 
-const server = defineServer({
-  rooms: {
-    game_session: defineRoom(GameSessionRoom),
-  },
-});
+if (process.env.NODE_ENV !== "test") {
+  console.log("Game server foundation ready. Runtime implementation intentionally removed.");
+}
 
-server.listen(port);
-console.log(`Game server listening on port ${port}`);

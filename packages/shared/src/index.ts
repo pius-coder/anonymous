@@ -1,6 +1,25 @@
-export * from "./errors/index.js";
-export * from "./constants/index.js";
-export * from "./types/index.js";
-export * from "./events/index.js";
-export * from "./payments/index.js";
-export * from "./release/readiness.js";
+export const FOUNDATION_VERSION = "v0.1" as const;
+
+export type FoundationBoundary =
+  | "domain"
+  | "contracts"
+  | "transports"
+  | "realtime"
+  | "persistence"
+  | "admin-web"
+  | "player-web"
+  | "notifications"
+  | "observability";
+
+export const FOUNDATION_BOUNDARIES: readonly FoundationBoundary[] = [
+  "domain",
+  "contracts",
+  "transports",
+  "realtime",
+  "persistence",
+  "admin-web",
+  "player-web",
+  "notifications",
+  "observability",
+] as const;
+

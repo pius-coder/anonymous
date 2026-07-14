@@ -1,62 +1,18 @@
-import { config } from "dotenv";
-import { resolve } from "path";
-config({ path: resolve("../../.env") });
-
-import { Worker } from "bullmq";
-import {
-  processRegistrationExpiration,
-  type RegistrationExpirationJobData,
-} from "./registrationExpiration.js";
-import {
-  processPaymentReconciliation,
-  type PaymentReconciliationJobData,
-} from "./paymentReconciliation.js";
-import { processCheckInDeadline, type CheckInDeadlineJobData } from "./checkInDeadline.js";
-import { processRoundDeadline, type RoundDeadlineJobData } from "./roundDeadline.js";
-import {
-  processCreditsDistribution,
-  type CreditsDistributionJobData,
-} from "./creditsDistribution.js";
-import { processNotificationSend, type NotificationSendJobData } from "./notifications.js";
-
-const connection = {
-  host: process.env.REDIS_HOST || "localhost",
-  port: Number(process.env.REDIS_PORT) || 6379,
+export type WorkerFoundation = {
+  service: "worker";
+  foundation: "v0.1";
+  jobs: "planned-only";
 };
 
-const worker = new Worker(
-  "session-jeu",
-  async (job) => {
-    console.log(`Processing job ${job.id} of type ${job.name}`);
-    if (job.name === "registration.expire") {
-      return processRegistrationExpiration(job.data as RegistrationExpirationJobData);
-    }
-    if (job.name === "payment.reconcile") {
-      return processPaymentReconciliation(job.data as PaymentReconciliationJobData);
-    }
-    if (job.name === "checkin.deadline") {
-      return processCheckInDeadline(job.data as CheckInDeadlineJobData);
-    }
-    if (job.name === "round.deadline") {
-      return processRoundDeadline(job.data as RoundDeadlineJobData);
-    }
-    if (job.name === "credits.distribute") {
-      return processCreditsDistribution(job.data as CreditsDistributionJobData);
-    }
-    if (job.name === "notification.send") {
-      return processNotificationSend(job.data as NotificationSendJobData);
-    }
-    return { success: true };
-  },
-  { connection },
-);
+export function getWorkerFoundation(): WorkerFoundation {
+  return {
+    service: "worker",
+    foundation: "v0.1",
+    jobs: "planned-only",
+  };
+}
 
-worker.on("completed", (job) => {
-  console.log(`Job ${job.id} has been completed`);
-});
+if (process.env.NODE_ENV !== "test") {
+  console.log("Worker foundation ready. Legacy jobs intentionally removed.");
+}
 
-worker.on("failed", (job, err) => {
-  console.error(`Job ${job?.id} has failed with ${err.message}`);
-});
-
-console.log("Worker started and listening for jobs...");
