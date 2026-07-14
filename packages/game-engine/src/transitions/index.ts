@@ -5,6 +5,7 @@ export {
   schedule,
   openPreparation,
   lockPreparation,
+  confirmStart,
   cancel,
   prepareRound,
   startBriefing,

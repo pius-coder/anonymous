@@ -20,6 +20,8 @@ export {
   rightsForRole,
   canRegister,
   registerParticipant,
+  type ReadinessStats,
+  computeReadinessStats,
 } from "./participation.js"
 
 export {
@@ -40,3 +42,9 @@ export {
   type DomainEvent,
   createEvent,
 } from "./events.js"
+
+export {
+  type Announcement,
+  type CreateAnnouncementParams,
+  createAnnouncement,
+} from "./announcement.js"

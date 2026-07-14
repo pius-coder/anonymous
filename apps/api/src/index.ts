@@ -7,6 +7,8 @@ import { partyRouter } from "./routes/party.js";
 import { paymentRouter } from "./routes/payment.js";
 import { adminPartyRouter } from "./routes/admin/party.js";
 import { adminPaymentRouter } from "./routes/admin/payment.js";
+import { adminPreparationRouter } from "./routes/admin/preparation.js";
+import { preparationRouter } from "./routes/preparation.js";
 
 export const app = new Hono<AppEnv>();
 
@@ -24,6 +26,8 @@ app.route("/v1", partyRouter);
 app.route("/v1", paymentRouter);
 app.route("/v1/admin", adminPartyRouter);
 app.route("/v1/admin", adminPaymentRouter);
+app.route("/v1/admin", adminPreparationRouter);
+app.route("/v1", preparationRouter);
 
 const port = Number(process.env.PORT) || 3001;
 

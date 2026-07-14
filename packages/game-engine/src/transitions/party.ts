@@ -42,6 +42,10 @@ export function lockPreparation(game: Game): Game {
   return transitionParty(game, GameStatus.PreparationLocked)
 }
 
+export function confirmStart(game: Game): Game {
+  return transitionParty(game, GameStatus.PreparationLocked)
+}
+
 export function cancel(game: Game): Game {
   return transitionParty(game, GameStatus.Cancelled)
 }

@@ -90,3 +90,29 @@ export function registerParticipant(params: CreateParticipationParams): GamePart
   const p = createParticipation(params)
   return { ...p, status: ParticipationStatus.Registered }
 }
+
+export type ReadinessStats = {
+  total: number
+  present: number
+  ready: number
+  noResponse: number
+  absent: number
+}
+
+export function computeReadinessStats(participations: GameParticipation[]): ReadinessStats {
+  const stats: ReadinessStats = { total: participations.length, present: 0, ready: 0, noResponse: 0, absent: 0 }
+
+  for (const p of participations) {
+    if (p.status === ParticipationStatus.Abandoned) {
+      stats.absent++
+    } else if (p.status === ParticipationStatus.Ready) {
+      stats.ready++
+    } else if (p.status === ParticipationStatus.Present) {
+      stats.present++
+    } else if (p.readinessState === "noResponse") {
+      stats.noResponse++
+    }
+  }
+
+  return stats
+}

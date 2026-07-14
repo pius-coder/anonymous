@@ -4,6 +4,7 @@ export type DomainEvent =
   | GameScheduledEvent
   | PreparationOpenedEvent
   | PreparationLockedEvent
+  | PreparationConfirmedEvent
   | RoundSetupEvent
   | RoundBriefedEvent
   | RoundStartedEvent
@@ -22,6 +23,7 @@ export type DomainEvent =
   | PlayerReconnectedEvent
   | PlayerAbandonedEvent
   | PlayerFinishedRoundEvent
+  | AnnouncementSentEvent
 
 interface BaseEvent {
   timestamp: Date
@@ -140,6 +142,20 @@ export interface PlayerFinishedRoundEvent extends BaseEvent {
   type: "PlayerFinishedRound"
   participationId: string
   roundNumber: number
+}
+
+export interface AnnouncementSentEvent extends BaseEvent {
+  type: "AnnouncementSent"
+  partyId: string
+  title: string
+  body: string
+  createdBy: string
+}
+
+export interface PreparationConfirmedEvent extends BaseEvent {
+  type: "PreparationConfirmed"
+  gameId: string
+  confirmedBy: string
 }
 
 export function createEvent<T extends DomainEvent>(event: T): T {

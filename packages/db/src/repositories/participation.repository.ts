@@ -56,6 +56,21 @@ export function updateParticipation(
   return prisma.partyParticipation.update({ where: { id }, data });
 }
 
+export function updateParticipationReadiness(
+  id: string,
+  readinessState: string,
+): Promise<PartyParticipation> {
+  return prisma.partyParticipation.update({ where: { id }, data: { readinessState } });
+}
+
+export function updateParticipationStatusReadiness(
+  id: string,
+  status: string,
+  readinessState: string,
+): Promise<PartyParticipation> {
+  return prisma.partyParticipation.update({ where: { id }, data: { status, readinessState } });
+}
+
 export function cancelParticipation(
   id: string,
   reason?: string,
