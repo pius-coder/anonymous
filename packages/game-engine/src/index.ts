@@ -5,6 +5,7 @@ export {
   ParticipationNotFoundError,
   ScoreNotPublishableError,
   GameNotFoundError,
+  InvalidPermissionError,
 } from "./errors.js"
 
 export {
@@ -92,3 +93,16 @@ export {
   publishScore,
   voidScore,
 } from "./transitions/index.js"
+
+export {
+  SYSTEM_ROLES,
+  STAFF_ROLES,
+  ADMIN_ROLES,
+  PERMISSIONS,
+  type SystemRole,
+  type Permission,
+  roleHasPermission,
+  hasAnyPermission,
+  isStaff,
+  isAdmin,
+} from "./auth/policies.js"

@@ -1,7 +1,10 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
+import type { AppEnv } from "./app-env.js";
+import { authRouter } from "./routes/auth.js";
+import { meRouter } from "./routes/me.js";
 
-export const app = new Hono();
+export const app = new Hono<AppEnv>();
 
 app.get("/health", (c) =>
   c.json({
@@ -11,6 +14,9 @@ app.get("/health", (c) =>
   }),
 );
 
+app.route("/v1/auth", authRouter);
+app.route("/v1", meRouter);
+
 const port = Number(process.env.PORT) || 3001;
 
 if (process.env.NODE_ENV !== "test") {
@@ -19,4 +25,3 @@ if (process.env.NODE_ENV !== "test") {
 }
 
 export default app;
-

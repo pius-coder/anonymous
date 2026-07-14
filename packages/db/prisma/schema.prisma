@@ -16,17 +16,22 @@ model User {
   email     String   @unique
   name      String?
   avatarUrl String?
+  passwordHash String?
+  sessionVersion Int @default(0)
+  isActive   Boolean @default(true)
+  lastLoginAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  authSessions     AuthSession[]
-  roleAssignments  RoleAssignment[]
-  participations   PartyParticipation[]
-  auditLogs        AuditLog[]
-  announcements    Announcement[]
-  notificationJobs NotificationJob[]
-  wallet           Wallet?
+  authSessions      AuthSession[]
+  roleAssignments   RoleAssignment[]
+  passwordResetTokens PasswordResetToken[]
+  participations    PartyParticipation[]
+  auditLogs         AuditLog[]
+  announcements     Announcement[]
+  notificationJobs  NotificationJob[]
+  wallet            Wallet?
 }
 
 model AuthSession {
@@ -34,8 +39,23 @@ model AuthSession {
   userId    String
   token     String   @unique
   expiresAt DateTime
+  sessionVersion Int @default(0)
 
   createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  consumedAt DateTime?
+
+  createdAt DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

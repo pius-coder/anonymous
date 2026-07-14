@@ -23,3 +23,4 @@ export const FOUNDATION_BOUNDARIES: readonly FoundationBoundary[] = [
   "observability",
 ] as const;
 
+export * from "./auth/errors.js";

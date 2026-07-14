@@ -57,3 +57,13 @@ export class GameNotFoundError extends DomainError {
     this.name = "GameNotFoundError"
   }
 }
+
+export class InvalidPermissionError extends DomainError {
+  constructor(role: string, permission: string) {
+    super(
+      "INVALID_PERMISSION",
+      `Role ${role} lacks permission ${permission}`,
+    )
+    this.name = "InvalidPermissionError"
+  }
+}

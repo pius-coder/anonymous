@@ -2,6 +2,8 @@ export type CreateUserData = {
   email: string;
   name?: string;
   avatarUrl?: string;
+  passwordHash?: string;
+  sessionVersion?: number;
 };
 
 export type CreatePartyData = {
@@ -69,4 +71,22 @@ export type CreatePaymentTransactionData = {
   provider?: string;
   reference?: string;
   status?: string;
+};
+
+export type CreateAuthSessionData = {
+  userId: string;
+  token: string;
+  expiresAt: Date;
+  sessionVersion?: number;
+};
+
+export type UpdateUserSessionData = {
+  sessionVersion?: number;
+  lastLoginAt?: Date;
+};
+
+export type CreatePasswordResetTokenData = {
+  userId: string;
+  token: string;
+  expiresAt: Date;
 };
