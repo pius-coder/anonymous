@@ -6,6 +6,9 @@ export {
   ScoreNotPublishableError,
   GameNotFoundError,
   InvalidPermissionError,
+  InvalidConfigError,
+  CapacityExceededError,
+  AlreadyRegisteredError,
 } from "./errors.js"
 
 export {
@@ -13,6 +16,9 @@ export {
   type Game,
   type CreateGameParams,
   createGame,
+  type PartyConfig,
+  type ComplianceIssue,
+  validateGameConfig,
 } from "./types/index.js"
 
 export {
@@ -25,6 +31,8 @@ export {
   type CreateParticipationParams,
   createParticipation,
   rightsForRole,
+  canRegister,
+  registerParticipant,
 } from "./types/index.js"
 
 export {
@@ -80,6 +88,7 @@ export {
   disconnectPlayer,
   reconnectPlayer,
   abandonPlayer,
+  cancelParticipation,
   closePlayerRound,
   publishPlayerResults,
   prepareNextRoundForPlayer,

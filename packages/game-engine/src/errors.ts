@@ -67,3 +67,33 @@ export class InvalidPermissionError extends DomainError {
     this.name = "InvalidPermissionError"
   }
 }
+
+export class InvalidConfigError extends DomainError {
+  constructor(issues: { field: string; code: string; message: string }[]) {
+    super(
+      "INVALID_CONFIG",
+      `Configuration validation failed: ${issues.map((i) => i.message).join("; ")}`,
+    )
+    this.name = "InvalidConfigError"
+  }
+}
+
+export class CapacityExceededError extends DomainError {
+  constructor(partyId: string, maxPlayers: number) {
+    super(
+      "CAPACITY_EXCEEDED",
+      `Party ${partyId} is full (maximum ${maxPlayers} players)`,
+    )
+    this.name = "CapacityExceededError"
+  }
+}
+
+export class AlreadyRegisteredError extends DomainError {
+  constructor(userId: string, partyId: string) {
+    super(
+      "ALREADY_REGISTERED",
+      `User ${userId} is already registered for party ${partyId}`,
+    )
+    this.name = "AlreadyRegisteredError"
+  }
+}

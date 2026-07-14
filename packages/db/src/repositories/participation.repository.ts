@@ -8,7 +8,9 @@ export function createParticipation(data: CreateParticipationData): Promise<Part
       partyId: data.partyId,
       userId: data.userId,
       role: data.role ?? "player",
-      status: "INVITED",
+      status: data.status ?? "INVITED",
+      idempotencyKey: data.idempotencyKey,
+      expiresAt: data.expiresAt,
     },
   });
 }
@@ -20,6 +22,12 @@ export function findParticipationById(id: string): Promise<PartyParticipation | 
 export function findParticipation(partyId: string, userId: string): Promise<PartyParticipation | null> {
   return prisma.partyParticipation.findUnique({
     where: { partyId_userId: { partyId, userId } },
+  });
+}
+
+export function findParticipationByIdempotencyKey(key: string): Promise<PartyParticipation | null> {
+  return prisma.partyParticipation.findUnique({
+    where: { idempotencyKey: key },
   });
 }
 
@@ -48,6 +56,24 @@ export function updateParticipation(
   return prisma.partyParticipation.update({ where: { id }, data });
 }
 
+export function cancelParticipation(
+  id: string,
+  reason?: string,
+): Promise<PartyParticipation> {
+  return prisma.partyParticipation.update({
+    where: { id },
+    data: {
+      status: "ABANDONED",
+      cancelledAt: new Date(),
+      cancellationReason: reason ?? null,
+    },
+  });
+}
+
 export function deleteParticipation(id: string): Promise<PartyParticipation> {
   return prisma.partyParticipation.delete({ where: { id } });
+}
+
+export function countByPartyId(partyId: string): Promise<number> {
+  return prisma.partyParticipation.count({ where: { partyId } });
 }

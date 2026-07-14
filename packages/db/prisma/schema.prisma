@@ -111,6 +111,11 @@ model PartyParticipation {
   readinessState  String   @default("offline")
   connectionState String   @default("disconnected")
 
+  idempotencyKey   String?  @unique
+  expiresAt        DateTime?
+  cancelledAt      DateTime?
+  cancellationReason String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

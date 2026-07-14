@@ -24,7 +24,7 @@ import {
 import { InvalidTransitionError } from "../errors.js"
 
 function makeGame(overrides: Partial<ReturnType<typeof createGame>> = {}) {
-  return { ...createGame({ id: "g-1", code: "TEST" }), ...overrides }
+  return { ...createGame({ id: "g-1", code: "TEST", name: "Test Party" }), ...overrides }
 }
 
 describe("PARTY_TRANSITIONS", () => {

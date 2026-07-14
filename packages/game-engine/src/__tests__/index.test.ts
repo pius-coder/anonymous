@@ -28,7 +28,7 @@ describe("game-engine public API", () => {
   })
 
   it("exports createGame", () => {
-    const game = createGame({ id: "g-1", code: "GAME" })
+    const game = createGame({ id: "g-1", code: "GAME", name: "Test" })
     expect(game.status).toBe(GameStatus.Draft)
     expect(game.code).toBe("GAME")
   })
