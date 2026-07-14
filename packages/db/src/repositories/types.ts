@@ -20,6 +20,9 @@ export type CreateParticipationData = {
   partyId: string;
   userId: string;
   role?: string;
+  status?: string;
+  idempotencyKey?: string;
+  expiresAt?: Date;
 };
 
 export type CreateRoundData = {

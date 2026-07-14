@@ -12,6 +12,7 @@ import {
   disconnectPlayer,
   reconnectPlayer,
   abandonPlayer,
+  cancelParticipation,
   closePlayerRound,
   publishPlayerResults,
   prepareNextRoundForPlayer,
@@ -121,6 +122,23 @@ describe("disconnect / reconnect / abandon cycle", () => {
   })
 })
 
+describe("cancelParticipation (pre-game cancellation)", () => {
+  it("Invited -> Abandoned: cancelParticipation", () => {
+    const p = makeParticipation({ status: ParticipationStatus.Invited })
+    expect(cancelParticipation(p).status).toBe(ParticipationStatus.Abandoned)
+  })
+
+  it("Registered -> Abandoned: cancelParticipation", () => {
+    const p = makeParticipation({ status: ParticipationStatus.Registered })
+    expect(cancelParticipation(p).status).toBe(ParticipationStatus.Abandoned)
+  })
+
+  it("Paid -> Abandoned: cancelParticipation", () => {
+    const p = makeParticipation({ status: ParticipationStatus.Paid })
+    expect(cancelParticipation(p).status).toBe(ParticipationStatus.Abandoned)
+  })
+})
+
 describe("invalid transitions throw", () => {
   it("throws when skipping from Invited to Playing", () => {
     const p = makeParticipation({ status: ParticipationStatus.Invited })
@@ -135,6 +153,16 @@ describe("invalid transitions throw", () => {
   it("throws when transitioning from Abandoned", () => {
     const p = makeParticipation({ status: ParticipationStatus.Abandoned })
     expect(() => markReady(p)).toThrow(InvalidTransitionError)
+  })
+
+  it("throws when cancelling from Playing", () => {
+    const p = makeParticipation({ status: ParticipationStatus.Playing })
+    expect(() => cancelParticipation(p)).toThrow(InvalidTransitionError)
+  })
+
+  it("throws when cancelling from Completed", () => {
+    const p = makeParticipation({ status: ParticipationStatus.Completed })
+    expect(() => cancelParticipation(p)).toThrow(InvalidTransitionError)
   })
 })
 

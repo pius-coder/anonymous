@@ -3,9 +3,9 @@ import { InvalidTransitionError } from "../errors.js"
 
 export const PARTICIPATION_TRANSITIONS: Record<ParticipationStatus, ParticipationStatus[]> = {
   [ParticipationStatus.UNSPECIFIED]: [],
-  [ParticipationStatus.Invited]: [ParticipationStatus.Registered],
-  [ParticipationStatus.Registered]: [ParticipationStatus.Paid],
-  [ParticipationStatus.Paid]: [ParticipationStatus.Present],
+  [ParticipationStatus.Invited]: [ParticipationStatus.Registered, ParticipationStatus.Abandoned],
+  [ParticipationStatus.Registered]: [ParticipationStatus.Paid, ParticipationStatus.Abandoned],
+  [ParticipationStatus.Paid]: [ParticipationStatus.Present, ParticipationStatus.Abandoned],
   [ParticipationStatus.Present]: [ParticipationStatus.Ready],
   [ParticipationStatus.Ready]: [ParticipationStatus.InRoom],
   [ParticipationStatus.InRoom]: [ParticipationStatus.Playing],
@@ -66,6 +66,10 @@ export function reconnectPlayer(p: GameParticipation): GameParticipation {
 }
 
 export function abandonPlayer(p: GameParticipation): GameParticipation {
+  return transitionParticipation(p, ParticipationStatus.Abandoned)
+}
+
+export function cancelParticipation(p: GameParticipation): GameParticipation {
   return transitionParticipation(p, ParticipationStatus.Abandoned)
 }
 

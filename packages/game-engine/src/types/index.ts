@@ -3,6 +3,9 @@ export {
   type Game,
   type CreateGameParams,
   createGame,
+  type PartyConfig,
+  type ComplianceIssue,
+  validateGameConfig,
 } from "./party.js"
 
 export {
@@ -15,6 +18,8 @@ export {
   type CreateParticipationParams,
   createParticipation,
   rightsForRole,
+  canRegister,
+  registerParticipant,
 } from "./participation.js"
 
 export {

@@ -35,6 +35,7 @@ export {
   disconnectPlayer,
   reconnectPlayer,
   abandonPlayer,
+  cancelParticipation,
   closePlayerRound,
   publishPlayerResults,
   prepareNextRoundForPlayer,

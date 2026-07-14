@@ -1,3 +1,5 @@
+import type { Game } from "./party.js"
+
 export enum ParticipationStatus {
   UNSPECIFIED = 0,
   Invited = 1,
@@ -75,4 +77,16 @@ export function rightsForRole(role: ParticipationRole): ParticipationRights {
     case "player":
       return { canStart: false, canVerify: false, canPublish: false, canObserve: false }
   }
+}
+
+export function canRegister(game: Game, currentCount: number): { allowed: boolean; reason?: string } {
+  if (game.maxPlayers != null && game.maxPlayers > 0 && currentCount >= game.maxPlayers) {
+    return { allowed: false, reason: "PARTY_FULL" }
+  }
+  return { allowed: true }
+}
+
+export function registerParticipant(params: CreateParticipationParams): GameParticipation {
+  const p = createParticipation(params)
+  return { ...p, status: ParticipationStatus.Registered }
 }
