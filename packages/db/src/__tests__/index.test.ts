@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { getPersistenceFoundation } from "../index.js";
+import { getPersistenceFoundation, prisma } from "../index.js";
 
 describe("db foundation", () => {
-  it("keeps the persistence toolchain without legacy models", () => {
+  it("reports the persistence layer as rebuilt", () => {
     expect(getPersistenceFoundation()).toEqual({
       foundation: "v0.1",
       database: "postgresql",
       orm: "prisma",
-      models: "to-be-rebuilt",
+      models: "rebuilt",
     });
+  });
+
+  it("exports a PrismaClient singleton", () => {
+    expect(prisma).toBeDefined();
+    expect(prisma.$connect).toBeInstanceOf(Function);
   });
 });
 

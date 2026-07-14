@@ -1,8 +1,12 @@
+export { prisma } from "./prisma.js";
+
+export * from "./repositories/index.js";
+
 export type PersistenceFoundation = {
   foundation: "v0.1";
   database: "postgresql";
   orm: "prisma";
-  models: "to-be-rebuilt";
+  models: "rebuilt";
 };
 
 export function getPersistenceFoundation(): PersistenceFoundation {
@@ -10,7 +14,6 @@ export function getPersistenceFoundation(): PersistenceFoundation {
     foundation: "v0.1",
     database: "postgresql",
     orm: "prisma",
-    models: "to-be-rebuilt",
+    models: "rebuilt",
   };
 }
-
