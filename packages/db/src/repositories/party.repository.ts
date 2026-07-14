@@ -38,7 +38,9 @@ export type UpdatePartyData = {
   name?: string;
   status?: string;
   visibility?: string;
-  roundProgram?: Prisma.InputJsonValue;
+  minPlayers?: number;
+  maxPlayers?: number;
+  roundProgram?: unknown;
   scheduledAt?: Date;
 };
 
@@ -46,9 +48,37 @@ export function updateParty(
   id: string,
   data: UpdatePartyData,
 ): Promise<Party> {
-  return prisma.party.update({ where: { id }, data });
+  const { roundProgram, ...rest } = data;
+  return prisma.party.update({
+    where: { id },
+    data: {
+      ...rest,
+      roundProgram: (roundProgram ?? undefined) as Prisma.InputJsonValue,
+    },
+  });
 }
 
 export function deleteParty(id: string): Promise<Party> {
   return prisma.party.delete({ where: { id } });
+}
+
+export function findPublicParties(skip = 0, take = 50): Promise<Party[]> {
+  return prisma.party.findMany({
+    where: {
+      status: { in: ["SCHEDULED", "PREPARATION_OPEN"] },
+      visibility: "public",
+    },
+    skip,
+    take,
+    orderBy: { scheduledAt: "asc" },
+  });
+}
+
+export function countPublicParties(): Promise<number> {
+  return prisma.party.count({
+    where: {
+      status: { in: ["SCHEDULED", "PREPARATION_OPEN"] },
+      visibility: "public",
+    },
+  });
 }
