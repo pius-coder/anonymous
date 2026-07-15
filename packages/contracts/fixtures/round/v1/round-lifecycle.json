@@ -1,0 +1,65 @@
+{
+  "configure_round": {
+    "correlation_id": { "value": "corr-round-001" },
+    "party_id": { "value": "party-001" },
+    "round_number": 2,
+    "minigame_id": "memory-sequence",
+    "configured_by": "admin-001",
+    "duration_seconds": 90
+  },
+  "start_round": {
+    "correlation_id": { "value": "corr-round-002" },
+    "party_id": { "value": "party-001" },
+    "round_number": 2,
+    "minigame_id": "memory-sequence",
+    "started_by": "admin-001"
+  },
+  "activate_round": {
+    "correlation_id": { "value": "corr-round-003" },
+    "round_id": "round-002",
+    "activated_by": "admin-001"
+  },
+  "pause_round": {
+    "correlation_id": { "value": "corr-round-004" },
+    "round_id": "round-002",
+    "paused_by": "admin-001",
+    "reason": "Incident technique temporaire"
+  },
+  "resume_round": {
+    "correlation_id": { "value": "corr-round-005" },
+    "round_id": "round-002",
+    "resumed_by": "admin-001"
+  },
+  "player_finished_round": {
+    "correlation_id": { "value": "corr-round-006" },
+    "round_id": "round-002",
+    "player_id": { "value": "player-001" },
+    "action_nonce": "nonce-player-001-finish"
+  },
+  "close_round": {
+    "correlation_id": { "value": "corr-round-007" },
+    "round_id": "round-002",
+    "closed_by": "system-deadline",
+    "close_reason": "DEADLINE_REACHED",
+    "system_triggered": true
+  },
+  "round_closed": {
+    "round_id": "round-002",
+    "party_id": { "value": "party-001" },
+    "round_number": 2,
+    "closed_at": { "seconds": 1784131290, "nanos": 0 },
+    "close_reason": "DEADLINE_REACHED"
+  },
+  "late_input_rejected": {
+    "round_id": "round-002",
+    "player_id": { "value": "player-001" },
+    "action_type": "finish",
+    "reason": "LATE_INPUT"
+  },
+  "verification_state": {
+    "round_id": "round-002",
+    "round_number": 2,
+    "status": "ROUND_STATUS_WAITING_REVIEW",
+    "published_scores": []
+  }
+}

@@ -6,8 +6,7 @@ describe("worker foundation", () => {
     expect(getWorkerFoundation()).toEqual({
       service: "worker",
       foundation: "v0.1",
-      jobs: "payment-reconciliation",
+      jobs: "payment-reconciliation,round-deadline-close",
     });
   });
 });
-

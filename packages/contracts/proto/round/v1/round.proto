@@ -11,6 +11,24 @@ enum RoundStatus {
   ROUND_STATUS_CLOSED = 3;
   ROUND_STATUS_RESOLVING = 4;
   ROUND_STATUS_VERIFIED = 5;
+  ROUND_STATUS_SETUP = 6;
+  ROUND_STATUS_BRIEFING = 7;
+  ROUND_STATUS_PAUSED = 8;
+  ROUND_STATUS_WAITING_REVIEW = 9;
+}
+
+message ConfigureRoundCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  int32 round_number = 3;
+  string minigame_id = 4;
+  string configured_by = 5;
+  int32 duration_seconds = 6;
+}
+
+message ConfigureRoundResponse {
+  string round_id = 1;
+  RoundStatus status = 2;
 }
 
 message StartRoundCommand {
@@ -22,6 +40,42 @@ message StartRoundCommand {
 }
 
 message StartRoundResponse {
+  string round_id = 1;
+  sessionjeu.common.v1.Timestamp ends_at = 2;
+  RoundStatus status = 3;
+}
+
+message ActivateRoundCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string round_id = 2;
+  string activated_by = 3;
+}
+
+message ActivateRoundResponse {
+  string round_id = 1;
+  sessionjeu.common.v1.Timestamp started_at = 2;
+  sessionjeu.common.v1.Timestamp ends_at = 3;
+}
+
+message PauseRoundCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string round_id = 2;
+  string paused_by = 3;
+  string reason = 4;
+}
+
+message PauseRoundResponse {
+  string round_id = 1;
+  int32 remaining_seconds = 2;
+}
+
+message ResumeRoundCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string round_id = 2;
+  string resumed_by = 3;
+}
+
+message ResumeRoundResponse {
   string round_id = 1;
   sessionjeu.common.v1.Timestamp ends_at = 2;
 }
@@ -44,9 +98,14 @@ message CloseRoundCommand {
   sessionjeu.common.v1.CorrelationId correlation_id = 1;
   string round_id = 2;
   string closed_by = 3;
+  string close_reason = 4;
+  bool system_triggered = 5;
 }
 
-message CloseRoundResponse {}
+message CloseRoundResponse {
+  string round_id = 1;
+  RoundStatus status = 2;
+}
 
 message RoundStartedEvent {
   string round_id = 1;
@@ -56,11 +115,45 @@ message RoundStartedEvent {
   sessionjeu.common.v1.Timestamp ends_at = 5;
 }
 
+message RoundPausedEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  int32 remaining_seconds = 3;
+  sessionjeu.common.v1.Timestamp paused_at = 4;
+}
+
+message RoundResumedEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.Timestamp resumed_at = 3;
+  sessionjeu.common.v1.Timestamp ends_at = 4;
+}
+
 message RoundClosedEvent {
   string round_id = 1;
   sessionjeu.common.v1.PartyId party_id = 2;
   int32 round_number = 3;
   sessionjeu.common.v1.Timestamp closed_at = 4;
+  string close_reason = 5;
+}
+
+message PlayerFinishedRoundCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string round_id = 2;
+  sessionjeu.common.v1.PlayerId player_id = 3;
+  string action_nonce = 4;
+}
+
+message PlayerFinishedRoundResponse {
+  string round_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  RoundStatus participant_status = 3;
+}
+
+message PlayerFinishedRoundEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  sessionjeu.common.v1.Timestamp finished_at = 3;
 }
 
 message PlayerActionAcceptedEvent {

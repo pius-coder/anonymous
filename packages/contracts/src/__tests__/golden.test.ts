@@ -39,6 +39,11 @@ const FIXTURES: FixtureEntry[] = [
     description: "Realtime live access and state views",
     requiredKeys: ["create_live_access", "join_live", "reconnect_live", "live_state_view", "readonly_snapshot", "live_command_rejected"],
   },
+  {
+    path: "../../fixtures/round/v1/round-lifecycle.json",
+    description: "Round lifecycle orchestration",
+    requiredKeys: ["configure_round", "start_round", "activate_round", "pause_round", "resume_round", "player_finished_round", "close_round", "round_closed", "late_input_rejected", "verification_state"],
+  },
 ];
 
 describe("Golden fixtures", () => {

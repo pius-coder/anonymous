@@ -15,6 +15,8 @@ import {
   SCORE_TRANSITIONS,
   ROUND_TRANSITIONS,
   activateRound,
+  pauseRound,
+  resumeRound,
   verifyScore,
 } from "../index.js"
 
@@ -74,6 +76,8 @@ describe("game-engine public API", () => {
     expect(SCORE_TRANSITIONS).toBeDefined()
     expect(ROUND_TRANSITIONS).toBeDefined()
     expect(activateRound).toBeDefined()
+    expect(pauseRound).toBeDefined()
+    expect(resumeRound).toBeDefined()
     expect(verifyScore).toBeDefined()
   })
 })

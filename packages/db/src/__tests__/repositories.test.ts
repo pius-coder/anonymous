@@ -34,6 +34,17 @@ describe("repository exports", () => {
     expect(roundRepository.createRound).toBeInstanceOf(Function);
     expect(roundRepository.findRoundById).toBeInstanceOf(Function);
     expect(roundRepository.listRoundsByParty).toBeInstanceOf(Function);
+    expect(roundRepository.findRoundByPartyNumber).toBeInstanceOf(Function);
+    expect(roundRepository.updateRoundLifecycle).toBeInstanceOf(Function);
+    expect(roundRepository.createOrUpdateRoundDeadline).toBeInstanceOf(Function);
+    expect(roundRepository.updateRoundDeadline).toBeInstanceOf(Function);
+    expect(roundRepository.findRoundDeadlineByRoundId).toBeInstanceOf(Function);
+    expect(roundRepository.listDueRoundDeadlines).toBeInstanceOf(Function);
+    expect(roundRepository.claimDueRoundDeadline).toBeInstanceOf(Function);
+    expect(roundRepository.upsertRoundParticipantStatus).toBeInstanceOf(Function);
+    expect(roundRepository.markRoundParticipantsWaitingReview).toBeInstanceOf(Function);
+    expect(roundRepository.findPlayerActionByNonce).toBeInstanceOf(Function);
+    expect(roundRepository.createPlayerAction).toBeInstanceOf(Function);
   });
 
   it("exports scoreRepository functions", () => {

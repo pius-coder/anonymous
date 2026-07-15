@@ -1,3 +1,5 @@
+import { publicEnv } from "./env";
+
 type ApiError = {
   code: string;
   message: string;
@@ -16,9 +18,20 @@ type ApiFailure = {
 
 export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
 
+export function buildApiUrl(url: string) {
+  if (/^https?:\/\//.test(url) || url.startsWith("/api/")) {
+    return url;
+  }
+
+  const base = publicEnv.NEXT_PUBLIC_API_BASE_URL.replace(/\/$/, "");
+  const path = url.startsWith("/") ? url : `/${url}`;
+
+  return `${base}${path}`;
+}
+
 export async function api<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
   try {
-    const res = await fetch(url, {
+    const res = await fetch(buildApiUrl(url), {
       credentials: "include",
       headers: { "Content-Type": "application/json", ...options?.headers },
       ...options,

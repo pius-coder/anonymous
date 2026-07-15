@@ -8,6 +8,7 @@ export type LiveAuthResult = {
   partyId?: string;
   userId?: string;
   role?: string;
+  participationStatus?: string;
   reason?: string;
 };
 
@@ -37,5 +38,6 @@ export async function validateLiveToken(token: string): Promise<LiveAuthResult> 
     partyId: connection.participation.partyId,
     userId: connection.participation.userId,
     role: normalizeLiveRole(connection.participation.role),
+    participationStatus: connection.participation.status,
   };
 }

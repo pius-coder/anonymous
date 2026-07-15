@@ -8,8 +8,10 @@ import { paymentRouter } from "./routes/payment.js";
 import { adminPartyRouter } from "./routes/admin/party.js";
 import { adminPaymentRouter } from "./routes/admin/payment.js";
 import { adminPreparationRouter } from "./routes/admin/preparation.js";
+import { adminRoundRouter } from "./routes/admin/round.js";
 import { preparationRouter } from "./routes/preparation.js";
 import { liveRouter } from "./routes/live.js";
+import { roundRouter } from "./routes/round.js";
 
 export const app = new Hono<AppEnv>();
 
@@ -28,8 +30,10 @@ app.route("/v1", paymentRouter);
 app.route("/v1/admin", adminPartyRouter);
 app.route("/v1/admin", adminPaymentRouter);
 app.route("/v1/admin", adminPreparationRouter);
+app.route("/v1/admin", adminRoundRouter);
 app.route("/v1", preparationRouter);
 app.route("/v1", liveRouter);
+app.route("/v1", roundRouter);
 
 const port = Number(process.env.PORT) || 3001;
 
