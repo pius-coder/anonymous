@@ -5,10 +5,13 @@ import {
   activateRound,
   canTransitionRound,
   closeRoundForResolution,
-  markRoundResolved,
+  enterRoundVerification,
+  isRoundInputAccepted,
   markRoundVerified,
+  pauseRound,
   publishRound,
   ROUND_TRANSITIONS,
+  resumeRound,
   startRoundBriefing,
 } from "../transitions/round.js"
 
@@ -49,16 +52,44 @@ describe("round lifecycle transitions", () => {
     expect(closeRoundForResolution(round).status).toBe(RoundStatus.Closing)
   })
 
-  it("moves from closing to resolved", () => {
+  it("moves from closing to verification", () => {
     const round = makeRound({ status: RoundStatus.Closing })
-    expect(markRoundResolved(round).status).toBe(RoundStatus.Resolved)
+    expect(enterRoundVerification(round).status).toBe(RoundStatus.Verified)
   })
 
   it("requires verification before publication", () => {
-    const resolved = makeRound({ status: RoundStatus.Resolved })
-    const verified = markRoundVerified(resolved)
+    const closing = makeRound({ status: RoundStatus.Closing })
+    const verified = enterRoundVerification(closing)
     expect(verified.status).toBe(RoundStatus.Verified)
     expect(publishRound(verified).status).toBe(RoundStatus.Published)
+  })
+
+  it("keeps legacy resolved internal before verification", () => {
+    const resolved = makeRound({ status: RoundStatus.Resolved })
+    expect(markRoundVerified(resolved).status).toBe(RoundStatus.Verified)
+  })
+
+  it("pauses and resumes an active round with a coherent deadline", () => {
+    const now = new Date("2026-01-01T00:00:00.000Z")
+    const round = makeRound({
+      status: RoundStatus.Active,
+      deadlineAt: new Date("2026-01-01T00:01:30.000Z"),
+    })
+
+    const paused = pauseRound(round, now)
+    expect(paused.status).toBe(RoundStatus.Suspended)
+    expect(paused.remainingMs).toBe(90_000)
+
+    const resumed = resumeRound(paused, new Date("2026-01-01T00:02:00.000Z"))
+    expect(resumed.status).toBe(RoundStatus.Active)
+    expect(resumed.deadlineAt?.toISOString()).toBe("2026-01-01T00:03:30.000Z")
+  })
+
+  it("can close a suspended round for verification", () => {
+    const suspended = makeRound({ status: RoundStatus.Suspended })
+    const closing = closeRoundForResolution(suspended)
+    expect(closing.status).toBe(RoundStatus.Closing)
+    expect(enterRoundVerification(closing).status).toBe(RoundStatus.Verified)
   })
 })
 
@@ -75,6 +106,14 @@ describe("round forbidden transitions", () => {
 
   it("does not reopen a published round", () => {
     expect(canTransitionRound(RoundStatus.Published, RoundStatus.Active)).toBe(false)
+  })
+
+  it("accepts player input only while active", () => {
+    expect(isRoundInputAccepted(makeRound({ status: RoundStatus.Active }))).toBe(true)
+    expect(isRoundInputAccepted(makeRound({ status: RoundStatus.Briefing }))).toBe(false)
+    expect(isRoundInputAccepted(makeRound({ status: RoundStatus.Suspended }))).toBe(false)
+    expect(isRoundInputAccepted(makeRound({ status: RoundStatus.Closing }))).toBe(false)
+    expect(isRoundInputAccepted(makeRound({ status: RoundStatus.Verified }))).toBe(false)
   })
 })
 

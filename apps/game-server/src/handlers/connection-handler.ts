@@ -9,6 +9,7 @@ export type LiveAuthInfo = {
   userId: string;
   role: string;
   connectionToken: string;
+  participationStatus?: string;
 };
 
 export function addPlayer(state: LiveRoomState, client: Client, auth: LiveAuthInfo): PlayerState {
@@ -23,7 +24,7 @@ export function addPlayer(state: LiveRoomState, client: Client, auth: LiveAuthIn
   player.participationId = auth.participationId;
   player.role = auth.role;
   player.connected = true;
-  player.status = "connected";
+  player.status = statusFromParticipation(auth.participationStatus);
 
   state.players.set(client.sessionId, player);
   state.connectedCount = Array.from(state.players.values()).filter((p) => p.connected).length;
@@ -37,6 +38,7 @@ export function markDisconnected(state: LiveRoomState, client: Client): void {
   const player = state.players.get(client.sessionId);
   if (player) {
     player.connected = false;
+    player.previousStatus = player.status;
     player.status = "disconnected";
     state.connectedCount = Array.from(state.players.values()).filter((p) => p.connected).length;
   }
@@ -46,8 +48,22 @@ export function markReconnected(state: LiveRoomState, client: Client): void {
   const player = state.players.get(client.sessionId);
   if (player) {
     player.connected = true;
-    player.status = "connected";
+    player.status = player.previousStatus || "connected";
+    player.previousStatus = "";
     state.connectedCount = Array.from(state.players.values()).filter((p) => p.connected).length;
+  }
+}
+
+function statusFromParticipation(status: string | undefined): string {
+  switch (status) {
+    case "PLAYING":
+      return "playing";
+    case "FINISHED_ROUND":
+      return "finished_round";
+    case "WAITING_REVIEW":
+      return "waiting_review";
+    default:
+      return "connected";
   }
 }
 

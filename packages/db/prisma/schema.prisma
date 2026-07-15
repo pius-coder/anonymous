@@ -125,6 +125,7 @@ model PartyParticipation {
   rounds     RoundParticipant[]
   scores     ProvisionalScore[]
   published  PublishedScore[]
+  playerActions PlayerAction[]
 
   @@unique([partyId, userId])
   @@index([partyId])
@@ -170,6 +171,8 @@ model Round {
 
   party        Party              @relation(fields: [partyId], references: [id], onDelete: Cascade)
   participants RoundParticipant[]
+  actions      PlayerAction[]
+  deadlineState RoundDeadline?
   scores       ProvisionalScore[]
   published    PublishedScore[]
 
@@ -182,6 +185,7 @@ model RoundParticipant {
   id              String   @id @default(cuid())
   roundId         String
   participationId String
+  status          String   @default("PENDING")
   score           Int?
   finishedAt      DateTime?
 
@@ -193,6 +197,46 @@ model RoundParticipant {
   @@unique([roundId, participationId])
   @@index([roundId])
   @@index([participationId])
+  @@index([status])
+}
+
+model PlayerAction {
+  id              String   @id @default(cuid())
+  roundId         String
+  participationId String
+  actionType      String
+  actionNonce     String
+  payload         Json?
+  accepted        Boolean  @default(true)
+  rejectReason    String?
+  receivedAt      DateTime @default(now())
+
+  round         Round              @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  participation PartyParticipation @relation(fields: [participationId], references: [id])
+
+  @@unique([roundId, participationId, actionNonce])
+  @@index([roundId])
+  @@index([participationId])
+  @@index([accepted])
+  @@index([receivedAt])
+}
+
+model RoundDeadline {
+  id          String   @id @default(cuid())
+  roundId     String   @unique
+  deadlineAt  DateTime?
+  durationMs  Int
+  pausedAt    DateTime?
+  remainingMs Int?
+  closedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  round Round @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
+  @@index([deadlineAt])
+  @@index([closedAt])
 }
 
 // ─────────────────────────────

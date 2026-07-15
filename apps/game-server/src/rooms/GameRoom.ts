@@ -15,11 +15,16 @@ import {
 import { dispatchCommand, type CommandMessage } from "../handlers/command-dispatcher.js";
 import { registerRoundHandlers } from "../handlers/round-handler.js";
 import { registerReadonlyHandlers } from "../handlers/readonly-handler.js";
+import { participationRepository, partyRepository, roundRepository } from "@session-jeu/db";
 
 type GameRoomOptions = {
   partyId?: string;
   reconnectTimeout?: number | string;
   connectionToken?: string;
+  currentRoundId?: string;
+  currentRoundNumber?: number | string;
+  currentRoundStatus?: string;
+  roundDeadlineAt?: number | string;
 };
 
 export class GameRoom extends Room<{ state: LiveRoomState }> {
@@ -29,9 +34,14 @@ export class GameRoom extends Room<{ state: LiveRoomState }> {
     this.setState(new LiveRoomState());
     this.state.partyId = options.partyId || "unknown";
     this.reconnectTimeoutMs = Number(options.reconnectTimeout) || 30_000;
+    this.state.currentRoundId = options.currentRoundId || "";
+    this.state.currentRoundNumber = Number(options.currentRoundNumber) || 0;
+    this.state.currentRoundStatus = options.currentRoundStatus || "";
+    this.state.roundDeadlineAt = Number(options.roundDeadlineAt) || 0;
 
     registerRoundHandlers();
     registerReadonlyHandlers();
+    this.scheduleRoundDeadlineClose();
 
     this.onMessage("*", (client: Client, type: string | number, message: unknown) => {
       const command: CommandMessage = {
@@ -68,6 +78,7 @@ export class GameRoom extends Room<{ state: LiveRoomState }> {
       userId: auth.userId!,
       role: auth.role!,
       connectionToken: options.connectionToken!,
+      participationStatus: auth.participationStatus,
     });
     void persistConnected(auth.participationId);
 
@@ -100,6 +111,45 @@ export class GameRoom extends Room<{ state: LiveRoomState }> {
 
   onDispose() {
     this.state.players.clear();
+  }
+
+  private scheduleRoundDeadlineClose(): void {
+    if (this.state.currentRoundStatus !== "active" || this.state.roundDeadlineAt <= 0) {
+      return;
+    }
+
+    const delayMs = Math.max(0, this.state.roundDeadlineAt - Date.now());
+    this.clock.setTimeout(() => {
+      void this.closeRoundAtDeadline();
+    }, delayMs);
+  }
+
+  private async closeRoundAtDeadline(): Promise<void> {
+    if (this.state.currentRoundStatus !== "active") return;
+
+    const roundId = this.state.currentRoundId;
+    const now = new Date();
+
+    if (roundId) {
+      const claimed = await roundRepository.claimDueRoundDeadline(roundId, now).catch(() => false);
+      if (!claimed) return;
+
+      await roundRepository.updateRoundLifecycle(roundId, { status: "VERIFICATION" });
+      if (this.state.partyId) {
+        await partyRepository.updatePartyStatus(this.state.partyId, "ROUND_VERIFICATION").catch(() => undefined);
+      }
+      const participants = await roundRepository.listRoundParticipants(roundId).catch(() => []);
+      await roundRepository.markRoundParticipantsWaitingReview(roundId).catch(() => undefined);
+      await Promise.all(participants.map(async (participant) => {
+        await participationRepository.updateParticipationStatus(participant.participationId, "WAITING_REVIEW").catch(() => undefined);
+      }));
+    }
+
+    this.state.currentRoundStatus = "verification";
+    this.broadcast("round:closed", {
+      roundId,
+      reason: "DEADLINE_REACHED",
+    });
   }
 }
 

@@ -7,6 +7,7 @@ export enum RoundStatus {
   Resolved = 5,
   Verified = 6,
   Published = 7,
+  Suspended = 8,
 }
 
 export interface Round {
@@ -15,6 +16,9 @@ export interface Round {
   number: number
   status: RoundStatus
   miniGameKey: string
+  deadlineAt?: Date | null
+  pausedAt?: Date | null
+  remainingMs?: number | null
 }
 
 export type CreateRoundParams = {
@@ -22,6 +26,7 @@ export type CreateRoundParams = {
   gameId: string
   number: number
   miniGameKey: string
+  deadlineAt?: Date | null
 }
 
 export function createRound(params: CreateRoundParams): Round {
@@ -31,5 +36,8 @@ export function createRound(params: CreateRoundParams): Round {
     number: params.number,
     status: RoundStatus.Setup,
     miniGameKey: params.miniGameKey,
+    deadlineAt: params.deadlineAt ?? null,
+    pausedAt: null,
+    remainingMs: null,
   }
 }

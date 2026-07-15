@@ -24,6 +24,8 @@ describe("PrismaClient singleton", () => {
     expect(prisma.roleAssignment).toBeDefined();
     expect(prisma.realtimeConnection).toBeDefined();
     expect(prisma.roundParticipant).toBeDefined();
+    expect(prisma.playerAction).toBeDefined();
+    expect(prisma.roundDeadline).toBeDefined();
     expect(prisma.scoreReview).toBeDefined();
     expect(prisma.deliveryLog).toBeDefined();
   });

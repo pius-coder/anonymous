@@ -29,6 +29,35 @@ export type CreateRoundData = {
   partyId: string;
   number: number;
   minigame: string;
+  status?: string;
+  deadline?: Date;
+};
+
+export type UpdateRoundLifecycleData = {
+  status?: string;
+  startedAt?: Date | null;
+  deadline?: Date | null;
+};
+
+export type UpsertRoundDeadlineData = {
+  roundId: string;
+  deadlineAt?: Date | null;
+  durationMs: number;
+  pausedAt?: Date | null;
+  remainingMs?: number | null;
+  closedAt?: Date | null;
+};
+
+export type UpdateRoundDeadlineData = Partial<Omit<UpsertRoundDeadlineData, "roundId">>;
+
+export type CreatePlayerActionData = {
+  roundId: string;
+  participationId: string;
+  actionType: string;
+  actionNonce: string;
+  payload?: unknown;
+  accepted?: boolean;
+  rejectReason?: string | null;
 };
 
 export type CreateProvisionalScoreData = {

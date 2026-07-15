@@ -50,9 +50,13 @@ export {
   startRoundBriefing,
   activateRound,
   closeRoundForResolution,
+  enterRoundVerification,
   markRoundResolved,
   markRoundVerified,
   publishRound,
+  pauseRound,
+  resumeRound,
+  isRoundInputAccepted,
 } from "./round.js"
 
 export {

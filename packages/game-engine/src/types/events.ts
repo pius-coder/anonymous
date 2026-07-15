@@ -8,7 +8,10 @@ export type DomainEvent =
   | RoundSetupEvent
   | RoundBriefedEvent
   | RoundStartedEvent
+  | RoundPausedEvent
+  | RoundResumedEvent
   | RoundClosedEvent
+  | RoundEnteredVerificationEvent
   | ScoreVerifiedEvent
   | ResultsPublishedEvent
   | NextRoundPreparedEvent
@@ -62,8 +65,28 @@ export interface RoundStartedEvent extends BaseEvent {
   roundNumber: number
 }
 
+export interface RoundPausedEvent extends BaseEvent {
+  type: "RoundPaused"
+  gameId: string
+  roundNumber: number
+  remainingMs: number | null
+}
+
+export interface RoundResumedEvent extends BaseEvent {
+  type: "RoundResumed"
+  gameId: string
+  roundNumber: number
+  deadlineAt: Date | null
+}
+
 export interface RoundClosedEvent extends BaseEvent {
   type: "RoundClosed"
+  gameId: string
+  roundNumber: number
+}
+
+export interface RoundEnteredVerificationEvent extends BaseEvent {
+  type: "RoundEnteredVerification"
   gameId: string
   roundNumber: number
 }

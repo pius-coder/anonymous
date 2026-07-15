@@ -16,16 +16,20 @@ export type AdminSnapshot = {
   partyId: string;
   partyStatus: string;
   connectedCount: number;
+  currentRoundId: string;
   currentRoundNumber: number;
   currentRoundStatus: string;
+  roundDeadlineAt: number;
   players: PlayerSnapshot[];
 };
 
 export type ReadonlySnapshot = {
   partyId: string;
   connectedCount: number;
+  currentRoundId: string;
   currentRoundNumber: number;
   currentRoundStatus: string;
+  roundDeadlineAt: number;
   playerCount: number;
 };
 
@@ -55,8 +59,10 @@ export function getAdminSnapshot(state: LiveRoomState): AdminSnapshot {
     partyId: state.partyId,
     partyStatus: state.partyStatus,
     connectedCount: state.connectedCount,
+    currentRoundId: state.currentRoundId,
     currentRoundNumber: state.currentRoundNumber,
     currentRoundStatus: state.currentRoundStatus,
+    roundDeadlineAt: state.roundDeadlineAt,
     players,
   };
 }
@@ -65,8 +71,10 @@ export function getReadonlySnapshot(state: LiveRoomState): ReadonlySnapshot {
   return {
     partyId: state.partyId,
     connectedCount: state.connectedCount,
+    currentRoundId: state.currentRoundId,
     currentRoundNumber: state.currentRoundNumber,
     currentRoundStatus: state.currentRoundStatus,
+    roundDeadlineAt: state.roundDeadlineAt,
     playerCount: state.players.size,
   };
 }

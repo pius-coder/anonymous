@@ -89,6 +89,14 @@ describe("participation lifecycle transitions", () => {
     expect(closePlayerRound(p).status).toBe(ParticipationStatus.WaitingReview)
   })
 
+  it("keeps finished players away from visible results until publication", () => {
+    const finished = makeParticipation({ status: ParticipationStatus.FinishedRound })
+    const waiting = closePlayerRound(finished)
+
+    expect(waiting.status).toBe(ParticipationStatus.WaitingReview)
+    expect(() => publishPlayerResults(finished)).toThrow(InvalidTransitionError)
+  })
+
   it("WaitingReview -> ResultsVisible: publishPlayerResults", () => {
     const p = makeParticipation({ status: ParticipationStatus.WaitingReview })
     expect(publishPlayerResults(p).status).toBe(ParticipationStatus.ResultsVisible)
