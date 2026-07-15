@@ -1,11 +1,6 @@
+import { AuthFrame } from "@/components/auth/AuthFrame";
 import { RegisterForm } from "@/components/auth/RegisterForm";
 
 export default function RegisterPage() {
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-sm">
-        <RegisterForm />
-      </div>
-    </div>
-  );
+  return <AuthFrame title="Créer votre profil" description="Quelques informations suffisent pour entrer dans l’univers Noya."><RegisterForm /></AuthFrame>;
 }

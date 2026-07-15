@@ -1,5 +1,5 @@
 import { useSyncExternalStore, useCallback, useEffect, useRef } from "react";
-import { api } from "./api";
+import { AuthService } from "../services/auth/AuthService";
 
 type AuthUser = {
   id: string;
@@ -33,7 +33,7 @@ function setState(next: Partial<SessionState>) {
 
 async function refresh() {
   setState({ loading: true, error: null });
-  const res = await api<{ user: AuthUser }>("/api/v1/me");
+  const res = await AuthService.getMe();
   if (res.success) {
     setState({ user: res.data.user, loading: false });
   } else {
@@ -63,10 +63,7 @@ export function useSession() {
 
   const login = useCallback(async (email: string, password: string) => {
     setState({ loading: true, error: null });
-    const res = await api<{ user: AuthUser }>("/api/v1/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
+    const res = await AuthService.login(email, password);
     if (res.success) {
       setState({ user: res.data.user, loading: false });
     } else {
@@ -77,10 +74,7 @@ export function useSession() {
 
   const register = useCallback(async (email: string, password: string, name?: string) => {
     setState({ loading: true, error: null });
-    const res = await api<{ user: AuthUser }>("/api/v1/auth/register", {
-      method: "POST",
-      body: JSON.stringify({ email, password, name }),
-    });
+    const res = await AuthService.register(email, password, name);
     if (res.success) {
       setState({ user: res.data.user, loading: false });
     } else {
@@ -90,7 +84,7 @@ export function useSession() {
   }, []);
 
   const logout = useCallback(async () => {
-    await api("/api/v1/auth/logout", { method: "POST" });
+    await AuthService.logout();
     setState({ user: null, loading: false, error: null });
   }, []);
 

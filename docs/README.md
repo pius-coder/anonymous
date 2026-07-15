@@ -18,6 +18,10 @@ Cette documentation est la source de verite de reconstruction. Elle ne valide pa
 - Le stream lecture seule cible est un rendu distant par snapshots et evenements, pas une capture video.
 - Le timer peut ouvrir la preparation et declencher des rappels, mais ne demarre jamais automatiquement la partie active.
 - Les contrats reseau cible sont Protobuf, avec Connect pour les APIs navigateur et WebSocket/Colyseus ou transport equivalent pour les evenements live.
+- La priorite frontend est definie par `02-ux/user-stories-ui.md` et
+  `02-ux/frontend-architecture.md`; `02-ux/component-and-screen-inventory.md` maintient la matrice
+  Figma-like des ecrans, composants et Sheets. Ces documents decrivent les comportements humains
+  reels et le shell plein ecran sans scroll de page.
 - Le catalogue des 120 mini-jeux est restaure comme inventaire produit dans `01-product/minigame-catalog.md`; chaque mini-jeu reste a revalider avant implementation.
 - Le code source legacy a ete supprime de la fondation `v0.1` apres demande explicite de nettoyage immediat, tout en conservant les packages, applications, lockfiles, configurations et tests de socle.
 

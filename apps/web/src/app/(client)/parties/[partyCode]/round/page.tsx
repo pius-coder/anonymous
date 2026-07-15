@@ -11,14 +11,14 @@ export default async function PlayerRoundPage({ params }: PlayerRoundPageProps) 
   return (
     <AppShell
       audience="Joueur"
-      eyebrow="Live joueur"
-      title="Briefing de manche"
-      subtitle="Projection joueur sans score provisoire ni etat prive concurrent."
+      eyebrow="Manche live"
+      title="Briefing de la manche"
+      subtitle="Votre interface joueur ne montre ni score provisoire ni état privé concurrent."
     >
       <RoundPhaseView
         partyCode={decodeURIComponent(partyCode)}
         roundNumber={1}
-        minigameName="Pilot memory sequence"
+        minigameName="Mémoire mystique"
         phase="briefing"
         connection="stable"
         deadlineLabel="Attente admin"
@@ -26,4 +26,3 @@ export default async function PlayerRoundPage({ params }: PlayerRoundPageProps) 
     </AppShell>
   );
 }
-

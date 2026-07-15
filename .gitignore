@@ -33,6 +33,7 @@ coverage/
 
 # Turbo
 .turbo/
+.cache/
 
 # Logs
 *.log

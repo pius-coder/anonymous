@@ -58,3 +58,9 @@ message ListAdminPartiesResponse {
   repeated AdminGameState parties = 1;
   string next_page_token = 2;
 }
+
+service AdminService {
+  rpc GetGameState(GetAdminGameStateQuery) returns (GetAdminGameStateResponse);
+  rpc GetReadonlySnapshot(GetReadonlySnapshotQuery) returns (GetReadonlySnapshotResponse);
+  rpc ListParties(ListAdminPartiesQuery) returns (ListAdminPartiesResponse);
+}

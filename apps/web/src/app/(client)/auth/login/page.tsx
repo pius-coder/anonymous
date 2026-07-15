@@ -1,11 +1,6 @@
+import { AuthFrame } from "@/components/auth/AuthFrame";
 import { LoginForm } from "@/components/auth/LoginForm";
 
 export default function LoginPage() {
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-sm">
-        <LoginForm />
-      </div>
-    </div>
-  );
+  return <AuthFrame title="Bon retour parmi nous" description="Connectez-vous pour retrouver vos tickets, rooms et résultats."><LoginForm /></AuthFrame>;
 }

@@ -77,6 +77,17 @@ message PasswordResetCommand {
   string new_password = 2;
 }
 
+service IdentityService {
+  rpc Register(RegisterCommand) returns (RegisterResponse);
+  rpc Login(LoginCommand) returns (LoginResponse);
+  rpc Logout(LogoutCommand) returns (sessionjeu.common.v1.Empty);
+  rpc Authenticate(AuthenticateQuery) returns (AuthenticateResponse);
+  rpc GetCurrentUser(GetCurrentUserQuery) returns (GetCurrentUserResponse);
+  rpc RevokeSession(RevokeSessionCommand) returns (sessionjeu.common.v1.Empty);
+  rpc RequestPasswordReset(PasswordResetRequestCommand) returns (sessionjeu.common.v1.Empty);
+  rpc ResetPassword(PasswordResetCommand) returns (sessionjeu.common.v1.Empty);
+}
+
 // Permissions action-level pour RBAC
 enum Permission {
   PERMISSION_UNSPECIFIED = 0;

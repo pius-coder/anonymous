@@ -150,17 +150,26 @@ describe("Proto conventions", () => {
     });
   }
 
-  it("should not install ConnectRPC runtime packages before generation is wired", () => {
+  it("only installs ConnectRPC runtime packages once generation is wired", () => {
+    const generationConfig = resolve(PROJECT_ROOT, "packages/contracts/buf.gen.yaml");
+    const generatedIdentityService = resolve(
+      PROJECT_ROOT,
+      "packages/contracts/src/gen/identity/v1/identity_pb.ts",
+    );
+
     for (const manifestPath of PACKAGE_MANIFESTS) {
       const dependencyNamesInManifest = dependencyNames(readPackageManifest(manifestPath));
       const connectRpcDependencies = dependencyNamesInManifest.filter((name) =>
         name.startsWith("@connectrpc/"),
       );
 
-      expect(
-        connectRpcDependencies,
-        `${relativeToProject(manifestPath)} should not include @connectrpc/* before generation is wired`,
-      ).toEqual([]);
+      if (connectRpcDependencies.length > 0) {
+        expect(existsSync(generationConfig), "buf.gen.yaml must exist before ConnectRPC is installed").toBe(true);
+        expect(
+          existsSync(generatedIdentityService),
+          "generated service descriptors must exist before ConnectRPC is installed",
+        ).toBe(true);
+      }
     }
   });
 

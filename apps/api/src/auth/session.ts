@@ -24,31 +24,53 @@ export function getUserAgent(c: Context): string | undefined {
   return c.req.header("user-agent");
 }
 
-function isSecure(c: Context): boolean {
-  const allowInsecure = c.req.header("x-forwarded-proto") === "http" ||
+export function isSecureRequest(forwardedProto?: string): boolean {
+  const allowInsecure = forwardedProto === "http" ||
     process.env.ALLOW_INSECURE_AUTH_COOKIE === "true";
   return !allowInsecure;
 }
 
-function cookieName(c: Context): string {
-  return isSecure(c) ? COOKIE_NAME_PROD : COOKIE_NAME_DEV;
+export function sessionCookieName(forwardedProto?: string): string {
+  return isSecureRequest(forwardedProto) ? COOKIE_NAME_PROD : COOKIE_NAME_DEV;
 }
 
-export function setSessionCookieValue(c: Context, token: string, expiresAt: Date): string {
-  const name = cookieName(c);
-  const secure = isSecure(c);
+export function createSessionCookieValue(
+  token: string,
+  expiresAt: Date,
+  forwardedProto?: string,
+): string {
+  const name = sessionCookieName(forwardedProto);
+  const secure = isSecureRequest(forwardedProto);
   return `${name}=${token}; HttpOnly; Path=/; SameSite=Lax${secure ? "; Secure" : ""}; Expires=${expiresAt.toUTCString()}`;
 }
 
+export function createClearSessionCookieValue(forwardedProto?: string): string {
+  const name = sessionCookieName(forwardedProto);
+  const secure = isSecureRequest(forwardedProto);
+  return `${name}=; HttpOnly; Path=/; SameSite=Lax${secure ? "; Secure" : ""}; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+}
+
+export function readSessionCookieHeader(
+  cookieHeader: string | undefined,
+  forwardedProto?: string,
+): string | undefined {
+  if (!cookieHeader) return undefined;
+  const name = sessionCookieName(forwardedProto);
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+  return match ? match[1] : undefined;
+}
+
+export function setSessionCookieValue(c: Context, token: string, expiresAt: Date): string {
+  return createSessionCookieValue(token, expiresAt, c.req.header("x-forwarded-proto"));
+}
+
 export function clearSessionCookieValue(c: Context): string {
-  const name = cookieName(c);
-  return `${name}=; HttpOnly; Path=/; SameSite=Lax; Expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  return createClearSessionCookieValue(c.req.header("x-forwarded-proto"));
 }
 
 export function readSessionCookie(c: Context): string | undefined {
-  const name = cookieName(c);
-  const cookie = c.req.header("cookie");
-  if (!cookie) return undefined;
-  const match = cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
-  return match ? match[1] : undefined;
+  return readSessionCookieHeader(
+    c.req.header("cookie"),
+    c.req.header("x-forwarded-proto"),
+  );
 }

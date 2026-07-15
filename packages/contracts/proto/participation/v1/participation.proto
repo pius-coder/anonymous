@@ -58,3 +58,9 @@ message ListParticipationsQuery {
 message ListParticipationsResponse {
   repeated GetParticipationResponse participations = 1;
 }
+
+service ParticipationService {
+  rpc AttachParticipation(AttachParticipationCommand) returns (AttachParticipationResponse);
+  rpc GetParticipation(GetParticipationQuery) returns (GetParticipationResponse);
+  rpc ListParticipations(ListParticipationsQuery) returns (ListParticipationsResponse);
+}

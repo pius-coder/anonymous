@@ -1,15 +1,18 @@
 import type { Metadata } from "next";
+import { Providers } from "@/components/Providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Session Jeu v0.1",
-  description: "Reconstruction modulaire des parcours multijoueurs temps reel.",
+  title: "Noya — Play together",
+  description: "Sessions de jeu multijoueurs, manches live et expériences 2D.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fr">
-      <body>{children}</body>
+    <html lang="fr" suppressHydrationWarning>
+      <body>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

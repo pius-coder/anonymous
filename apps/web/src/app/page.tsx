@@ -1,76 +1,67 @@
 import Link from "next/link";
-import { Eye, Gamepad2, Gauge, ShieldCheck } from "lucide-react";
+import { Activity, ArrowRight, CircleDollarSign, Gamepad2, Radio, Users } from "lucide-react";
 import { AppShell } from "@/components/ui/AppShell";
-import { ConnectionStatus } from "@/components/ui/ConnectionStatus";
-import { LifecycleBanner } from "@/components/ui/LifecycleBanner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PartyDataTable } from "@/components/dashboard/PartyDataTable";
+import { MetricCard } from "@/components/dashboard/MetricCard";
+import { uiParties } from "@/lib/ui-data";
 
 export default function HomePage() {
   return (
     <AppShell
       audience="Admin"
-      eyebrow="Sprint 10"
-      title="Round orchestration"
-      subtitle="Surfaces v0.1 pour piloter une manche autoritaire, verifier le parcours joueur et observer sans fuite d'etat prive."
-      actions={<ConnectionStatus state="stable" />}
+      eyebrow="Vue opérationnelle"
+      title="Centre de contrôle"
+      subtitle="Les sessions, joueurs et signaux qui demandent votre attention maintenant."
+      actions={<Badge className="live-badge"><Radio /> Live stable</Badge>}
     >
-      <div className="home-dashboard">
-        <LifecycleBanner
-          status="ROUND_SETUP -> ROUND_VERIFICATION"
-          detail="Demarrage manuel admin, pause/reprise explicites, fermeture technique sans publication de scores."
-        />
-
-        <section className="surface-grid" aria-label="Surfaces Sprint 10">
-          <Link className="surface-tile" href="/admin/parties/demo-party/control">
-            <Gauge aria-hidden="true" size={22} />
-            <span>
-              <strong>Command center</strong>
-              <small>Configurer, lancer briefing, demarrer, pause, reprise, fermer.</small>
-            </span>
-          </Link>
-          <Link className="surface-tile" href="/parties/demo-round/round">
-            <Gamepad2 aria-hidden="true" size={22} />
-            <span>
-              <strong>Ecran joueur</strong>
-              <small>Briefing, round actif, input refuse, attente verification.</small>
-            </span>
-          </Link>
-          <Link className="surface-tile" href="/parties/demo-round/waiting">
-            <ShieldCheck aria-hidden="true" size={22} />
-            <span>
-              <strong>Waiting review</strong>
-              <small>Manche terminee sans score provisoire expose.</small>
-            </span>
-          </Link>
-          <Link className="surface-tile" href="/observe/parties/demo-party">
-            <Eye aria-hidden="true" size={22} />
-            <span>
-              <strong>Observer readonly</strong>
-              <small>Projection filtree sans inputs, reponses cachees ni paiement.</small>
-            </span>
-          </Link>
+      <div className="dashboard-stack">
+        <section className="metrics-grid" aria-label="Indicateurs principaux">
+          <MetricCard icon={Gamepad2} label="Sessions actives" value="06" detail="2 en préparation" trend="up" />
+          <MetricCard icon={Users} label="Joueurs connectés" value="48" detail="sur 63 inscrits" trend="up" />
+          <MetricCard icon={CircleDollarSign} label="Volume du jour" value="184k" detail="FCFA encaissés" trend="up" />
+          <MetricCard icon={Activity} label="Incidents ouverts" value="02" detail="aucun critique" trend="down" />
         </section>
 
-        <section className="home-checks" aria-labelledby="home-checks-title">
-          <h2 id="home-checks-title">Garanties visibles</h2>
-          <dl className="state-list">
-            <div>
-              <dt>Autorite</dt>
-              <dd>Serveur</dd>
+        <div className="dashboard-columns">
+          <Card className="dashboard-table-card">
+            <CardHeader className="border-b">
+              <CardTitle>Sessions à surveiller</CardTitle>
+              <CardDescription>Une ligne ouvre sa fiche complète dans un Sheet RetroUI.</CardDescription>
+            </CardHeader>
+            <CardContent className="min-h-0 flex-1 p-0">
+              <PartyDataTable parties={uiParties.slice(0, 4)} compact />
+            </CardContent>
+            <div className="dashboard-card-action">
+              <Button variant="ghost" render={<Link href="/admin/parties" />}>
+                Toutes les sessions <ArrowRight />
+              </Button>
             </div>
-            <div>
-              <dt>Publication score</dt>
-              <dd>Bloquee</dd>
-            </div>
-            <div>
-              <dt>Deadline</dt>
-              <dd>Fermeture seulement</dd>
-            </div>
-            <div>
-              <dt>Observer</dt>
-              <dd>No-leak</dd>
-            </div>
-          </dl>
-        </section>
+          </Card>
+
+          <Card className="activity-card">
+            <CardHeader>
+              <CardTitle>Activité live</CardTitle>
+              <CardDescription>Derniers événements utiles</CardDescription>
+            </CardHeader>
+            <CardContent className="activity-feed" data-scroll-region="activity">
+              {[
+                ["Round démarré", "Nuit des stratèges", "il y a 2 min"],
+                ["Paiement confirmé", "Aya M. · 5 000 FCFA", "il y a 4 min"],
+                ["Joueur reconnecté", "Malo K. · ORBIT-08", "il y a 7 min"],
+                ["Préparation ouverte", "Le cercle des rapides", "il y a 12 min"],
+              ].map(([title, detail, time], index) => (
+                <div className="activity-item" key={title + time}>
+                  <span className={index === 0 ? "activity-dot activity-dot--live" : "activity-dot"} />
+                  <div><strong>{title}</strong><small>{detail}</small></div>
+                  <time>{time}</time>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </AppShell>
   );

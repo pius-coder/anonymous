@@ -1,8 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "../../lib/useSession";
+import { AlertCircle, ArrowRight } from "lucide-react";
+import { useSession } from "@/lib/useSession";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -11,54 +18,21 @@ export function RegisterForm() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    const res = await register(email, password, name || undefined);
-    if (res.success) {
-      router.push("/");
-    }
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    const response = await register(email, password, name || undefined);
+    if (response.success) router.push("/");
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <h1 className="text-xl font-bold">Inscription</h1>
-      {error && <p className="text-red-500 text-sm">{error}</p>}
-      <div>
-        <label htmlFor="name" className="block text-sm font-medium">Nom (optionnel)</label>
-        <input
-          id="name"
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="mt-1 block w-full rounded border p-2"
-        />
-      </div>
-      <div>
-        <label htmlFor="reg-email" className="block text-sm font-medium">Email</label>
-        <input
-          id="reg-email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="mt-1 block w-full rounded border p-2"
-        />
-      </div>
-      <div>
-        <label htmlFor="reg-password" className="block text-sm font-medium">Mot de passe</label>
-        <input
-          id="reg-password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          minLength={8}
-          className="mt-1 block w-full rounded border p-2"
-        />
-      </div>
-      <button type="submit" disabled={loading} className="w-full rounded bg-green-600 p-2 text-white font-medium disabled:opacity-50">
-        {loading ? "Inscription..." : "Créer un compte"}
-      </button>
+    <form onSubmit={handleSubmit} className="auth-form">
+      {error ? <Alert variant="destructive"><AlertCircle /><AlertDescription>{error}</AlertDescription></Alert> : null}
+      <div className="auth-field"><Label htmlFor="name">Nom affiché</Label><Input id="name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Votre pseudo" /></div>
+      <div className="auth-field"><Label htmlFor="reg-email">Adresse email</Label><Input id="reg-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></div>
+      <div className="auth-field"><Label htmlFor="reg-password">Mot de passe</Label><Input id="reg-password" type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={8} required /><small>8 caractères minimum.</small></div>
+      <div className="remember-row"><Checkbox id="terms" required /><Label htmlFor="terms">J’accepte les conditions et la politique de confidentialité.</Label></div>
+      <Button className="w-full" size="lg" disabled={loading}>{loading ? "Création…" : "Créer mon compte"}<ArrowRight /></Button>
+      <p className="auth-switch">Déjà inscrit ? <Link href="/auth/login">Se connecter</Link></p>
     </form>
   );
 }

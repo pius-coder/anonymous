@@ -13,6 +13,10 @@ La roadmap est un index. La logique executable par agent vit dans les fiches aut
 - ConnectRPC est la cible pour commandes/queries HTTP. Il ne remplace pas le game-server realtime.
 - Les scores provisoires restent caches aux joueurs jusqu'a publication explicite.
 - Le timer ne demarre jamais une partie active sans commande admin autorisee.
+- Le design system n'est pas un sprint `sprint-UI` parallele. Il est un gate transversal: chaque
+  fiche metier doit referencer les user stories UI, l'inventaire d'ecrans et les etats obligatoires.
+- La prochaine fiche metier ne demarre pas tant que le gate frontend prioritaire decrit dans
+  `../02-ux/frontend-architecture.md` n'est pas vert.
 
 ## Index des sprints
 

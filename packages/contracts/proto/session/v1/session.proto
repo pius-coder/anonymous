@@ -88,3 +88,10 @@ message ListPartiesResponse {
   repeated GetPartyResponse parties = 1;
   string next_page_token = 2;
 }
+
+service SessionService {
+  rpc CreateParty(CreatePartyCommand) returns (CreatePartyResponse);
+  rpc ScheduleParty(SchedulePartyCommand) returns (SchedulePartyResponse);
+  rpc GetParty(GetPartyQuery) returns (GetPartyResponse);
+  rpc ListParties(ListPartiesQuery) returns (ListPartiesResponse);
+}

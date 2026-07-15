@@ -13,15 +13,15 @@ export default async function ObserverPartyPage({ params }: ObserverPartyPagePro
     <AppShell
       audience="Observateur"
       eyebrow="Observation"
-      title="Projection round"
-      subtitle="Snapshot lecture seule sans inputs, reponses cachees, scores provisoires ni donnees paiement."
+      title="Projection publique de la manche"
+      subtitle="Vue lecture seule sans inputs, réponses cachées, scores provisoires ni données de paiement."
       actions={<ConnectionStatus state="stable" />}
     >
       <ReadonlyRoundSnapshot
         partyId={decodeURIComponent(partyId)}
         roundStatus="ROUND_ACTIVE"
         currentRoundNumber={1}
-        minigameName="Pilot memory sequence"
+        minigameName="Mémoire mystique"
         publicSignals={[
           { label: "Participants actifs", value: "12" },
           { label: "Round", value: "En cours" },
@@ -35,4 +35,3 @@ export default async function ObserverPartyPage({ params }: ObserverPartyPagePro
     </AppShell>
   );
 }
-

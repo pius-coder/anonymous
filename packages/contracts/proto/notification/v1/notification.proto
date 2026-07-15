@@ -88,3 +88,9 @@ message ListNotificationsResponse {
   repeated NotificationSummary notifications = 1;
   string next_page_token = 2;
 }
+
+service NotificationService {
+  rpc SendNotification(SendNotificationCommand) returns (SendNotificationResponse);
+  rpc GetNotificationStatus(GetNotificationStatusQuery) returns (GetNotificationStatusResponse);
+  rpc ListNotifications(ListNotificationsQuery) returns (ListNotificationsResponse);
+}

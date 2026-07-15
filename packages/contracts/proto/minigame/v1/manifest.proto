@@ -51,3 +51,8 @@ message GetMiniGameQuery {
 message GetMiniGameResponse {
   MiniGameConfig config = 1;
 }
+
+service MiniGameService {
+  rpc ListMiniGames(ListMiniGamesQuery) returns (ListMiniGamesResponse);
+  rpc GetMiniGame(GetMiniGameQuery) returns (GetMiniGameResponse);
+}

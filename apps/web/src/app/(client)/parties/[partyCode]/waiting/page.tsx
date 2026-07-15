@@ -11,19 +11,18 @@ export default async function PlayerWaitingPage({ params }: PlayerWaitingPagePro
   return (
     <AppShell
       audience="Joueur"
-      eyebrow="Verification"
-      title="Attente de verification"
-      subtitle="Les resultats ne sont pas publics avant publication admin explicite."
+      eyebrow="Vérification"
+      title="Résultats en cours de vérification"
+      subtitle="Les résultats restent privés jusqu’à la publication explicite de l’administrateur."
     >
       <RoundPhaseView
         partyCode={decodeURIComponent(partyCode)}
         roundNumber={1}
-        minigameName="Pilot memory sequence"
+        minigameName="Mémoire mystique"
         phase="finished"
         connection="stable"
-        deadlineLabel="Round ferme"
+        deadlineLabel="Manche fermée"
       />
     </AppShell>
   );
 }
-

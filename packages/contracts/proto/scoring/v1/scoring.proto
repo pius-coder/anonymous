@@ -81,3 +81,10 @@ message GetPublishedResultsResponse {
   repeated PlayerScore final_scores = 2;
   sessionjeu.common.v1.Timestamp published_at = 3;
 }
+
+service ScoringService {
+  rpc CorrectProvisionalScore(CorrectProvisionalScoreCommand) returns (CorrectProvisionalScoreResponse);
+  rpc PublishResults(PublishResultsCommand) returns (PublishResultsResponse);
+  rpc ListProvisionalScores(ListProvisionalScoresQuery) returns (ListProvisionalScoresResponse);
+  rpc GetPublishedResults(GetPublishedResultsQuery) returns (GetPublishedResultsResponse);
+}

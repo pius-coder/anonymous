@@ -30,7 +30,7 @@ message ReconnectedEvent {
   sessionjeu.common.v1.Timestamp reconnected_at = 3;
 }
 
-message CreateLiveAccess {
+message CreateLiveAccessRequest {
   sessionjeu.common.v1.CorrelationId correlation_id = 1;
   sessionjeu.common.v1.PartyId party_id = 2;
   sessionjeu.common.v1.PlayerId player_id = 3;
@@ -138,4 +138,11 @@ message ReadonlySnapshot {
 
 message GetReadonlySnapshotResponse {
   ReadonlySnapshot snapshot = 1;
+}
+
+service RealtimeAccessService {
+  rpc CreateLiveAccess(CreateLiveAccessRequest) returns (CreateLiveAccessResult);
+  rpc GetPlayerState(GetPlayerStateQuery) returns (GetPlayerStateResponse);
+  rpc GetAdminGameSnapshot(GetAdminGameSnapshotQuery) returns (GetAdminGameSnapshotResponse);
+  rpc GetReadonlySnapshot(GetReadonlySnapshotQuery) returns (GetReadonlySnapshotResponse);
 }

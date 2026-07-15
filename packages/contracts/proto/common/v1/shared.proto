@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package sessionjeu.common.v1;
 
+message Empty {}
+
 message UUID {
   string value = 1;
 }

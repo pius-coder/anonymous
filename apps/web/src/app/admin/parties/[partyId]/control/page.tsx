@@ -12,9 +12,9 @@ export default async function AdminRoundControlPage({ params }: AdminRoundContro
   return (
     <AppShell
       audience="Admin"
-      eyebrow="Command center"
-      title="Round control"
-      subtitle="Commandes manuelles auditables: briefing, demarrage, pause, reprise et fermeture sans publication."
+      eyebrow="Pilotage live"
+      title="Contrôle de la manche"
+      subtitle="Commandes manuelles auditables : briefing, démarrage, pause, reprise et fermeture sans publication."
       actions={<ConnectionStatus state="stable" />}
     >
       <AdminRoundControls
@@ -27,4 +27,3 @@ export default async function AdminRoundControlPage({ params }: AdminRoundContro
     </AppShell>
   );
 }
-

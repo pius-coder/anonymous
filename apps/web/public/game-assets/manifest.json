@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "packs": [
+    {
+      "id": "kenney-tiny-dungeon",
+      "name": "Kenney Tiny Dungeon",
+      "license": "CC0-1.0",
+      "source": "https://kenney.nl/assets/tiny-dungeon",
+      "tileSize": 16,
+      "basePath": "/game-assets/kenney-tiny-dungeon/Tiles",
+      "roles": {
+        "floor": [48, 49, 50, 51, 52, 53],
+        "wall": [16, 28, 40, 57, 58, 59],
+        "prop": [63, 72, 73, 75, 78, 79],
+        "avatar": [84, 85, 86, 87, 88, 96, 97, 98, 99, 100]
+      }
+    }
+  ]
+}

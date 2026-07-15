@@ -85,3 +85,11 @@ message ParticipantState {
   ParticipantReadiness readiness = 2;
   sessionjeu.common.v1.Timestamp last_seen_at = 3;
 }
+
+service PreparationService {
+  rpc OpenPreparation(OpenPreparationCommand) returns (OpenPreparationResponse);
+  rpc MarkReady(MarkReadyCommand) returns (MarkReadyResponse);
+  rpc SendAnnouncement(SendPreparationAnnouncementCommand) returns (SendPreparationAnnouncementResponse);
+  rpc ConfirmStart(ConfirmStartCommand) returns (ConfirmStartResponse);
+  rpc GetPreparationState(GetPreparationStateQuery) returns (GetPreparationStateResponse);
+}

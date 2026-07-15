@@ -9,6 +9,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "contracts:generate": "pnpm --filter @session-jeu/contracts generate",
     "db:migrate": "turbo run db:migrate --filter=@session-jeu/db",
     "db:seed": "turbo run db:seed --filter=@session-jeu/db",
     "db:studio": "turbo run db:studio --filter=@session-jeu/db",

@@ -108,3 +108,10 @@ message GetPaymentHistoryResponse {
   repeated PaymentTransaction payments = 1;
   string next_page_token = 2;
 }
+
+service PaymentService {
+  rpc ProcessPayment(ProcessPaymentCommand) returns (ProcessPaymentResponse);
+  rpc InitiateTransfer(InitiateTransferCommand) returns (InitiateTransferResponse);
+  rpc GetWallet(GetWalletQuery) returns (GetWalletResponse);
+  rpc GetPaymentHistory(GetPaymentHistoryQuery) returns (GetPaymentHistoryResponse);
+}

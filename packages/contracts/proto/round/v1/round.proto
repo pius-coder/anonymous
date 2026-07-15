@@ -45,6 +45,16 @@ message StartRoundResponse {
   RoundStatus status = 3;
 }
 
+message StartRoundBriefingCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string round_id = 2;
+}
+
+message StartRoundBriefingResponse {
+  string round_id = 1;
+  RoundStatus status = 2;
+}
+
 message ActivateRoundCommand {
   sessionjeu.common.v1.CorrelationId correlation_id = 1;
   string round_id = 2;
@@ -142,12 +152,14 @@ message PlayerFinishedRoundCommand {
   string round_id = 2;
   sessionjeu.common.v1.PlayerId player_id = 3;
   string action_nonce = 4;
+  bytes payload = 5;
 }
 
 message PlayerFinishedRoundResponse {
   string round_id = 1;
   sessionjeu.common.v1.PlayerId player_id = 2;
   RoundStatus participant_status = 3;
+  bool duplicate = 4;
 }
 
 message PlayerFinishedRoundEvent {
@@ -180,4 +192,17 @@ message GetRoundStateResponse {
   RoundStatus status = 3;
   sessionjeu.common.v1.Timestamp started_at = 4;
   sessionjeu.common.v1.Timestamp ends_at = 5;
+}
+
+service RoundService {
+  rpc ConfigureRound(ConfigureRoundCommand) returns (ConfigureRoundResponse);
+  rpc StartRound(StartRoundCommand) returns (StartRoundResponse);
+  rpc StartRoundBriefing(StartRoundBriefingCommand) returns (StartRoundBriefingResponse);
+  rpc ActivateRound(ActivateRoundCommand) returns (ActivateRoundResponse);
+  rpc PauseRound(PauseRoundCommand) returns (PauseRoundResponse);
+  rpc ResumeRound(ResumeRoundCommand) returns (ResumeRoundResponse);
+  rpc SubmitPlayerCommand(SubmitPlayerCommandPayload) returns (SubmitPlayerCommandResponse);
+  rpc CloseRound(CloseRoundCommand) returns (CloseRoundResponse);
+  rpc PlayerFinishedRound(PlayerFinishedRoundCommand) returns (PlayerFinishedRoundResponse);
+  rpc GetRoundState(GetRoundStateQuery) returns (GetRoundStateResponse);
 }
