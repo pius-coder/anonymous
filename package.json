@@ -12,6 +12,7 @@
     "db:migrate": "turbo run db:migrate --filter=@session-jeu/db",
     "db:seed": "turbo run db:seed --filter=@session-jeu/db",
     "db:studio": "turbo run db:studio --filter=@session-jeu/db",
+    "docs:check": "node scripts/check-docs.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

@@ -4,6 +4,7 @@ export {
   InvalidRoleError,
   ParticipationNotFoundError,
   ScoreNotPublishableError,
+  ScoreNotVerifiedError,
   GameNotFoundError,
   InvalidPermissionError,
   InvalidConfigError,
@@ -105,8 +106,18 @@ export {
   setProvisional,
   flagForReview,
   correctScore,
+  verifyScore,
   publishScore,
   voidScore,
+  ROUND_TRANSITIONS,
+  canTransitionRound,
+  transitionRound,
+  startRoundBriefing,
+  activateRound,
+  closeRoundForResolution,
+  markRoundResolved,
+  markRoundVerified,
+  publishRound,
 } from "./transitions/index.js"
 
 export {

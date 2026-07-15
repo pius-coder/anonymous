@@ -28,6 +28,7 @@ const announcementSchema = z.object({
 
 const confirmStartSchema = z.object({
   forceWithAbsents: z.boolean().optional().default(false),
+  overrideReason: z.string().trim().min(1).max(500).optional(),
 });
 
 function handleError(c: Parameters<typeof errorResponse>[0], err: unknown) {
@@ -86,9 +87,9 @@ adminPreparationRouter.post(
   async (c) => {
     try {
       const { id } = c.req.valid("param");
-      const { forceWithAbsents } = c.req.valid("json");
+      const { forceWithAbsents, overrideReason } = c.req.valid("json");
       const user = c.get("user");
-      const result = await confirmStart({ partyId: id, userId: user.id, forceWithAbsents });
+      const result = await confirmStart({ partyId: id, userId: user.id, forceWithAbsents, overrideReason });
       return successResponse(c, result);
     } catch (err) {
       return handleError(c, err);

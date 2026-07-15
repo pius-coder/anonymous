@@ -4,6 +4,23 @@
 
 `DRAFT` -> `SCHEDULED` -> `PREPARATION_OPEN` -> `READY_TO_START` -> `ACTIVE_ROUND` -> `ROUND_RESOLVING` -> `ROUND_VERIFICATION` -> `RESULTS_PUBLISHED` -> `NEXT_ROUND_PREPARATION` -> `COMPLETED`
 
+Ces valeurs `SCREAMING_SNAKE_CASE` sont le vocabulaire canonique pour les fiches sprint, contrats,
+tests et erreurs publiques. Les diagrammes UML peuvent afficher des libelles plus lisibles, mais ils
+doivent mapper vers ces valeurs sans introduire un second cycle de vie.
+
+| Etat canonique | Libelle UML accepte | Sens |
+|---|---|---|
+| `DRAFT` | `Draft` | Brouillon non publie. |
+| `SCHEDULED` | `Scheduled` | Partie planifiee, preparation non ouverte. |
+| `PREPARATION_OPEN` | `PreparationOpen` | Lobby d'avant-match ouvert. |
+| `READY_TO_START` | `PreparationLocked` / `RoundSetup` | Preparation confirmee; briefing ou manche pas encore active. |
+| `ACTIVE_ROUND` | `RoundBriefing` / `RoundActive` | Phase live controlee par admin; les inputs ne sont acceptes que pendant la sous-phase active. |
+| `ROUND_RESOLVING` | `RoundClosing` | Manche fermee, calcul provisoire en cours. |
+| `ROUND_VERIFICATION` | `Verification` | Scores provisoires en verification admin. |
+| `RESULTS_PUBLISHED` | `ResultsPublished` | Scores visibles selon audience autorisee. |
+| `NEXT_ROUND_PREPARATION` | `RoundSetup` apres publication | Preparation de la manche suivante. |
+| `COMPLETED` | `Completed` | Partie terminee. |
+
 Etats d'echec:
 
 - `CANCELLED`
@@ -39,4 +56,3 @@ Etats d'echec:
 ## Reconnexion
 
 Le joueur retrouve sa participation, son statut de manche et la derniere state view autorisee. Les inputs deja soumis ne sont jamais rejoues.
-

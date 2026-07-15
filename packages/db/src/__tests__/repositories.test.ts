@@ -8,6 +8,7 @@ import {
   auditRepository,
   paymentRepository,
   notificationRepository,
+  realtimeRepository,
 } from "../repositories/index.js";
 
 describe("repository exports", () => {
@@ -55,5 +56,15 @@ describe("repository exports", () => {
     expect(paymentRepository.createWallet).toBeInstanceOf(Function);
     expect(paymentRepository.findWalletByUserId).toBeInstanceOf(Function);
     expect(paymentRepository.createPaymentTransaction).toBeInstanceOf(Function);
+    expect(paymentRepository.findTransactionByIdempotencyKey).toBeInstanceOf(Function);
+    expect(paymentRepository.findLedgerEntryByIdempotencyKey).toBeInstanceOf(Function);
+  });
+
+  it("exports realtimeRepository functions", () => {
+    expect(realtimeRepository.upsertConnection).toBeInstanceOf(Function);
+    expect(realtimeRepository.findByTokenHash).toBeInstanceOf(Function);
+    expect(realtimeRepository.markReconnectingByParticipation).toBeInstanceOf(Function);
+    expect(realtimeRepository.markConnectedByParticipation).toBeInstanceOf(Function);
+    expect(realtimeRepository.markDisconnectedByParticipation).toBeInstanceOf(Function);
   });
 });

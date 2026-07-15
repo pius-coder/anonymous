@@ -1,5 +1,6 @@
-import { randomBytes, createHash } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import type { Context } from "hono";
+import { hashOpaqueToken } from "@session-jeu/shared";
 
 const TOKEN_BYTES = 32;
 const COOKIE_NAME_PROD = "__Host-session";
@@ -9,9 +10,7 @@ export function createOpaqueToken(): string {
   return randomBytes(TOKEN_BYTES).toString("base64url");
 }
 
-export function hashOpaqueToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
-}
+export { hashOpaqueToken };
 
 export function getClientIp(c: Context): string {
   const forwarded = c.req.header("x-forwarded-for");

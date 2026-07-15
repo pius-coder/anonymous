@@ -133,7 +133,7 @@ export async function initiatePayment(input: InitiatePaymentInput): Promise<Paym
   const wallet = await getOrCreateWallet(input.userId);
 
   if (input.idempotencyKey) {
-    const existing = await paymentRepository.findTransactionByReference(input.idempotencyKey);
+    const existing = await paymentRepository.findTransactionByIdempotencyKey(input.idempotencyKey);
     if (existing) {
       return toPaymentDetail(existing);
     }
@@ -145,6 +145,7 @@ export async function initiatePayment(input: InitiatePaymentInput): Promise<Paym
     type: "ACCESS_FEE",
     provider: "FAPSHI",
     reference: input.idempotencyKey,
+    idempotencyKey: input.idempotencyKey,
     status: "PENDING",
   });
 
@@ -168,24 +169,13 @@ export async function handlePaymentWebhook(payload: WebhookPayload): Promise<Pay
 
   const newStatus = payload.status === "SUCCESS" ? "SUCCESSFUL" : payload.status === "FAILED" ? "FAILED" : "PENDING";
 
-  const updated = await paymentRepository.updateTransactionStatus(payload.transactionId, {
+  const updated = await paymentRepository.settlePaymentWebhook({
+    transactionId: payload.transactionId,
     status: newStatus,
-    reference: payload.providerReference,
+    providerReference: payload.providerReference,
   });
-
-  if (newStatus === "SUCCESSFUL" && transaction.type !== "WALLET_CREDIT") {
-    const wallet = await paymentRepository.findWalletById(transaction.walletId);
-    if (wallet) {
-      const newBalance = Number(wallet.balance) + Number(transaction.amount);
-      await paymentRepository.updateWalletBalanceAtomic(wallet.id, Number(transaction.amount));
-      await paymentRepository.createLedgerEntryFull({
-        transactionId: transaction.id,
-        debit: 0,
-        credit: Number(transaction.amount),
-        balance: newBalance,
-        reason: "Paiement externe reçu",
-      });
-    }
+  if (!updated) {
+    throw new PaymentUseCaseError(PAYMENT_ERRORS.PAYMENT_NOT_FOUND.code, PAYMENT_ERRORS.PAYMENT_NOT_FOUND.message, 404);
   }
 
   return toPaymentDetail(updated);
@@ -206,49 +196,29 @@ export async function payWithWallet(input: {
     throw new PaymentUseCaseError(PAYMENT_ERRORS.WALLET_NOT_FOUND.code, PAYMENT_ERRORS.WALLET_NOT_FOUND.message, 404);
   }
 
-  if (input.idempotencyKey) {
-    const existing = await paymentRepository.findTransactionByReference(input.idempotencyKey);
-    if (existing) {
-      const ledger = await paymentRepository.findLedgerEntryByTransactionId(existing.id);
-      return {
-        payment: toPaymentDetail(existing),
-        ledger: ledger ? toLedgerEntryDetail(ledger) : null as unknown as LedgerEntryDetail,
-      };
-    }
-  }
-
-  const transaction = await paymentRepository.createPaymentTransaction({
-    walletId: wallet.id,
-    amount: input.amount,
-    type: "ACCESS_FEE",
-    provider: "WALLET",
-    reference: input.idempotencyKey,
-    status: "SUCCESSFUL",
-  });
-
-  let updatedWallet;
   try {
-    updatedWallet = await paymentRepository.updateWalletBalanceAtomic(wallet.id, -input.amount, input.amount);
+    const result = await paymentRepository.createWalletDebitPayment({
+      walletId: wallet.id,
+      amount: input.amount,
+      reason: input.reason,
+      idempotencyKey: input.idempotencyKey,
+    });
+    return {
+      payment: toPaymentDetail(result.transaction),
+      ledger: toLedgerEntryDetail(result.ledger),
+    };
   } catch (err) {
     if (err instanceof Error && err.message === "INSUFFICIENT_BALANCE") {
       throw new PaymentUseCaseError(PAYMENT_ERRORS.INSUFFICIENT_BALANCE.code, PAYMENT_ERRORS.INSUFFICIENT_BALANCE.message, 422);
     }
+    if (err instanceof Error && err.message === "WALLET_NOT_FOUND") {
+      throw new PaymentUseCaseError(PAYMENT_ERRORS.WALLET_NOT_FOUND.code, PAYMENT_ERRORS.WALLET_NOT_FOUND.message, 404);
+    }
+    if (err instanceof Error && err.message === "LEDGER_ENTRY_NOT_FOUND") {
+      throw new PaymentUseCaseError(PAYMENT_ERRORS.LEDGER_ENTRY_NOT_FOUND.code, PAYMENT_ERRORS.LEDGER_ENTRY_NOT_FOUND.message, 404);
+    }
     throw err;
   }
-  const newBalance = Number(updatedWallet.balance);
-
-  const ledger = await paymentRepository.createLedgerEntryFull({
-    transactionId: transaction.id,
-    debit: input.amount,
-    credit: 0,
-    balance: newBalance,
-    reason: input.reason,
-  });
-
-  return {
-    payment: toPaymentDetail(transaction),
-    ledger: toLedgerEntryDetail(ledger),
-  };
 }
 
 export async function getPaymentStatus(paymentId: string, userId?: string): Promise<PaymentDetail> {
@@ -313,5 +283,3 @@ export async function reconcilePayment(paymentId: string, adminUserId: string): 
 
   return toPaymentDetail(updated);
 }
-
-

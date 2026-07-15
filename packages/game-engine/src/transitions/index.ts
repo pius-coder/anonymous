@@ -44,12 +44,25 @@ export {
 } from "./participation.js"
 
 export {
+  ROUND_TRANSITIONS,
+  canTransitionRound,
+  transitionRound,
+  startRoundBriefing,
+  activateRound,
+  closeRoundForResolution,
+  markRoundResolved,
+  markRoundVerified,
+  publishRound,
+} from "./round.js"
+
+export {
   SCORE_TRANSITIONS,
   canTransitionScore,
   transitionScore,
   setProvisional,
   flagForReview,
   correctScore,
+  verifyScore,
   publishScore,
   voidScore,
 } from "./score.js"

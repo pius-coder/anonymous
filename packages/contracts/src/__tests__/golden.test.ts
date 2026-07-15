@@ -34,6 +34,11 @@ const FIXTURES: FixtureEntry[] = [
     description: "Admin game state snapshots",
     requiredKeys: ["get_admin_game_state", "admin_game_state", "readonly_snapshot"],
   },
+  {
+    path: "../../fixtures/realtime/v1/live-access.json",
+    description: "Realtime live access and state views",
+    requiredKeys: ["create_live_access", "join_live", "reconnect_live", "live_state_view", "readonly_snapshot", "live_command_rejected"],
+  },
 ];
 
 describe("Golden fixtures", () => {

@@ -42,7 +42,7 @@ Utiliser un cookie opaque `__Host-session` pour identifier les sessions authenti
 
 ## Références
 
-- [docs/03-architecture/security-model.md](file:///docs/03-architecture/security-model.md)
-- [docs/00-audit/head-forensic-audit.md](file:///docs/00-audit/head-forensic-audit.md) (système de rôles legacy)
+- [docs/03-architecture/security-model.md](../security-model.md)
+- [docs/00-audit/head-forensic-audit.md](../../00-audit/head-forensic-audit.md) (système de rôles legacy)
 - [packages/game-engine/src/auth/policies.ts](../../../packages/game-engine/src/auth/policies.ts)
 - [packages/contracts/proto/identity/v1/identity.proto](../../../packages/contracts/proto/identity/v1/identity.proto)

@@ -147,7 +147,7 @@ export async function registerForParty(input: RegisterForPartyInput): Promise<Pa
     throw new ParticipationUseCaseError("PARTY_INACCESSIBLE", "Cette partie n'est pas accessible", 404);
   }
 
-  const registrableStatuses = ["DRAFT", "SCHEDULED", "PREPARATION_OPEN"];
+  const registrableStatuses = ["SCHEDULED", "PREPARATION_OPEN"];
   if (!registrableStatuses.includes(party.status)) {
     throw new ParticipationUseCaseError("PARTY_NOT_REGISTRABLE", "Cette partie n'accepte plus d'inscriptions", 422);
   }

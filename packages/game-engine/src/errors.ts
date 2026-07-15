@@ -48,6 +48,16 @@ export class ScoreNotPublishableError extends DomainError {
   }
 }
 
+export class ScoreNotVerifiedError extends DomainError {
+  constructor(currentStatus: string) {
+    super(
+      "SCORE_NOT_VERIFIED",
+      `Score must be verified before publication; current status is ${currentStatus}`,
+    )
+    this.name = "ScoreNotVerifiedError"
+  }
+}
+
 export class GameNotFoundError extends DomainError {
   constructor(gameId: string) {
     super(

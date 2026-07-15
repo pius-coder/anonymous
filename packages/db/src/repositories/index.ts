@@ -10,3 +10,4 @@ export * as auditRepository from "./audit.repository.js";
 export * as notificationRepository from "./notification.repository.js";
 export * as paymentRepository from "./payment.repository.js";
 export * as announcementRepository from "./announcement.repository.js";
+export * as realtimeRepository from "./realtime.repository.js";

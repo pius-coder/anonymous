@@ -24,4 +24,5 @@ export const FOUNDATION_BOUNDARIES: readonly FoundationBoundary[] = [
 ] as const;
 
 export * from "./auth/errors.js";
+export * from "./auth/tokens.js";
 export * from "./payments/errors.js";

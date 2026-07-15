@@ -13,6 +13,9 @@ import {
   openPreparation,
   PARTICIPATION_TRANSITIONS,
   SCORE_TRANSITIONS,
+  ROUND_TRANSITIONS,
+  activateRound,
+  verifyScore,
 } from "../index.js"
 
 describe("game-engine public API", () => {
@@ -56,7 +59,8 @@ describe("game-engine public API", () => {
   })
 
   it("exports ScoreStatus", () => {
-    expect(ScoreStatus.Published).toBe(5)
+    expect(ScoreStatus.Verified).toBe(5)
+    expect(ScoreStatus.Published).toBe(6)
   })
 
   it("exports party transition functions", () => {
@@ -68,5 +72,8 @@ describe("game-engine public API", () => {
   it("exports transition maps", () => {
     expect(PARTICIPATION_TRANSITIONS).toBeDefined()
     expect(SCORE_TRANSITIONS).toBeDefined()
+    expect(ROUND_TRANSITIONS).toBeDefined()
+    expect(activateRound).toBeDefined()
+    expect(verifyScore).toBeDefined()
   })
 })

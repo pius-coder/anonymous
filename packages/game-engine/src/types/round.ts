@@ -5,7 +5,8 @@ export enum RoundStatus {
   Active = 3,
   Closing = 4,
   Resolved = 5,
-  Published = 6,
+  Verified = 6,
+  Published = 7,
 }
 
 export interface Round {

@@ -73,6 +73,7 @@ export type CreatePaymentTransactionData = {
   type: string;
   provider?: string;
   reference?: string;
+  idempotencyKey?: string;
   status?: string;
 };
 
@@ -114,4 +115,30 @@ export type CreatePasswordResetTokenData = {
   userId: string;
   token: string;
   expiresAt: Date;
+};
+
+export type CreateRealtimeConnectionData = {
+  participationId: string;
+  connectionId: string;
+  state: string;
+  tokenHash: string;
+  tokenExpiresAt: Date;
+};
+
+export type RealtimeConnectionWithParticipation = {
+  id: string;
+  participationId: string;
+  connectionId: string;
+  state: string;
+  tokenHash: string;
+  tokenExpiresAt: Date;
+  connectedAt: Date;
+  disconnectedAt: Date | null;
+  participation: {
+    id: string;
+    partyId: string;
+    userId: string;
+    role: string;
+    status: string;
+  };
 };

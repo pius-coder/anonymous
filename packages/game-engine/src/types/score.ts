@@ -4,8 +4,9 @@ export enum ScoreStatus {
   Provisional = 2,
   UnderReview = 3,
   Corrected = 4,
-  Published = 5,
-  Voided = 6,
+  Verified = 5,
+  Published = 6,
+  Voided = 7,
 }
 
 export interface ProvisionalScore {

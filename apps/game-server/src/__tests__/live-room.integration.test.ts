@@ -1,0 +1,225 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Client } from "colyseus";
+import { Encoder } from "@colyseus/schema";
+import { validateLiveToken } from "../auth/live-auth.js";
+import { addPlayer, markDisconnected, markReconnected } from "../handlers/connection-handler.js";
+import { dispatchCommand } from "../handlers/command-dispatcher.js";
+import { getAdminSnapshot, getReadonlySnapshot } from "../handlers/readonly-handler.js";
+import { registerRoundHandlers } from "../handlers/round-handler.js";
+import { registerReadonlyHandlers } from "../handlers/readonly-handler.js";
+import { LiveRoomState } from "../rooms/schema/LiveRoomState.js";
+
+const dbMocks = vi.hoisted(() => ({
+  realtimeRepository: {
+    findByTokenHash: vi.fn(),
+    markReconnectingByParticipation: vi.fn(),
+    markConnectedByParticipation: vi.fn(),
+    markDisconnectedByParticipation: vi.fn(),
+  },
+}));
+
+vi.mock("@session-jeu/db", () => dbMocks);
+
+function makeClient(sessionId: string): Client {
+  return {
+    sessionId,
+    userData: {},
+    send: vi.fn(),
+  } as unknown as Client;
+}
+
+function makeState(): LiveRoomState {
+  const state = new LiveRoomState();
+  state.partyId = "party-1";
+  state.partyStatus = "ROUND_ACTIVE";
+  state.currentRoundNumber = 1;
+  state.currentRoundStatus = "active";
+  return state;
+}
+
+function addLivePlayer(state: LiveRoomState, client: Client, role = "player") {
+  return addPlayer(state, client, {
+    participationId: `${client.sessionId}-participation`,
+    partyId: "party-1",
+    userId: `${client.sessionId}-user`,
+    role,
+    connectionToken: "live-token",
+  });
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  registerRoundHandlers();
+  registerReadonlyHandlers();
+});
+
+describe("live token validation", () => {
+  it("accepts active participation tokens", async () => {
+    dbMocks.realtimeRepository.findByTokenHash.mockResolvedValueOnce({
+      id: "connection-1",
+      participationId: "participation-1",
+      connectionId: "connection-id",
+      state: "pending",
+      tokenHash: "live-token-hash",
+      tokenExpiresAt: new Date(Date.now() + 60_000),
+      connectedAt: new Date(),
+      disconnectedAt: null,
+      participation: {
+        id: "participation-1",
+        partyId: "party-1",
+        userId: "user-1",
+        role: "PLAYER",
+        status: "READY",
+      },
+    });
+
+    await expect(validateLiveToken("live-token")).resolves.toMatchObject({
+      valid: true,
+      participationId: "participation-1",
+      partyId: "party-1",
+      userId: "user-1",
+      role: "player",
+    });
+    expect(dbMocks.realtimeRepository.findByTokenHash).toHaveBeenCalledWith(
+      expect.stringMatching(/^[a-f0-9]{64}$/),
+    );
+  });
+
+  it("rejects absent participants and forbidden participation states", async () => {
+    dbMocks.realtimeRepository.findByTokenHash.mockResolvedValueOnce(null);
+    await expect(validateLiveToken("missing")).resolves.toMatchObject({
+      valid: false,
+      reason: "INVALID_TOKEN",
+    });
+
+    dbMocks.realtimeRepository.findByTokenHash.mockResolvedValueOnce({
+      id: "connection-1",
+      participationId: "participation-1",
+      connectionId: "connection-id",
+      state: "pending",
+      tokenHash: "live-token-hash",
+      tokenExpiresAt: new Date(Date.now() + 60_000),
+      connectedAt: new Date(),
+      disconnectedAt: null,
+      participation: {
+        id: "participation-1",
+        partyId: "party-1",
+        userId: "user-1",
+        role: "PLAYER",
+        status: "BANNED",
+      },
+    });
+    await expect(validateLiveToken("live-token")).resolves.toMatchObject({
+      valid: false,
+      reason: "PARTICIPATION_INACTIVE",
+    });
+  });
+});
+
+describe("live room state and commands", () => {
+  it("keeps one active state entry for concurrent double connection", () => {
+    const state = makeState();
+    const firstClient = makeClient("session-1");
+    const secondClient = makeClient("session-2");
+    const auth = {
+      participationId: "participation-1",
+      partyId: "party-1",
+      userId: "user-1",
+      role: "player",
+      connectionToken: "live-token",
+    };
+
+    addPlayer(state, firstClient, auth);
+    addPlayer(state, secondClient, auth);
+
+    expect(state.players.size).toBe(1);
+    expect(state.players.has("session-1")).toBe(false);
+    expect(state.players.has("session-2")).toBe(true);
+    expect(state.connectedCount).toBe(1);
+  });
+
+  it("does not leak private player fields through the synchronized schema view", () => {
+    const state = makeState();
+    addLivePlayer(state, makeClient("session-1"));
+
+    const encoded = new Encoder(state).encodeAll();
+    const payload = Buffer.from(encoded).toString("utf8");
+
+    expect(payload).not.toContain("session-1-user");
+    expect(payload).not.toContain("session-1-participation");
+    expect(payload).not.toContain("player");
+  });
+
+  it("rejects player commands outside valid phase and rejects observer role commands", () => {
+    const state = makeState();
+    const playerClient = makeClient("session-1");
+    addLivePlayer(state, playerClient);
+    state.currentRoundStatus = "waiting";
+
+    expect(dispatchCommand(state, playerClient, { type: "round:submit", payload: {} })).toMatchObject({
+      accepted: false,
+      error: "ROUND_NOT_ACTIVE",
+    });
+
+    const observerClient = makeClient("session-2");
+    addLivePlayer(state, observerClient, "readObserver");
+    state.currentRoundStatus = "active";
+    expect(dispatchCommand(state, observerClient, { type: "round:submit", payload: {} })).toMatchObject({
+      accepted: false,
+      error: "ROLE_NOT_ALLOWED",
+    });
+  });
+
+  it("rejects inputs while disconnected and accepts fresh input after reconnect", () => {
+    const state = makeState();
+    const client = makeClient("session-1");
+    addLivePlayer(state, client);
+
+    expect(dispatchCommand(state, client, { type: "round:submit", payload: { answer: "a" } })).toMatchObject({
+      accepted: true,
+    });
+
+    markDisconnected(state, client);
+    expect(dispatchCommand(state, client, { type: "round:submit", payload: { answer: "a" } })).toMatchObject({
+      accepted: false,
+      error: "PLAYER_DISCONNECTED",
+    });
+
+    markReconnected(state, client);
+    expect(dispatchCommand(state, client, { type: "round:submit", payload: { answer: "b" } })).toMatchObject({
+      accepted: true,
+    });
+    expect(state.connectedCount).toBe(1);
+  });
+
+  it("filters readonly snapshots and protects admin snapshots by role", () => {
+    const state = makeState();
+    const playerClient = makeClient("session-1");
+    addLivePlayer(state, playerClient);
+    const observerClient = makeClient("session-2");
+    addLivePlayer(state, observerClient, "readObserver");
+
+    const readonlySnapshot = getReadonlySnapshot(state);
+    expect(readonlySnapshot).toMatchObject({
+      partyId: "party-1",
+      connectedCount: 2,
+      playerCount: 2,
+    });
+    expect(Object.hasOwn(readonlySnapshot, "players")).toBe(false);
+    expect(Object.hasOwn(readonlySnapshot, "userId")).toBe(false);
+
+    const adminSnapshot = getAdminSnapshot(state);
+    expect(adminSnapshot.players[0]).toHaveProperty("userId");
+    expect(dispatchCommand(state, observerClient, { type: "snapshot:request", payload: { audience: "admin" } })).toMatchObject({
+      accepted: false,
+      error: "ROLE_NOT_ALLOWED",
+    });
+    expect(dispatchCommand(state, observerClient, { type: "snapshot:request", payload: { audience: "observer" } })).toMatchObject({
+      accepted: true,
+    });
+    expect(dispatchCommand(state, observerClient, { type: "snapshot:request", payload: {} })).toMatchObject({
+      accepted: false,
+      error: "ROLE_NOT_ALLOWED",
+    });
+  });
+});

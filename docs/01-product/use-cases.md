@@ -17,3 +17,5 @@
 
 Chaque use case doit commencer par acteur, preconditions, etats UI, transitions de lifecycle, contrats Protobuf, impact data, autorisations, evenements, erreurs, reconnexion et tests.
 
+La couverture narrative des parcours, avec variantes et refus a prevoir, est maintenue dans
+`docs/06-roadmap/use-case-coverage.md`.

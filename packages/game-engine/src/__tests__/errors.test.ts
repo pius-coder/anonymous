@@ -5,6 +5,7 @@ import {
   InvalidRoleError,
   ParticipationNotFoundError,
   ScoreNotPublishableError,
+  ScoreNotVerifiedError,
   GameNotFoundError,
 } from "../errors.js"
 
@@ -50,6 +51,14 @@ describe("ScoreNotPublishableError", () => {
     const err = new ScoreNotPublishableError("Pending")
     expect(err.code).toBe("SCORE_NOT_PUBLISHABLE")
     expect(err.message).toContain("Pending")
+  })
+})
+
+describe("ScoreNotVerifiedError", () => {
+  it("creates error with stable code SCORE_NOT_VERIFIED", () => {
+    const err = new ScoreNotVerifiedError("Provisional")
+    expect(err.code).toBe("SCORE_NOT_VERIFIED")
+    expect(err.message).toContain("Provisional")
   })
 })
 

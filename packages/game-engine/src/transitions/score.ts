@@ -1,12 +1,13 @@
 import { ScoreStatus, type ScoreEntry } from "../types/score.js"
-import { InvalidTransitionError, ScoreNotPublishableError } from "../errors.js"
+import { InvalidTransitionError, ScoreNotPublishableError, ScoreNotVerifiedError } from "../errors.js"
 
 export const SCORE_TRANSITIONS: Record<ScoreStatus, ScoreStatus[]> = {
   [ScoreStatus.UNSPECIFIED]: [],
   [ScoreStatus.Pending]: [ScoreStatus.Provisional, ScoreStatus.Voided],
-  [ScoreStatus.Provisional]: [ScoreStatus.UnderReview, ScoreStatus.Published, ScoreStatus.Voided],
-  [ScoreStatus.UnderReview]: [ScoreStatus.Corrected, ScoreStatus.Voided],
-  [ScoreStatus.Corrected]: [ScoreStatus.Published],
+  [ScoreStatus.Provisional]: [ScoreStatus.UnderReview, ScoreStatus.Voided],
+  [ScoreStatus.UnderReview]: [ScoreStatus.Corrected, ScoreStatus.Verified, ScoreStatus.Voided],
+  [ScoreStatus.Corrected]: [ScoreStatus.Verified, ScoreStatus.Voided],
+  [ScoreStatus.Verified]: [ScoreStatus.Published, ScoreStatus.Voided],
   [ScoreStatus.Published]: [],
   [ScoreStatus.Voided]: [],
 }
@@ -35,7 +36,19 @@ export function correctScore(entry: ScoreEntry): ScoreEntry {
   return transitionScore(entry, ScoreStatus.Corrected)
 }
 
+export function verifyScore(entry: ScoreEntry): ScoreEntry {
+  return transitionScore(entry, ScoreStatus.Verified)
+}
+
 export function publishScore(entry: ScoreEntry): ScoreEntry {
+  if (entry.status === ScoreStatus.Published || entry.status === ScoreStatus.Voided) {
+    throw new ScoreNotPublishableError(ScoreStatus[entry.status])
+  }
+
+  if (entry.status !== ScoreStatus.Verified) {
+    throw new ScoreNotVerifiedError(ScoreStatus[entry.status])
+  }
+
   if (!canTransitionScore(entry.status, ScoreStatus.Published)) {
     throw new ScoreNotPublishableError(ScoreStatus[entry.status])
   }

@@ -140,6 +140,8 @@ model RealtimeConnection {
   participationId  String   @unique
   connectionId     String   @unique
   state            String
+  tokenHash        String   @unique
+  tokenExpiresAt   DateTime
 
   connectedAt    DateTime @default(now())
   disconnectedAt DateTime?
@@ -147,6 +149,7 @@ model RealtimeConnection {
   participation PartyParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
 
   @@index([connectionId])
+  @@index([tokenHash])
 }
 
 // ─────────────────────────────
@@ -351,6 +354,7 @@ model PaymentTransaction {
   type        String
   provider    String?
   reference   String?
+  idempotencyKey String? @unique
   status      String
 
   createdAt DateTime @default(now())
@@ -371,6 +375,7 @@ model LedgerEntry {
   credit        Decimal  @default(0)
   balance       Decimal
   reason        String
+  idempotencyKey String? @unique
 
   createdAt DateTime @default(now())
 

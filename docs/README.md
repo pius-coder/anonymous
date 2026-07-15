@@ -7,10 +7,10 @@ Cette documentation est la source de verite de reconstruction. Elle ne valide pa
 1. `00-audit/` decrit l'etat observe, les erreurs et la matrice KEEP/REWRITE/DELETE/UNKNOWN.
 2. `01-product/` fixe le vocabulaire, les acteurs, le cycle de vie produit et le catalogue des mini-jeux.
 3. `02-ux/` separe les parcours administrateur, joueur et observateur lecture seule.
-4. `03-architecture/` decrit la cible technique, les frontieres, le temps reel, Protobuf et l'analyse UML initiale.
+4. `03-architecture/` decrit la cible technique, les frontieres, le temps reel, Protobuf et les UML par theme.
 5. `04-layers/` donne le canevas d'ajout, modification et suppression par couche.
-6. `05-workflows/` impose le pipeline des futures features.
-7. `06-roadmap/` decoupe la reconstruction en sprints fonctionnels.
+6. `05-workflows/` impose le pipeline agentique des futures features.
+7. `06-roadmap/` decoupe la reconstruction en sprints fonctionnels et explique la couverture narrative des cas d'utilisation.
 
 ## Decisions v0.1
 
@@ -25,4 +25,5 @@ Cette documentation est la source de verite de reconstruction. Elle ne valide pa
 
 - `00-audit/head-file-index.md` liste les 928 fichiers suivis dans le `HEAD` legacy.
 - `00-audit/head-forensic-audit.md` analyse le legacy complet : routes, modules, DB, realtime, mini-jeux, erreurs, causes racines et decisions.
-- `03-architecture/uml.md` contient les diagrammes Mermaid de contexte, domaines, etats, sequences, permissions et deploiement logique.
+- `03-architecture/uml.md` indexe les diagrammes Mermaid de contexte, domaines, etats, sequences, permissions,
+  data flow, realtime et scoring/publication.

@@ -47,6 +47,7 @@ export type ConfirmStartInput = {
   partyId: string;
   userId: string;
   forceWithAbsents?: boolean;
+  overrideReason?: string;
 };
 
 export type LeavePreparationInput = {
@@ -268,13 +269,15 @@ export async function confirmStart(input: ConfirmStartInput): Promise<{ status: 
 
   const participations = await participationRepository.listParticipationsByParty(input.partyId);
 
-  let overriddenAbsents = 0;
-  if (!input.forceWithAbsents) {
-    for (const p of participations) {
-      if (p.status === "REGISTERED" || p.status === "PAID") {
-        overriddenAbsents++;
-      }
-    }
+  const absentStatuses = new Set(["REGISTERED", "PAID"]);
+  const overriddenAbsents = participations.filter((p) => absentStatuses.has(p.status)).length;
+  const overrideReason = input.overrideReason?.trim();
+  if (overriddenAbsents > 0 && (!input.forceWithAbsents || !overrideReason)) {
+    throw new PreparationUseCaseError(
+      "ABSENT_CONFIRMATION_REQUIRED",
+      "Une confirmation avec raison est requise pour verrouiller la préparation avec des absents",
+      422,
+    );
   }
 
   await partyRepository.updatePartyStatus(input.partyId, "PREPARATION_LOCKED");
@@ -284,7 +287,11 @@ export async function confirmStart(input: ConfirmStartInput): Promise<{ status: 
     action: "CONFIRM_START",
     entity: "Party",
     entityId: input.partyId,
-    metadata: { forceWithAbsents: input.forceWithAbsents ?? false, overriddenAbsents },
+    metadata: {
+      forceWithAbsents: input.forceWithAbsents ?? false,
+      overriddenAbsents,
+      overrideReason: overrideReason ?? null,
+    },
   });
 
   return { status: "PREPARATION_LOCKED", overriddenAbsents };
