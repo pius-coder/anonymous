@@ -12,10 +12,8 @@ import {
   Users,
   WalletCards,
 } from "lucide-react";
-import {
-  getPublicPartyByCode,
-  sessionQueryKeys,
-} from "@/services/session/sessionAdapter";
+import { getPublicPartyByCode, sessionQueryKeys } from "@/services/session/sessionAdapter";
+import type { PublicPartyDetail } from "@/services/session/types";
 import { PublicShell } from "@/components/public/PublicShell";
 import { PixelAvatar } from "@/components/ui/PixelAvatar";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +22,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { PageState } from "@/components/ui/PageState";
 import { Progress } from "@/components/ui/progress";
 
-export function PartyDetailView({ partyCode }: { partyCode: string }) {
+export function PartyDetailView({
+  partyCode,
+  initialParty,
+}: {
+  partyCode: string;
+  initialParty?: PublicPartyDetail;
+}) {
   const code = decodeURIComponent(partyCode).toUpperCase();
 
   const detailQuery = useQuery({
@@ -36,6 +40,7 @@ export function PartyDetailView({ partyCode }: { partyCode: string }) {
       }
       return result.data;
     },
+    initialData: initialParty,
     staleTime: 20_000,
     retry: (failureCount, error) => {
       const code = (error as { code?: string }).code;
@@ -60,14 +65,15 @@ export function PartyDetailView({ partyCode }: { partyCode: string }) {
 
   if (detailQuery.isError) {
     const errCode = (detailQuery.error as { code?: string }).code;
-    const isNotVisible =
-      errCode === "PARTY_NOT_FOUND" || errCode === "PARTY_INACCESSIBLE";
+    const isNotVisible = errCode === "PARTY_NOT_FOUND" || errCode === "PARTY_INACCESSIBLE";
     return (
       <PublicShell>
         <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
           <PageState
             kind={isNotVisible ? "denied" : "error"}
-            title={isNotVisible ? "Partie introuvable ou non publiée" : "Impossible de charger la partie"}
+            title={
+              isNotVisible ? "Partie introuvable ou non publiée" : "Impossible de charger la partie"
+            }
             message={
               isNotVisible
                 ? "Ce code ne correspond à aucune session publique accessible. Elle peut être un brouillon, privée, ou avoir été retirée."
@@ -79,7 +85,11 @@ export function PartyDetailView({ partyCode }: { partyCode: string }) {
               <div className="flex flex-wrap gap-2">
                 <Button render={<Link href="/parties" />}>Retour au catalogue</Button>
                 {!isNotVisible ? (
-                  <Button type="button" variant="outline" onClick={() => void detailQuery.refetch()}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void detailQuery.refetch()}
+                  >
                     <RefreshCw /> Réessayer
                   </Button>
                 ) : null}
@@ -119,7 +129,8 @@ export function PartyDetailView({ partyCode }: { partyCode: string }) {
             <p className="app-eyebrow">{party.code}</p>
             <h1 className="mt-2 font-head text-3xl font-bold">{party.name}</h1>
             <p className="mt-2 text-muted-foreground">
-              Informations publiques uniquement — aucune donnée d’administration ni score provisoire.
+              Informations publiques uniquement — aucune donnée d’administration ni score
+              provisoire.
             </p>
           </div>
           <Button
@@ -145,8 +156,8 @@ export function PartyDetailView({ partyCode }: { partyCode: string }) {
                 </div>
                 <CardTitle className="font-head text-2xl">{party.name}</CardTitle>
                 <CardDescription>
-                  Statut serveur : {party.serverStatus}. L’inscription ne décide ni du paiement ni de
-                  l’admission live.
+                  Statut serveur : {party.serverStatus}. L’inscription ne décide ni du paiement ni
+                  de l’admission live.
                 </CardDescription>
               </CardHeader>
               <CardContent className="party-facts-grid">
