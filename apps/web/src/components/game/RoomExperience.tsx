@@ -76,7 +76,13 @@ export function RoomExperience({ party }: RoomExperienceProps) {
           <span><small>ROOM {party.code}</small><strong>{party.name}</strong></span>
         </div>
         <div className="game-hud-actions">
-          <button className={`game-connection game-connection--${connection}`} type="button" aria-label={`État réseau: ${connectionCopy[connection]}`}>
+          <button
+            className={`game-connection game-connection--${connection}`}
+            type="button"
+            aria-label={`État réseau: ${connectionCopy[connection]}`}
+            data-connection-state={connection}
+            data-live-preview={connection === "preview" ? "true" : "false"}
+          >
             {connection === "connected" ? <Wifi /> : <WifiOff />}
             <span>{connectionCopy[connection]}</span>
           </button>

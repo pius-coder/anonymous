@@ -37,11 +37,23 @@ Serveur temps reel autoritaire pour les manches, connexions live, commandes joue
 Commandes joueur, evenements serveur, snapshots lecture seule et erreurs live.
 Ces contrats doivent etre documentes avant implementation.
 
+## Politique serveur (A-REALTIME)
+
+- `RECONNECT_TIMEOUT_MS` et `MAX_CLIENTS_PER_ROOM` (via `src/config.ts`) sont la source unique
+  de `allowReconnection` et `maxClients`. Les options client (`reconnectTimeout`, `maxClients`)
+  sont ignorees.
+- Round / status / deadline sont charges depuis PostgreSQL (`loadServerRoundSnapshot`) au `onCreate`,
+  jamais depuis les options de join.
+- Inputs `round:submit` / `round:finish` : validation role/phase/deadline/nonce, persistence
+  `PlayerAction`, idempotence sur nonce duplique.
+- Snapshots joueur / admin / readonly envoyes par audience apres join et reconnexion.
+
 ## Tests attendus
 
-- Tests commandes/evenements.
-- Tests reconnexion.
-- Tests anti-triche minimaux par mini-jeu.
+- L3 : persistence input/deadline/nonce (`round-input-persistence.test.ts`).
+- L4 : `@colyseus/testing` join/reconnect/no-leak/desync (`colyseus-room.transport.test.ts`).
+- Tests commandes/evenements directs (handlers).
+- Tests reconnexion fenetre serveur.
 - Tests de non fuite d'etat prive pour roles caches.
 
 ## Procedure d'extension

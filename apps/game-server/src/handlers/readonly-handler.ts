@@ -33,7 +33,10 @@ export type ReadonlySnapshot = {
   playerCount: number;
 };
 
-function getPlayerSnapshot(state: LiveRoomState, client: Client): PlayerSnapshot | null {
+export function getPlayerSnapshotForClient(
+  state: LiveRoomState,
+  client: Client,
+): PlayerSnapshot | null {
   const player = state.players.get(client.sessionId);
   if (!player) return null;
 
@@ -105,7 +108,7 @@ function handleSnapshotRequest(
     if (!isPlayerRole(player.role)) {
       return { accepted: false, error: "ROLE_NOT_ALLOWED" };
     }
-    const snap = getPlayerSnapshot(state, client);
+    const snap = getPlayerSnapshotForClient(state, client);
     if (snap) client.send("snapshot:player", snap);
   }
 

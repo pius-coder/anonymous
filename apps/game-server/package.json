@@ -9,9 +9,13 @@
     "start": "node dist/index.js",
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run && node --experimental-test-module-mocks --import tsx src/__tests__/colyseus-room.transport.runner.ts",
+    "test:unit": "vitest run",
+    "test:transport": "node --experimental-test-module-mocks --import tsx src/__tests__/colyseus-room.transport.runner.ts"
   },
   "devDependencies": {
+    "@colyseus/sdk": "^0.17.43",
+    "@colyseus/testing": "^0.17.11",
     "@types/node": "^22.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
