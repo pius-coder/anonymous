@@ -16,7 +16,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("realtimeRepository", () => {
+describe("L1 realtimeRepository (mocked prisma)", () => {
   it("upserts one live connection per participation and clears stale disconnect state", async () => {
     prismaMock.realtimeConnection.upsert.mockResolvedValueOnce({ id: "connection-1" });
     const tokenExpiresAt = new Date("2026-07-15T12:00:00.000Z");

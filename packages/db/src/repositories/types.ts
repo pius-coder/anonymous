@@ -68,6 +68,15 @@ export type CreateProvisionalScoreData = {
   evidence?: unknown;
 };
 
+export type CreateScoreReviewData = {
+  provisionalScoreId: string;
+  reviewedBy: string;
+  action: string;
+  reason?: string;
+  previousScore?: number;
+  newScore?: number;
+};
+
 export type CreateAuditLogData = {
   userId?: string;
   action: string;
@@ -89,6 +98,14 @@ export type CreateNotificationJobData = {
   type: string;
   payload: unknown;
   status?: string;
+};
+
+export type CreateDeliveryLogData = {
+  jobId: string;
+  channel: string;
+  status: string;
+  error?: string;
+  deliveredAt?: Date;
 };
 
 export type CreateWalletData = {

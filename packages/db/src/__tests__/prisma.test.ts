@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { prisma, getPrisma } from "../prisma.js";
 
-describe("PrismaClient singleton", () => {
+describe("L1 PrismaClient singleton", () => {
   it("provides a single PrismaClient instance", () => {
     const prisma2 = getPrisma();
     expect(prisma).toBe(prisma2);

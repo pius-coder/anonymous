@@ -8,10 +8,11 @@ import {
   auditRepository,
   paymentRepository,
   notificationRepository,
+  announcementRepository,
   realtimeRepository,
 } from "../repositories/index.js";
 
-describe("repository exports", () => {
+describe("L1 repository export surface", () => {
   it("exports userRepository functions", () => {
     expect(userRepository.createUser).toBeInstanceOf(Function);
     expect(userRepository.findUserById).toBeInstanceOf(Function);
@@ -47,10 +48,13 @@ describe("repository exports", () => {
     expect(roundRepository.createPlayerAction).toBeInstanceOf(Function);
   });
 
-  it("exports scoreRepository functions", () => {
+  it("exports scoreRepository functions including ScoreReview", () => {
     expect(scoreRepository.createProvisionalScore).toBeInstanceOf(Function);
     expect(scoreRepository.listProvisionalScoresByRound).toBeInstanceOf(Function);
     expect(scoreRepository.publishScore).toBeInstanceOf(Function);
+    expect(scoreRepository.createScoreReview).toBeInstanceOf(Function);
+    expect(scoreRepository.listScoreReviewsByProvisional).toBeInstanceOf(Function);
+    expect(scoreRepository.createScoreReviewAndUpdateProvisional).toBeInstanceOf(Function);
   });
 
   it("exports auditRepository functions", () => {
@@ -58,9 +62,19 @@ describe("repository exports", () => {
     expect(auditRepository.listAuditLogs).toBeInstanceOf(Function);
   });
 
-  it("exports notificationRepository functions", () => {
-    expect(notificationRepository.createAnnouncement).toBeInstanceOf(Function);
+  it("exports announcementRepository (Announcement only)", () => {
+    expect(announcementRepository.createAnnouncement).toBeInstanceOf(Function);
+    expect(announcementRepository.findAnnouncementsByParty).toBeInstanceOf(Function);
+  });
+
+  it("exports notificationRepository job + DeliveryLog without Announcement", () => {
     expect(notificationRepository.createNotificationJob).toBeInstanceOf(Function);
+    expect(notificationRepository.createDeliveryLog).toBeInstanceOf(Function);
+    expect(notificationRepository.listDeliveryLogsByJob).toBeInstanceOf(Function);
+    expect(notificationRepository.listDeliveryLogsByStatus).toBeInstanceOf(Function);
+    expect(
+      (notificationRepository as Record<string, unknown>).createAnnouncement,
+    ).toBeUndefined();
   });
 
   it("exports paymentRepository functions", () => {

@@ -40,7 +40,7 @@ beforeEach(() => {
   prismaMock.$transaction.mockImplementation((callback: (tx: typeof txMock) => unknown) => callback(txMock));
 });
 
-describe("paymentRepository idempotency persistence", () => {
+describe("L1 paymentRepository (mocked prisma) idempotency persistence", () => {
   it("stores a unique idempotency key on payment transactions", async () => {
     prismaMock.paymentTransaction.create.mockResolvedValueOnce({ id: "payment-1" });
 

@@ -10,8 +10,8 @@ merge dans son commit de base.
 |---|---|
 | SEQ-00 | Termine, commit `71f7518` |
 | SEQ-01 | Termine, inclus dans le commit de freeze contrats courant |
-| SEQ-02 | Prochaine tache sequentielle |
-| WAVE-A/B, SEQ-03/04 | En attente de leurs dependances |
+| SEQ-02 | Termine (seed deterministe, ScoreReview/DeliveryLog, L3 PG) — commit local a figer |
+| WAVE-A/B, SEQ-03/04 | WAVE-A deblocable; SEQ-03 apres merge train WAVE-A |
 
 ## Ordre de lancement
 
