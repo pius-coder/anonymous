@@ -117,7 +117,7 @@ describe.skipIf(!runL3)("L3 preparation atomicity / idempotence", () => {
 
     const announcement = await prisma.announcement.findUnique({ where: { id: result.id } });
     const job = await prisma.notificationJob.findUnique({
-      where: { id: result.notificationJobId },
+      where: { id: result.notificationJobId! },
     });
     const audits = await prisma.auditLog.findMany({
       where: { action: "ANNOUNCEMENT_SEND", entityId: result.id },
@@ -126,6 +126,8 @@ describe.skipIf(!runL3)("L3 preparation atomicity / idempotence", () => {
     expect(announcement?.title).toBe("Lobby open");
     expect(job?.status).toBe("PENDING");
     expect(job?.type).toBe("PREPARATION_ANNOUNCEMENT");
+    expect(job?.userId).toBe(playerId);
+    expect(result.notificationJobIds).toHaveLength(1);
     expect(audits).toHaveLength(1);
     // Delivery must not be created by preparation (A-WORKERS ownership).
     const deliveries = await prisma.deliveryLog.count({ where: { jobId: job!.id } });
@@ -160,7 +162,9 @@ describe.skipIf(!runL3)("L3 preparation atomicity / idempotence", () => {
       },
     });
 
-    await expect(confirmStart({ partyId, userId: adminId, forceWithAbsents: true })).rejects.toMatchObject({
+    await expect(
+      confirmStart({ partyId, userId: adminId, forceWithAbsents: true }),
+    ).rejects.toMatchObject({
       code: "ABSENT_CONFIRMATION_REQUIRED",
     });
 

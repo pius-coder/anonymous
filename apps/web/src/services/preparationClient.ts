@@ -27,6 +27,7 @@ export type PreparationAnnouncement = {
 export type PreparationState = {
   partyId: string;
   status: string;
+  selfUserId?: string;
   participants: PreparationParticipant[];
   announcements: PreparationAnnouncement[];
   stats: {
@@ -46,7 +47,8 @@ export type MarkStatusResult = {
 
 export type SendAnnouncementResult = {
   id: string;
-  notificationJobId?: string;
+  notificationJobId?: string | null;
+  notificationJobIds?: string[];
 };
 
 export type ConfirmStartResult = {
@@ -59,15 +61,21 @@ export function getPlayerPreparation(partyCode: string): Promise<ApiResponse<Pre
 }
 
 export function markPresent(partyCode: string): Promise<ApiResponse<MarkStatusResult>> {
-  return api<MarkStatusResult>(`/v1/parties/${encodeURIComponent(partyCode)}/preparation/mark-present`, {
-    method: "POST",
-  });
+  return api<MarkStatusResult>(
+    `/v1/parties/${encodeURIComponent(partyCode)}/preparation/mark-present`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export function markReady(partyCode: string): Promise<ApiResponse<MarkStatusResult>> {
-  return api<MarkStatusResult>(`/v1/parties/${encodeURIComponent(partyCode)}/preparation/mark-ready`, {
-    method: "POST",
-  });
+  return api<MarkStatusResult>(
+    `/v1/parties/${encodeURIComponent(partyCode)}/preparation/mark-ready`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export function leavePreparation(partyCode: string): Promise<ApiResponse<{ status: string }>> {
@@ -77,13 +85,18 @@ export function leavePreparation(partyCode: string): Promise<ApiResponse<{ statu
 }
 
 export function getAdminPreparationState(partyId: string): Promise<ApiResponse<PreparationState>> {
-  return api<PreparationState>(`/v1/admin/parties/${encodeURIComponent(partyId)}/preparation/state`);
+  return api<PreparationState>(
+    `/v1/admin/parties/${encodeURIComponent(partyId)}/preparation/state`,
+  );
 }
 
 export function openPreparation(partyId: string): Promise<ApiResponse<{ status: string }>> {
-  return api<{ status: string }>(`/v1/admin/parties/${encodeURIComponent(partyId)}/preparation/open`, {
-    method: "POST",
-  });
+  return api<{ status: string }>(
+    `/v1/admin/parties/${encodeURIComponent(partyId)}/preparation/open`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export function sendAnnouncement(

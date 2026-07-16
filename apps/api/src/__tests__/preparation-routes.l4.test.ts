@@ -125,6 +125,39 @@ describe("L4 Preparation RBAC", () => {
     expect(ready.status).toBe(200);
   });
 
+  it("identifies the current player in a preparation snapshot", async () => {
+    authState.user = { id: "player", email: "p@test", roles: ["PLAYER"] };
+    useCaseMocks.getPreparationState.mockResolvedValueOnce({
+      partyId: "party-1",
+      status: "PREPARATION_OPEN",
+      participants: [{ id: "part-1", userId: "player", status: "READY" }],
+      announcements: [],
+      stats: { total: 1, present: 0, ready: 1, noResponse: 0, absent: 0 },
+    });
+
+    const res = await app.request("/v1/parties/CODE/preparation");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.selfUserId).toBe("player");
+  });
+
+  it("does not expose preparation announcements during an active round", async () => {
+    authState.user = { id: "player", email: "p@test", roles: ["PLAYER"] };
+    useCaseMocks.getPreparationState.mockResolvedValueOnce({
+      partyId: "party-1",
+      status: "ROUND_ACTIVE",
+      participants: [],
+      announcements: [{ id: "private-prep-announcement" }],
+      stats: { total: 0, present: 0, ready: 0, noResponse: 0, absent: 0 },
+    });
+
+    const res = await app.request("/v1/parties/CODE/preparation");
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.error.code).toBe("PREPARATION_NOT_AVAILABLE");
+    expect(JSON.stringify(body)).not.toContain("private-prep-announcement");
+  });
+
   it("maps absent confirmation error on confirm-start", async () => {
     authState.user = { id: "admin", email: "a@test", roles: ["ADMIN"] };
     useCaseMocks.confirmStart.mockRejectedValueOnce(

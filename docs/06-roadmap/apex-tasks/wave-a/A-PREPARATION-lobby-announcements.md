@@ -38,10 +38,11 @@ rapport AC -> test, validations scope/integration/E2E/typecheck/lint/build; mont
 | Surface | Statut |
 |---|---|
 | Use-cases present/ready/leave/open/confirm/announce | Cables, idempotents, absents + raison |
-| Annonce atomique Announcement + AuditLog + NotificationJob PENDING | Via `prisma.$transaction` (pas de delivery) |
+| Annonce atomique Announcement + AuditLog + NotificationJob PENDING | Via `prisma.$transaction`, un job par participant destinataire (pas de delivery) |
 | Transport REST Hono | Deja monte `/v1` et `/v1/admin` |
 | Transport Connect `preparation-service.ts` | Livre, **montage `rpc/routes.ts` = SEQ-03** |
-| UI lobby + admin preparation | TanStack Query, loading/empty/error/stale, double-submit |
+| UI lobby + admin preparation | TanStack Query, loading/empty/error/stale, double-submit, etat personnel restaure apres reload |
+| No-leak joueur | Projection preparation refusee des que la partie sort de la phase preparation |
 | Interdits | Contrats, Prisma seed/migrations, worker, `rpcServices.ts`, routeur central non modifies |
 
 ### AC → tests
@@ -51,5 +52,6 @@ rapport AC -> test, validations scope/integration/E2E/typecheck/lint/build; mont
 | Open preparation admin, aucun timer | unit openPreparation + L4 RBAC ADMIN |
 | Present/ready/leave distincts, idempotents | unit + L3 PG |
 | Confirm start raison si absents | unit + L3 |
-| Annonce atomique + job PENDING | L3 integration PG |
-| UI etats | LobbyPanel + AdminPreparationPanel (client) + L5 API flow |
+| Annonce atomique + jobs destinataires PENDING | L3 integration PG |
+| UI etats et reprise session | LobbyPanel + AdminPreparationPanel + L5 navigateur multi-contexte sans skip |
+| Annonce masquee hors preparation | L4 assertion negative sur `ROUND_ACTIVE` |

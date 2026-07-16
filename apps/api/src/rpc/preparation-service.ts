@@ -8,11 +8,7 @@ import {
   PreparationUseCaseError,
   sendPreparationAnnouncement,
 } from "../use-cases/preparation/preparation.use-case.js";
-import {
-  connectCodeFromHttpStatus,
-  requireRpcRole,
-  requireRpcUser,
-} from "./auth-context.js";
+import { connectCodeFromHttpStatus, requireRpcRole, requireRpcUser } from "./auth-context.js";
 
 /**
  * ConnectRPC transport for PreparationService.
@@ -43,15 +39,6 @@ function toReadiness(status: string, readinessState: string): PreparationV1.Part
     return PreparationV1.ParticipantReadiness.NO_RESPONSE;
   }
   return PreparationV1.ParticipantReadiness.UNKNOWN;
-}
-
-function toTimestamp(value: string | Date | null | undefined) {
-  if (!value) return undefined;
-  const milliseconds = new Date(value).getTime();
-  return {
-    seconds: BigInt(Math.floor(milliseconds / 1_000)),
-    nanos: (milliseconds % 1_000) * 1_000_000,
-  };
 }
 
 export const preparationService: Partial<ServiceImpl<typeof PreparationV1.PreparationService>> = {
@@ -122,7 +109,6 @@ export const preparationService: Partial<ServiceImpl<typeof PreparationV1.Prepar
         participants: state.participants.map((p) => ({
           playerId: { value: p.userId },
           readiness: toReadiness(p.status, p.readinessState),
-          lastSeenAt: toTimestamp(new Date()),
         })),
         allReady: state.stats.total > 0 && state.stats.ready === state.stats.total,
       };

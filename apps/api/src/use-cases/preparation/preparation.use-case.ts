@@ -92,7 +92,8 @@ export type PreparationStateOutput = {
 
 export type SendAnnouncementResult = {
   id: string;
-  notificationJobId: string;
+  notificationJobId: string | null;
+  notificationJobIds: string[];
 };
 
 const STATUS_MAP: Record<string, ParticipationStatus> = {
@@ -203,16 +204,27 @@ export async function markPresent(
   }
 
   if (party.status !== "PREPARATION_OPEN") {
-    throw new PreparationUseCaseError("PREPARATION_NOT_OPEN", "La préparation n'est pas ouverte", 422);
+    throw new PreparationUseCaseError(
+      "PREPARATION_NOT_OPEN",
+      "La préparation n'est pas ouverte",
+      422,
+    );
   }
 
-  const participation = await participationRepository.findParticipation(input.partyId, input.userId);
+  const participation = await participationRepository.findParticipation(
+    input.partyId,
+    input.userId,
+  );
   if (!participation) {
     throw new PreparationUseCaseError("PARTICIPATION_NOT_FOUND", "Participation introuvable", 404);
   }
 
   if (CANCELLED.has(participation.status)) {
-    throw new PreparationUseCaseError("PARTICIPATION_CANCELLED", "Votre participation a été annulée", 422);
+    throw new PreparationUseCaseError(
+      "PARTICIPATION_CANCELLED",
+      "Votre participation a été annulée",
+      422,
+    );
   }
 
   // Idempotent present (and already-ready is still present).
@@ -259,16 +271,27 @@ export async function markReady(
   }
 
   if (party.status !== "PREPARATION_OPEN") {
-    throw new PreparationUseCaseError("PREPARATION_NOT_OPEN", "La préparation n'est pas ouverte", 422);
+    throw new PreparationUseCaseError(
+      "PREPARATION_NOT_OPEN",
+      "La préparation n'est pas ouverte",
+      422,
+    );
   }
 
-  const participation = await participationRepository.findParticipation(input.partyId, input.userId);
+  const participation = await participationRepository.findParticipation(
+    input.partyId,
+    input.userId,
+  );
   if (!participation) {
     throw new PreparationUseCaseError("PARTICIPATION_NOT_FOUND", "Participation introuvable", 404);
   }
 
   if (CANCELLED.has(participation.status)) {
-    throw new PreparationUseCaseError("PARTICIPATION_CANCELLED", "Votre participation a été annulée", 422);
+    throw new PreparationUseCaseError(
+      "PARTICIPATION_CANCELLED",
+      "Votre participation a été annulée",
+      422,
+    );
   }
 
   // Idempotent ready.
@@ -326,8 +349,12 @@ export async function sendPreparationAnnouncement(
 
   const title = input.title.trim();
   const body = input.body.trim();
-  if (!title || !body) {
-    throw new PreparationUseCaseError("ANNOUNCEMENT_INVALID", "Titre et corps de l'annonce requis", 400);
+  if (!title || !body || title.length > 200 || body.length > 5_000) {
+    throw new PreparationUseCaseError(
+      "ANNOUNCEMENT_INVALID",
+      "Titre et corps de l'annonce requis",
+      400,
+    );
   }
 
   try {
@@ -355,23 +382,40 @@ export async function sendPreparationAnnouncement(
         },
       });
 
-      // Public NotificationJob shape (SEQ-02) — PENDING intent, no delivery.
-      const job = await tx.notificationJob.create({
-        data: {
-          userId: input.userId,
-          type: "PREPARATION_ANNOUNCEMENT",
-          status: "PENDING",
-          payload: {
-            announcementId: announcement.id,
-            partyId: input.partyId,
-            title,
-            body,
-            phase: "PREPARATION",
-          } as Prisma.InputJsonValue,
+      const recipients = await tx.partyParticipation.findMany({
+        where: {
+          partyId: input.partyId,
+          status: { notIn: ["ABANDONED", "CANCELLED"] },
         },
+        select: { userId: true },
+        distinct: ["userId"],
       });
 
-      return { id: announcement.id, notificationJobId: job.id };
+      // NotificationJob.userId is the delivery recipient consumed by A-WORKERS.
+      const jobs = await Promise.all(
+        recipients.map(({ userId }) =>
+          tx.notificationJob.create({
+            data: {
+              userId,
+              type: "PREPARATION_ANNOUNCEMENT",
+              status: "PENDING",
+              payload: {
+                announcementId: announcement.id,
+                partyId: input.partyId,
+                title,
+                body,
+                phase: "PREPARATION",
+              } as Prisma.InputJsonValue,
+            },
+          }),
+        ),
+      );
+
+      return {
+        id: announcement.id,
+        notificationJobId: jobs[0]?.id ?? null,
+        notificationJobIds: jobs.map((job) => job.id),
+      };
     });
   } catch (err) {
     console.error("sendPreparationAnnouncement transaction failed:", err);
@@ -458,16 +502,27 @@ export async function leavePreparation(input: LeavePreparationInput): Promise<{ 
   }
 
   if (party.status !== "PREPARATION_OPEN") {
-    throw new PreparationUseCaseError("PREPARATION_NOT_OPEN", "La préparation n'est pas ouverte", 422);
+    throw new PreparationUseCaseError(
+      "PREPARATION_NOT_OPEN",
+      "La préparation n'est pas ouverte",
+      422,
+    );
   }
 
-  const participation = await participationRepository.findParticipation(input.partyId, input.userId);
+  const participation = await participationRepository.findParticipation(
+    input.partyId,
+    input.userId,
+  );
   if (!participation) {
     throw new PreparationUseCaseError("PARTICIPATION_NOT_FOUND", "Participation introuvable", 404);
   }
 
   if (CANCELLED.has(participation.status)) {
-    throw new PreparationUseCaseError("PARTICIPATION_CANCELLED", "Votre participation a été annulée", 422);
+    throw new PreparationUseCaseError(
+      "PARTICIPATION_CANCELLED",
+      "Votre participation a été annulée",
+      422,
+    );
   }
 
   // Idempotent leave: already offline/registered.
@@ -483,7 +538,9 @@ export async function leavePreparation(input: LeavePreparationInput): Promise<{ 
   return { status: updated.status };
 }
 
-export async function getPreparationState(input: { partyId: string }): Promise<PreparationStateOutput> {
+export async function getPreparationState(input: {
+  partyId: string;
+}): Promise<PreparationStateOutput> {
   const party = await partyRepository.findPartyById(input.partyId);
   if (!party) {
     throw new PreparationUseCaseError("PARTY_NOT_FOUND", "Partie introuvable", 404);

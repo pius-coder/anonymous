@@ -33,9 +33,7 @@ const STALE_MS = 15_000;
 function readinessOf(state: PreparationState | undefined, userIdHint?: string) {
   if (!state) return { present: false, ready: false, status: "unknown" as const };
   // Prefer self row when user id unknown — UI may not have session id; use first matching READY/PRESENT aggregate for current user via last mutation.
-  const self = userIdHint
-    ? state.participants.find((p) => p.userId === userIdHint)
-    : undefined;
+  const self = userIdHint ? state.participants.find((p) => p.userId === userIdHint) : undefined;
   if (self) {
     return {
       present: self.status === "PRESENT" || self.status === "READY",
@@ -99,14 +97,15 @@ export function LobbyPanel({ party }: { party: UiParty }) {
     presentMutation.isPending || readyMutation.isPending || leaveMutation.isPending;
 
   const selfStatus = (() => {
-    if (readyMutation.data?.status === "READY") return { present: true, ready: true, status: "READY" };
+    if (readyMutation.data?.status === "READY")
+      return { present: true, ready: true, status: "READY" };
     if (presentMutation.data?.status === "PRESENT") {
       return { present: true, ready: false, status: "PRESENT" };
     }
     if (presentMutation.data?.status === "READY") {
       return { present: true, ready: true, status: "READY" };
     }
-    return readinessOf(prepQuery.data);
+    return readinessOf(prepQuery.data, prepQuery.data?.selfUserId);
   })();
 
   const present = selfStatus.present;
@@ -144,7 +143,11 @@ export function LobbyPanel({ party }: { party: UiParty }) {
           <CardContent className="flex flex-col items-center gap-3 py-8">
             <WifiOff className="size-8 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">{message}</p>
-            <Button type="button" onClick={() => prepQuery.refetch()} disabled={prepQuery.isFetching}>
+            <Button
+              type="button"
+              onClick={() => prepQuery.refetch()}
+              disabled={prepQuery.isFetching}
+            >
               <RefreshCw className={prepQuery.isFetching ? "animate-spin" : undefined} />
               Réessayer / reconnecter
             </Button>
@@ -194,7 +197,8 @@ export function LobbyPanel({ party }: { party: UiParty }) {
                 <>
                   <CardTitle>Aucune annonce pour l’instant</CardTitle>
                   <CardDescription>
-                    Les annonces d’avant-match apparaîtront ici. Elles ne démarrent jamais la partie.
+                    Les annonces d’avant-match apparaîtront ici. Elles ne démarrent jamais la
+                    partie.
                   </CardDescription>
                 </>
               )}

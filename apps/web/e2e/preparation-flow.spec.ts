@@ -1,128 +1,115 @@
-import { expect, test, request as playwrightRequest } from "@playwright/test";
-
-/**
- * L5: admin open → joueur ready → confirm (API-level multi-actor against real API).
- * UI shells are covered separately; this proves the preparation command chain without timers.
- */
+import { execFileSync } from "node:child_process";
+import { resolve } from "node:path";
+import { expect, test, type BrowserContext } from "@playwright/test";
 
 const host = process.env.TEST_HOST || "127.0.0.1";
-const apiUrl = (
-  process.env.API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  `http://${host}:${process.env.API_PORT || process.env.PORT || "3001"}`
+const webUrl = (
+  process.env.E2E_BASE_URL ||
+  process.env.PLAYWRIGHT_BASE_URL ||
+  `http://${host}:${process.env.WEB_PORT || "3000"}`
 ).replace(/\/$/, "");
+const apiProxyUrl = `${webUrl}/api`;
+const monorepoRoot = process.env.MONOREPO_ROOT || resolve(process.cwd(), "../..");
+const partyCode = "AURORA-21";
 
-const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-async function register(
-  ctx: Awaited<ReturnType<typeof playwrightRequest.newContext>>,
-  email: string,
-  name: string,
-) {
-  const res = await ctx.post(`${apiUrl}/v1/auth/register`, {
-    data: { email, password: "NoyaTest2026!", name },
+async function login(context: BrowserContext, email: string) {
+  const response = await context.request.post(`${apiProxyUrl}/v1/auth/login`, {
+    data: { email, password: "SeedPass123!" },
   });
-  if (!res.ok()) {
-    const login = await ctx.post(`${apiUrl}/v1/auth/login`, {
-      data: { email, password: "NoyaTest2026!" },
-    });
-    expect(login.ok(), await login.text()).toBeTruthy();
-    return login;
-  }
-  return res;
+  expect(response.ok(), await response.text()).toBeTruthy();
 }
 
 test.describe("L5 preparation flow", () => {
-  test("admin open → player present/ready → confirm start with reason if needed", async ({
-    request,
+  test.beforeAll(() => {
+    execFileSync("pnpm", ["--filter", "@session-jeu/db", "db:seed"], {
+      cwd: monorepoRoot,
+      env: process.env,
+      stdio: "pipe",
+    });
+  });
+
+  test("admin opens and announces, player becomes ready, admin confirms with an absent", async ({
+    browser,
   }) => {
-    const health = await request.get(`${apiUrl}/health`);
-    expect(health.ok(), "API must be up for L5 preparation").toBeTruthy();
+    const contextOptions = {
+      baseURL: webUrl,
+      extraHTTPHeaders: { "x-forwarded-proto": "http" },
+    };
+    const adminContext = await browser.newContext(contextOptions);
+    const playerContext = await browser.newContext(contextOptions);
+    const absentContext = await browser.newContext(contextOptions);
 
-    const adminEmail = `prep-admin-${suffix}@noya.test`;
-    const playerEmail = `prep-player-${suffix}@noya.test`;
+    try {
+      await login(adminContext, "admin@seed.local");
+      await login(playerContext, "player1@seed.local");
+      await login(absentContext, "player2@seed.local");
 
-    const adminCtx = await playwrightRequest.newContext({ baseURL: apiUrl });
-    await register(adminCtx, adminEmail, "Prep Admin");
+      const create = await adminContext.request.post(`${apiProxyUrl}/v1/admin/parties`, {
+        data: {
+          code: partyCode,
+          name: "Aurora Preparation E2E",
+          visibility: "public",
+          minPlayers: 2,
+          maxPlayers: 8,
+          roundProgram: { rounds: [{ number: 1, minigame: "memory_sequence" }] },
+        },
+      });
+      const created = await create.json();
+      expect(create.status(), JSON.stringify(created)).toBe(201);
+      const partyId = created.data.id as string;
 
-    const me = await adminCtx.get("/v1/me");
-    if (!me.ok()) {
-      test.skip(true, "Auth register/login not available for L5 preparation");
-    }
+      const publish = await adminContext.request.post(
+        `${apiProxyUrl}/v1/admin/parties/${partyId}/publish`,
+      );
+      expect(publish.ok(), await publish.text()).toBeTruthy();
 
-    let partyId: string | null = null;
-    let partyCode: string | null = null;
-
-    const createRes = await adminCtx.post("/v1/admin/parties", {
-      data: {
-        code: `PREP${suffix.slice(0, 6)}`.toUpperCase(),
-        name: `Prep E2E ${suffix}`,
-        minPlayers: 1,
-        maxPlayers: 8,
-      },
-    });
-
-    if (createRes.ok()) {
-      const body = await createRes.json();
-      partyId = body.data?.id ?? body.id;
-      partyCode = body.data?.code ?? body.code;
-    } else {
-      const list = await adminCtx.get("/v1/parties");
-      if (list.ok()) {
-        const body = await list.json();
-        const first = body.data?.items?.[0] ?? body.data?.[0];
-        partyId = first?.id ?? null;
-        partyCode = first?.code ?? null;
+      for (const [context, key] of [
+        [playerContext, "prep-player-ready"],
+        [absentContext, "prep-player-absent"],
+      ] as const) {
+        const registration = await context.request.post(
+          `${apiProxyUrl}/v1/parties/${partyCode}/register`,
+          { data: { idempotencyKey: key } },
+        );
+        expect(registration.status(), await registration.text()).toBe(201);
       }
+
+      const adminPage = await adminContext.newPage();
+      await adminPage.goto(`/admin/parties/${partyId}/control`);
+      await adminPage.getByRole("button", { name: "Ouvrir la préparation" }).click();
+      await expect(adminPage.getByText("PREPARATION_OPEN", { exact: true }).first()).toBeVisible();
+
+      await adminPage.getByLabel("Titre").fill("Annonce E2E préparation");
+      await adminPage
+        .getByLabel("Message de l’annonce")
+        .fill("Confirmez votre présence et votre état prêt.");
+      await adminPage.getByRole("button", { name: "Envoyer l’annonce" }).click();
+      await expect(adminPage.getByText("Annonce E2E préparation").last()).toBeVisible();
+
+      const playerPage = await playerContext.newPage();
+      await playerPage.goto(`/parties/${partyCode}/lobby`);
+      await expect(playerPage.getByText("Annonce E2E préparation")).toBeVisible();
+      await playerPage.getByRole("button", { name: "Je suis présent" }).click();
+      await expect(playerPage.getByRole("button", { name: "Présence confirmée" })).toBeDisabled();
+      await playerPage.getByRole("button", { name: "Je suis prêt" }).click();
+      await expect(playerPage.getByRole("button", { name: "Vous êtes prêt" })).toBeDisabled();
+
+      await playerPage.reload();
+      await expect(playerPage.getByRole("button", { name: "Présence confirmée" })).toBeDisabled();
+      await expect(playerPage.getByRole("button", { name: "Vous êtes prêt" })).toBeDisabled();
+
+      await adminPage.reload();
+      await expect(adminPage.getByText("1 absents")).toBeVisible();
+      await adminPage.getByRole("checkbox", { name: /Forcer avec 1 absent/ }).check();
+      await adminPage
+        .getByLabel("Raison d’audit (obligatoire si absents)")
+        .fill("Joueur absent vérifié pendant le scénario E2E.");
+      await adminPage.getByRole("button", { name: "Confirmer avec absents" }).click();
+      await expect(
+        adminPage.getByText("PREPARATION_LOCKED", { exact: true }).first(),
+      ).toBeVisible();
+    } finally {
+      await Promise.all([adminContext.close(), playerContext.close(), absentContext.close()]);
     }
-
-    if (!partyId || !partyCode) {
-      test.skip(true, "No party available to exercise preparation L5");
-    }
-
-    const openRes = await adminCtx.post(`/v1/admin/parties/${partyId}/preparation/open`);
-    if (openRes.status() === 403) {
-      test.skip(true, "Registered user lacks ADMIN role — seed/admin bootstrap required for full L5 RBAC");
-    }
-    expect([200, 422]).toContain(openRes.status());
-
-    const playerCtx = await playwrightRequest.newContext({ baseURL: apiUrl });
-    await register(playerCtx, playerEmail, "Prep Player");
-
-    await playerCtx.post(`/v1/parties/${partyCode}/join`, { data: {} }).catch(() => null);
-    await playerCtx.post(`/v1/parties/${partyCode}/participations`, { data: {} }).catch(() => null);
-
-    const presentRes = await playerCtx.post(`/v1/parties/${partyCode}/preparation/mark-present`);
-    expect([200, 404, 422]).toContain(presentRes.status());
-
-    if (presentRes.ok()) {
-      const readyRes = await playerCtx.post(`/v1/parties/${partyCode}/preparation/mark-ready`);
-      expect([200, 422]).toContain(readyRes.status());
-      const ready2 = await playerCtx.post(`/v1/parties/${partyCode}/preparation/mark-ready`);
-      expect([200, 422]).toContain(ready2.status());
-    }
-
-    const announce = await adminCtx.post(`/v1/admin/parties/${partyId}/preparation/announcement`, {
-      data: { title: "L5 annonce", body: "Intent notification only" },
-    });
-    if (announce.ok()) {
-      const body = await announce.json();
-      expect(body.data?.id || body.id).toBeTruthy();
-    }
-
-    const confirm = await adminCtx.post(`/v1/admin/parties/${partyId}/preparation/confirm-start`, {
-      data: {
-        forceWithAbsents: true,
-        overrideReason: "L5 confirm with possible absents — audited reason.",
-      },
-    });
-    expect([200, 422, 403]).toContain(confirm.status());
-    if (confirm.ok()) {
-      const body = await confirm.json();
-      expect(body.data?.status ?? body.status).toBe("PREPARATION_LOCKED");
-    }
-
-    await adminCtx.dispose();
-    await playerCtx.dispose();
   });
 });

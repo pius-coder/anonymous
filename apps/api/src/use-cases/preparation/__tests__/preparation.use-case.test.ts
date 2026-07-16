@@ -141,7 +141,9 @@ describe("markPresent / markReady / leave — distinct and idempotent", () => {
     await expect(markPresent({ partyId: "party-1", userId: "u1" })).resolves.toMatchObject({
       status: "PRESENT",
     });
-    expect(dbMocks.participationRepository.updateParticipationStatusReadiness).not.toHaveBeenCalled();
+    expect(
+      dbMocks.participationRepository.updateParticipationStatusReadiness,
+    ).not.toHaveBeenCalled();
   });
 
   it("ready requires present first", async () => {
@@ -175,7 +177,9 @@ describe("markPresent / markReady / leave — distinct and idempotent", () => {
     await expect(markReady({ partyId: "party-1", userId: "u1" })).resolves.toMatchObject({
       status: "READY",
     });
-    expect(dbMocks.participationRepository.updateParticipationStatusReadiness).not.toHaveBeenCalled();
+    expect(
+      dbMocks.participationRepository.updateParticipationStatusReadiness,
+    ).not.toHaveBeenCalled();
   });
 
   it("leave is distinct and idempotent when already offline", async () => {
@@ -222,7 +226,9 @@ describe("confirmStart", () => {
       { id: "p1", status: "READY" },
       { id: "p2", status: "PAID" },
     ]);
-    dbMocks.partyRepository.updatePartyStatus.mockResolvedValueOnce({ status: "PREPARATION_LOCKED" });
+    dbMocks.partyRepository.updatePartyStatus.mockResolvedValueOnce({
+      status: "PREPARATION_LOCKED",
+    });
 
     await expect(
       confirmStart({
@@ -250,7 +256,9 @@ describe("confirmStart", () => {
     dbMocks.participationRepository.listParticipationsByParty.mockResolvedValueOnce([
       { id: "p1", status: "READY" },
     ]);
-    dbMocks.partyRepository.updatePartyStatus.mockResolvedValueOnce({ status: "PREPARATION_LOCKED" });
+    dbMocks.partyRepository.updatePartyStatus.mockResolvedValueOnce({
+      status: "PREPARATION_LOCKED",
+    });
 
     const result = await confirmStart({ partyId: "party-1", userId: "admin-1" });
     expect(result.status).toBe("PREPARATION_LOCKED");
@@ -268,8 +276,14 @@ describe("sendPreparationAnnouncement", () => {
         create: vi.fn().mockResolvedValue({ id: "ann-1", title: "Hi", body: "Body" }),
       },
       auditLog: { create: vi.fn().mockResolvedValue({ id: "aud-1" }) },
+      partyParticipation: {
+        findMany: vi.fn().mockResolvedValue([{ userId: "player-1" }, { userId: "player-2" }]),
+      },
       notificationJob: {
-        create: vi.fn().mockResolvedValue({ id: "job-1", status: "PENDING" }),
+        create: vi
+          .fn()
+          .mockResolvedValueOnce({ id: "job-1", status: "PENDING" })
+          .mockResolvedValueOnce({ id: "job-2", status: "PENDING" }),
       },
     };
     dbMocks.prisma.$transaction.mockImplementation(async (fn: (t: typeof tx) => unknown) => fn(tx));
@@ -281,7 +295,11 @@ describe("sendPreparationAnnouncement", () => {
         title: "Hi",
         body: "Body",
       }),
-    ).resolves.toEqual({ id: "ann-1", notificationJobId: "job-1" });
+    ).resolves.toEqual({
+      id: "ann-1",
+      notificationJobId: "job-1",
+      notificationJobIds: ["job-1", "job-2"],
+    });
 
     expect(tx.announcement.create).toHaveBeenCalled();
     expect(tx.auditLog.create).toHaveBeenCalledWith(
@@ -289,15 +307,27 @@ describe("sendPreparationAnnouncement", () => {
         data: expect.objectContaining({ action: "ANNOUNCEMENT_SEND", entityId: "ann-1" }),
       }),
     );
-    expect(tx.notificationJob.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          type: "PREPARATION_ANNOUNCEMENT",
-          status: "PENDING",
-          userId: "admin-1",
-        }),
-      }),
+    expect(tx.notificationJob.create).toHaveBeenCalledTimes(2);
+    expect(tx.notificationJob.create).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ data: expect.objectContaining({ userId: "player-1" }) }),
     );
+    expect(tx.notificationJob.create).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ data: expect.objectContaining({ userId: "player-2" }) }),
+    );
+  });
+
+  it("validates transport-independent announcement size limits", async () => {
+    await expect(
+      sendPreparationAnnouncement({
+        partyId: "party-1",
+        userId: "admin-1",
+        title: "x".repeat(201),
+        body: "Body",
+      }),
+    ).rejects.toMatchObject({ code: "ANNOUNCEMENT_INVALID", httpStatus: 400 });
+    expect(dbMocks.prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it("does not partially persist when transaction fails", async () => {
