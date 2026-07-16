@@ -1,7 +1,4 @@
-import { notFound } from "next/navigation";
 import { ParticipationPanel } from "@/components/player/ParticipationPanel";
-import { PlayerJourneyNav } from "@/components/player/PlayerJourneyNav";
-import { findPlayerParty } from "@/components/player/player-data";
 import { AppShell } from "@/components/ui/AppShell";
 
 export default async function ParticipationPage({
@@ -10,17 +7,16 @@ export default async function ParticipationPage({
   params: Promise<{ partyCode: string }>;
 }) {
   const { partyCode } = await params;
-  const party = findPlayerParty(partyCode);
-  if (!party) notFound();
+  const code = decodeURIComponent(partyCode).toUpperCase();
+
   return (
     <AppShell
       audience="Joueur"
-      eyebrow={party.code}
+      eyebrow={code}
       title="Votre participation"
-      subtitle="Réservez une place personnelle avant de passer au paiement."
+      subtitle="Réservez une place personnelle. Capacité et permissions sont vérifiées côté serveur."
     >
-      <PlayerJourneyNav party={party} current="participation" />
-      <ParticipationPanel party={party} />
+      <ParticipationPanel partyCode={code} />
     </AppShell>
   );
 }

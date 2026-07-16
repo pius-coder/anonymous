@@ -101,7 +101,7 @@ export async function listPublicParties(input: ListPublicPartiesInput = {}): Pro
   ]);
 
   const participantCounts = await Promise.all(
-    parties.map((p) => participationRepository.countByPartyId(p.id)),
+    parties.map((p) => participationRepository.countActiveByPartyId(p.id)),
   );
 
   return {
@@ -130,7 +130,35 @@ export async function getPublicParty(input: { code: string }): Promise<PublicPar
     throw new PartyUseCaseError("PARTY_INACCESSIBLE", "Cette partie n'est pas accessible", 404);
   }
 
-  const participantCount = await participationRepository.countByPartyId(party.id);
+  const participantCount = await participationRepository.countActiveByPartyId(party.id);
+
+  return {
+    id: party.id,
+    code: party.code,
+    name: party.name,
+    status: party.status,
+    visibility: party.visibility,
+    scheduledAt: party.scheduledAt?.toISOString() ?? null,
+    minPlayers: party.minPlayers,
+    maxPlayers: party.maxPlayers,
+    roundProgram: party.roundProgram,
+    participantCount,
+    createdAt: party.createdAt.toISOString(),
+  } satisfies PublicPartyDetail;
+}
+
+export async function getPublicPartyById(input: { id: string }): Promise<PublicPartyDetail> {
+  const party = await partyRepository.findPartyById(input.id);
+  if (!party) {
+    throw new PartyUseCaseError("PARTY_NOT_FOUND", "Partie introuvable", 404);
+  }
+
+  const visibleStatuses = ["SCHEDULED", "PREPARATION_OPEN", "PREPARATION_LOCKED"];
+  if (party.visibility !== "public" || !visibleStatuses.includes(party.status)) {
+    throw new PartyUseCaseError("PARTY_INACCESSIBLE", "Cette partie n'est pas accessible", 404);
+  }
+
+  const participantCount = await participationRepository.countActiveByPartyId(party.id);
 
   return {
     id: party.id,

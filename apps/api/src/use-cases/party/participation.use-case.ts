@@ -20,6 +20,12 @@ export type RegisterForPartyInput = {
   idempotencyKey?: string;
 };
 
+export type RegisterForPartyByIdInput = {
+  partyId: string;
+  userId: string;
+  idempotencyKey?: string;
+};
+
 export type ParticipationDetail = {
   id: string;
   partyId: string;
@@ -137,6 +143,18 @@ function toDomainParticipation(p: {
   };
 }
 
+export async function registerForPartyById(input: RegisterForPartyByIdInput): Promise<ParticipationDetail> {
+  const party = await partyRepository.findPartyById(input.partyId);
+  if (!party) {
+    throw new ParticipationUseCaseError("PARTY_NOT_FOUND", "Partie introuvable", 404);
+  }
+  return registerForParty({
+    code: party.code,
+    userId: input.userId,
+    idempotencyKey: input.idempotencyKey,
+  });
+}
+
 export async function registerForParty(input: RegisterForPartyInput): Promise<ParticipationDetail> {
   const party = await getPartyOrThrow(input.code);
   if (!party) {
@@ -152,11 +170,6 @@ export async function registerForParty(input: RegisterForPartyInput): Promise<Pa
     throw new ParticipationUseCaseError("PARTY_NOT_REGISTRABLE", "Cette partie n'accepte plus d'inscriptions", 422);
   }
 
-  const existing = await participationRepository.findParticipation(party.id, input.userId);
-  if (existing) {
-    return toParticipationDetail(existing);
-  }
-
   if (input.idempotencyKey) {
     const existingByIdempotency = await participationRepository.findParticipationByIdempotencyKey(input.idempotencyKey);
     if (existingByIdempotency) {
@@ -164,7 +177,28 @@ export async function registerForParty(input: RegisterForPartyInput): Promise<Pa
     }
   }
 
-  const currentCount = await participationRepository.countByPartyId(party.id);
+  const existing = await participationRepository.findParticipation(party.id, input.userId);
+  if (existing) {
+    // Idempotent: already holding a seat.
+    if (existing.status !== "ABANDONED") {
+      return toParticipationDetail(existing);
+    }
+    // Reactivate a previously cancelled seat only if capacity allows.
+    const currentCount = await participationRepository.countActiveByPartyId(party.id);
+    const domainGame = toDomainGame(party);
+    const capacity = canRegister(domainGame, currentCount);
+    if (!capacity.allowed) {
+      throw new ParticipationUseCaseError(
+        "PARTY_FULL",
+        capacity.reason === "PARTY_FULL" ? "Cette partie est complète" : "Inscription impossible",
+        422,
+      );
+    }
+    const reactivated = await participationRepository.reactivateParticipation(existing.id);
+    return toParticipationDetail(reactivated);
+  }
+
+  const currentCount = await participationRepository.countActiveByPartyId(party.id);
   const domainGame = toDomainGame(party);
   const capacity = canRegister(domainGame, currentCount);
   if (!capacity.allowed) {
@@ -177,16 +211,30 @@ export async function registerForParty(input: RegisterForPartyInput): Promise<Pa
 
   const expiresAt = party.scheduledAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-  const created = await participationRepository.createParticipation({
-    partyId: party.id,
-    userId: input.userId,
-    role: "player",
-    status: "REGISTERED",
-    idempotencyKey: input.idempotencyKey,
-    expiresAt,
-  });
-
-  return toParticipationDetail(created);
+  try {
+    const created = await participationRepository.createParticipation({
+      partyId: party.id,
+      userId: input.userId,
+      role: "player",
+      status: "REGISTERED",
+      idempotencyKey: input.idempotencyKey,
+      expiresAt,
+    });
+    return toParticipationDetail(created);
+  } catch (err) {
+    // Concurrent double-submit: unique (partyId, userId) or idempotency key race.
+    const raced = await participationRepository.findParticipation(party.id, input.userId);
+    if (raced) {
+      return toParticipationDetail(raced);
+    }
+    if (input.idempotencyKey) {
+      const byKey = await participationRepository.findParticipationByIdempotencyKey(input.idempotencyKey);
+      if (byKey) {
+        return toParticipationDetail(byKey);
+      }
+    }
+    throw err;
+  }
 }
 
 export async function cancelMyParticipation(input: CancelParticipationInput): Promise<ParticipationDetail> {
@@ -198,6 +246,11 @@ export async function cancelMyParticipation(input: CancelParticipationInput): Pr
   const participation = await participationRepository.findParticipation(party.id, input.userId);
   if (!participation) {
     throw new ParticipationUseCaseError("PARTICIPATION_NOT_FOUND", "Inscription introuvable", 404);
+  }
+
+  // Idempotent: already cancelled.
+  if (participation.status === "ABANDONED") {
+    return toParticipationDetail(participation);
   }
 
   const domainParticipation = toDomainParticipation(participation);
@@ -224,6 +277,27 @@ export async function getMyParticipation(input: GetMyParticipationInput): Promis
   const participation = await participationRepository.findParticipation(party.id, input.userId);
   if (!participation) {
     throw new ParticipationUseCaseError("PARTICIPATION_NOT_FOUND", "Inscription introuvable", 404);
+  }
+
+  return toParticipationDetail(participation);
+}
+
+export async function getParticipationById(input: {
+  participationId: string;
+  userId: string;
+  roles: string[];
+}): Promise<ParticipationDetail> {
+  const participation = await participationRepository.findParticipationById(input.participationId);
+  if (!participation) {
+    throw new ParticipationUseCaseError("PARTICIPATION_NOT_FOUND", "Inscription introuvable", 404);
+  }
+
+  const isOwner = participation.userId === input.userId;
+  const isStaff = input.roles.some((role) =>
+    ["ADMIN", "SUPER_ADMIN", "SUPPORT"].includes(role),
+  );
+  if (!isOwner && !isStaff) {
+    throw new ParticipationUseCaseError("PARTICIPATION_FORBIDDEN", "Permission insuffisante", 403);
   }
 
   return toParticipationDetail(participation);
