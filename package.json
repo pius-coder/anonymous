@@ -9,8 +9,16 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
+    "test:unit": "node scripts/run-unit.mjs",
+    "test:integration": "node scripts/run-integration.mjs",
+    "test:e2e": "node scripts/run-e2e.mjs",
+    "test:all": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",
+    "infra:up": "node scripts/infra-up.mjs",
+    "infra:up:migrate": "node scripts/infra-up.mjs --migrate",
+    "infra:down": "node scripts/infra-down.mjs",
     "contracts:generate": "pnpm --filter @session-jeu/contracts generate",
     "db:migrate": "turbo run db:migrate --filter=@session-jeu/db",
+    "db:migrate:deploy": "pnpm --filter @session-jeu/db exec prisma migrate deploy",
     "db:seed": "turbo run db:seed --filter=@session-jeu/db",
     "db:studio": "turbo run db:studio --filter=@session-jeu/db",
     "docs:check": "node scripts/check-docs.mjs",
@@ -19,11 +27,14 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
+    "@prisma/client": "^6.0.0",
     "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.4",
+    "prisma": "^6.0.0",
     "turbo": "^2.10.4",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.15.0"
+    "typescript-eslint": "^8.15.0",
+    "vitest": "^2.1.0"
   }
 }

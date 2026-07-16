@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [v0.1, main, master, "integration/**"]
+  pull_request:
+    branches: [v0.1, main, master, "integration/**"]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+  WORKTREE_ID: ci-${{ github.run_id }}
+  TEST_INFRA_BACKEND: docker
+  # Non-secret defaults for disposable compose (never log real credentials in steps)
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  ALLOW_INSECURE_AUTH_COOKIE: "true"
+
+jobs:
+  quality:
+    name: unit → integration → e2e → gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Frozen install
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate contracts
+        run: pnpm contracts:generate
+
+      - name: Generate Prisma client
+        run: pnpm --filter @session-jeu/db exec prisma generate
+
+      - name: Unit tests (L1)
+        run: pnpm test:unit
+
+      - name: Integration (L3/L4) — empty DB migrate + harness
+        run: pnpm test:integration
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @session-jeu/web exec playwright install chromium --with-deps
+
+      - name: E2E (L5)
+        run: pnpm test:e2e
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      - name: Docs check
+        run: pnpm docs:check
+
+      - name: Upload Playwright report (no secrets)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7

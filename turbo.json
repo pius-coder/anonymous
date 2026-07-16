@@ -17,7 +17,71 @@
       "dependsOn": ["^build"]
     },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "cache": false,
+      "env": ["CI", "NODE_ENV"]
+    },
+    "test:unit": {
+      "dependsOn": ["^build"],
+      "cache": false,
+      "env": ["CI", "NODE_ENV"]
+    },
+    "test:integration": {
+      "cache": false,
+      "dependsOn": ["^build"],
+      "passThroughEnv": [
+        "WORKTREE_ID",
+        "WORKTREE_OFFSET",
+        "TEST_INFRA_BACKEND",
+        "DATABASE_URL",
+        "TEST_DATABASE_URL",
+        "REDIS_URL",
+        "POSTGRES_*",
+        "REDIS_*",
+        "PORT",
+        "API_PORT",
+        "API_URL",
+        "GAME_SERVER_PORT",
+        "GAME_PORT",
+        "GAME_WS_URL",
+        "WEB_PORT",
+        "WORKER_PORT",
+        "COMPOSE_PROJECT_NAME",
+        "CI",
+        "LOCAL_POSTGRES_*",
+        "LOCAL_REDIS_*",
+        "PGHOST",
+        "PGPASSWORD",
+        "INTEGRATION_TIMEOUT_MS"
+      ]
+    },
+    "test:e2e": {
+      "cache": false,
+      "dependsOn": ["^build"],
+      "passThroughEnv": [
+        "WORKTREE_ID",
+        "WORKTREE_OFFSET",
+        "TEST_INFRA_BACKEND",
+        "DATABASE_URL",
+        "TEST_DATABASE_URL",
+        "REDIS_URL",
+        "POSTGRES_*",
+        "REDIS_*",
+        "PORT",
+        "API_PORT",
+        "API_URL",
+        "GAME_SERVER_PORT",
+        "GAME_PORT",
+        "GAME_WS_URL",
+        "WEB_PORT",
+        "WORKER_PORT",
+        "E2E_BASE_URL",
+        "PLAYWRIGHT_*",
+        "COMPOSE_PROJECT_NAME",
+        "CI",
+        "NEXT_PUBLIC_*",
+        "ALLOW_INSECURE_AUTH_COOKIE"
+      ]
     },
     "db:migrate": {
       "cache": false
@@ -26,7 +90,8 @@
       "cache": false
     },
     "db:studio": {
-      "cache": false
+      "cache": false,
+      "persistent": true
     }
   }
 }
