@@ -98,6 +98,10 @@ etre demande explicitement :
 WORKTREE_ALLOW_NETWORK=1 scripts/worktree-up
 ```
 
+Le setup genere le client Prisma local, mais ne regenere pas les contrats versionnes. Une tache
+proprietaire des contrats doit demander cette operation explicitement avec
+`WORKTREE_GENERATE_CONTRACTS=1 scripts/worktree-up`, puis verifier son diff.
+
 Les commandes de travail passent par le chargeur d'environnement :
 
 ```bash

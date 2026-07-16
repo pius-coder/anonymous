@@ -53,8 +53,11 @@ else
   printf '%s\n' "$current_lock_hash" > "$lock_state"
 fi
 
-if [[ "${WORKTREE_SKIP_GENERATE:-0}" != "1" ]]; then
+if [[ "${WORKTREE_GENERATE_CONTRACTS:-0}" == "1" ]]; then
   pnpm contracts:generate
+fi
+
+if [[ "${WORKTREE_SKIP_GENERATE:-0}" != "1" ]]; then
   pnpm --filter @session-jeu/db exec prisma generate
 fi
 

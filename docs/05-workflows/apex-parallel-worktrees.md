@@ -74,7 +74,8 @@ store et ne telecharge que les paquets absents lorsque le fallback reseau est ex
 
 `.codex/environments/environment.toml` appelle `scripts/worktree-up` a la creation et
 `scripts/worktree-down` au nettoyage. Les actions Codex passent par `scripts/worktree-run`, qui charge
-`.env.worktree.local` sans exposer son contenu.
+`.env.worktree.local` sans exposer son contenu. Le setup genere Prisma mais ne regenere pas les contrats
+versionnes, sauf demande explicite avec `WORKTREE_GENERATE_CONTRACTS=1` par leur proprietaire.
 
 ## 3. Ownership et conflits
 
