@@ -45,6 +45,9 @@ Projet Compose : `COMPOSE_PROJECT_NAME=sj_{WORKTREE_ID}`.
 
 Deux worktrees avec des `WORKTREE_ID` distincts ne partagent ni DB, ni ports applicatifs.
 
+Les variables sont generees dans `.env.worktree.local` par `scripts/worktree-up`. Utiliser
+`scripts/worktree-run pnpm <commande>` pour les charger dans les commandes locales et les actions Codex.
+
 ## Timeouts
 
 | Etape | Timeout par defaut |

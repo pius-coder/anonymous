@@ -11,6 +11,9 @@ out/
 .env
 .env.local
 .env.*.local
+.env.worktree.local
+.worktree-local-files
+.worktree-pnpm-lock.sha256
 
 # IDE
 .vscode/

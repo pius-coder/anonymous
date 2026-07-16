@@ -17,10 +17,11 @@ Pour terminer v0.1 avec plusieurs agents/worktrees, lire dans cet ordre :
 
 1. `00-audit/v0.1-gap-analysis.md` pour l'etat prouve au commit audite;
 2. `06-roadmap/apex-parallel-execution-plan.md` pour les dependances et ownership;
-3. `05-workflows/apex-parallel-worktrees.md` pour l'isolation et le merge train;
-4. `05-workflows/test-strategy.md` pour les gates L0 a L6.
-5. `05-workflows/test-commands.md` pour les commandes `test:unit|integration|e2e`, timeouts et diagnostic.
-6. `06-roadmap/apex-tasks/README.md` pour lancer une session Codex par fiche autonome.
+3. `05-workflows/agent-worktree-convention.md` avant de creer ou lancer une session parallele;
+4. `05-workflows/apex-parallel-worktrees.md` pour l'isolation, l'ownership et le merge train;
+5. `05-workflows/test-strategy.md` pour les gates L0 a L6.
+6. `05-workflows/test-commands.md` pour les commandes `test:unit|integration|e2e`, timeouts et diagnostic.
+7. `06-roadmap/apex-tasks/README.md` pour lancer une session Codex par fiche autonome.
 
 ## Decisions v0.1
 

@@ -44,11 +44,21 @@ merge dans son commit de base.
 
 ## Regle de demarrage d'une session
 
-La session commence par `pwd`, branche, status, commit, puis lit `AGENTS.md`, sa fiche, les documents
-obligatoires et le code concerne. Elle utilise Context7 pour chaque bibliotheque impliquee. Elle ne
-change jamais un chemin interdit et ne pousse/merge pas sans demande explicite.
+Avant toute creation ou execution, lire
+`docs/05-workflows/agent-worktree-convention.md`. La session commence ensuite par `pwd`, branche,
+status, commit, puis lit `AGENTS.md`, sa fiche, les documents obligatoires et le code concerne. Elle
+utilise Context7 pour chaque bibliotheque impliquee. Elle ne change jamais un chemin interdit et ne
+pousse/merge pas sans demande explicite.
 
-Commande humaine type : ouvrir un worktree propre, demarrer une session Codex dans ce worktree et lui
-donner uniquement : `Lis et execute docs/06-roadmap/apex-tasks/<fichier>.md`.
+Commande humaine type :
 
-Le protocole worktree complet est `docs/05-workflows/apex-parallel-worktrees.md`.
+```bash
+pnpm worktree:create -- a-identity HEAD
+cd /home/afreeserv/worktrees/anonymous/a-identity
+```
+
+Demarrer ensuite une session Codex dans ce dossier et lui donner uniquement :
+`Lis et execute docs/06-roadmap/apex-tasks/<fichier>.md`.
+
+La convention d'ouverture est `docs/05-workflows/agent-worktree-convention.md`. Le protocole de merge
+train complet est `docs/05-workflows/apex-parallel-worktrees.md`.

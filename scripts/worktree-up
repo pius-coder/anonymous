@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+target="${CODEX_WORKTREE_PATH:-$(git rev-parse --show-toplevel)}"
+cd "$target"
+
+common_git_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
+source_tree="${CODEX_SOURCE_TREE_PATH:-$(dirname "$common_git_dir")}"
+worktree_id="${WORKTREE_ID:-$(basename "$target")}"
+state_file="$target/.worktree-local-files"
+lock_state="$target/.worktree-pnpm-lock.sha256"
+
+printf '%s\n' "[worktree] id=$worktree_id"
+printf '%s\n' "[worktree] source=$source_tree"
+printf '%s\n' "[worktree] target=$target"
+
+touch "$state_file"
+for relative in .env .env.local apps/web/.env.local apps/api/.env; do
+  source_file="$source_tree/$relative"
+  target_file="$target/$relative"
+  if [[ -f "$source_file" && ! -e "$target_file" ]]; then
+    mkdir -p "$(dirname "$target_file")"
+    cp "$source_file" "$target_file"
+    if ! grep -Fqx "$relative" "$state_file"; then
+      printf '%s\n' "$relative" >> "$state_file"
+    fi
+    printf '%s\n' "[worktree] copied ignored env: $relative"
+  fi
+done
+
+WORKTREE_ID="$worktree_id" node scripts/worktree-print-env.mjs > .env.worktree.local
+
+store_path="${PNPM_STORE_PATH:-$(pnpm store path --silent)}"
+current_lock_hash="$({ sha256sum pnpm-lock.yaml package.json pnpm-workspace.yaml; } | sha256sum | cut -d' ' -f1)"
+
+if [[ -d node_modules && -f "$lock_state" && "$(cat "$lock_state")" == "$current_lock_hash" ]]; then
+  printf '%s\n' "[worktree] dependencies already match the lockfile"
+else
+  printf '%s\n' "[worktree] pnpm store=$store_path"
+  printf '%s\n' "[worktree] installing from cache only"
+  if pnpm install --offline --frozen-lockfile --store-dir "$store_path"; then
+    printf '%s\n' "[worktree] offline install complete"
+  elif [[ "${WORKTREE_ALLOW_NETWORK:-0}" == "1" ]]; then
+    printf '%s\n' "[worktree] cache incomplete; using prefer-offline network fallback"
+    pnpm install --prefer-offline --frozen-lockfile --store-dir "$store_path"
+  else
+    printf '%s\n' "[worktree] cache incomplete; network fallback disabled" >&2
+    printf '%s\n' "Run once from the source checkout when connected:" >&2
+    printf '%s\n' "  pnpm deps:fetch" >&2
+    printf '%s\n' "Or retry explicitly with WORKTREE_ALLOW_NETWORK=1 scripts/worktree-up" >&2
+    exit 1
+  fi
+  printf '%s\n' "$current_lock_hash" > "$lock_state"
+fi
+
+if [[ "${WORKTREE_SKIP_GENERATE:-0}" != "1" ]]; then
+  pnpm contracts:generate
+  pnpm --filter @session-jeu/db exec prisma generate
+fi
+
+printf '%s\n' "[worktree] ready"
+printf '%s\n' "[worktree] run commands with: scripts/worktree-run <command>"

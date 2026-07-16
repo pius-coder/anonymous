@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+target="${CODEX_WORKTREE_PATH:-$(git rev-parse --show-toplevel)}"
+cd "$target"
+
+if [[ -f .env.worktree.local ]]; then
+  # shellcheck disable=SC1091
+  source .env.worktree.local
+  if [[ -d node_modules ]]; then
+    pnpm infra:down || printf '%s\n' "[worktree] infra cleanup skipped or already complete"
+  fi
+fi
+
+if [[ -f .worktree-local-files ]]; then
+  while IFS= read -r relative; do
+    [[ -n "$relative" ]] && rm -f -- "$relative"
+  done < .worktree-local-files
+fi
+
+rm -f .env.worktree.local .worktree-local-files .worktree-pnpm-lock.sha256
+printf '%s\n' "[worktree] local environment cleaned"

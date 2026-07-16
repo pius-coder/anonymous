@@ -186,6 +186,44 @@ stack, documentation officielle et decision explicite.
 - Travailler sur une branche non-main pour toute implementation.
 - Documenter l'etat initial et final de `git status` pour les changements importants.
 
+## Worktrees agents et dependances hors ligne
+
+Lecture obligatoire avant toute session parallele :
+`docs/05-workflows/agent-worktree-convention.md`.
+
+Pour toute tache APEX parallele, l'agent doit travailler dans un worktree dedie. Le checkout principal
+`/home/afreeserv/anonymous` reste sur `v0.1` ou sur la branche d'integration choisie. Il sert uniquement
+a creer les worktrees, integrer les commits et executer les gates globaux. Un agent de lot ne doit
+jamais y executer `git switch`, `git checkout`, `git rebase` ou une implementation metier.
+
+Garde-fou obligatoire : si `pwd` vaut `/home/afreeserv/anonymous` et que la branche correspond a
+`apex/*`, arreter la session immediatement. Ne pas tenter de corriger, stasher, reset ou changer la
+branche; signaler la collision a l'integrateur.
+
+Regles obligatoires :
+
+1. Creer le worktree avec `pnpm worktree:create -- <task-id> [base-ref]`. Le dossier parent par defaut
+   est `/home/afreeserv/worktrees/anonymous` et peut etre remplace par `SESSION_JEU_WORKTREE_ROOT`.
+2. Une branche `apex/<task-id>` et un dossier par tache. Ne jamais ouvrir la meme branche dans deux
+   worktrees.
+3. Demarrer la session Codex avec son repertoire de travail fixe sur
+   `/home/afreeserv/worktrees/anonymous/<task-id>`, jamais sur le checkout principal.
+4. Au debut de la session, confirmer `pwd`, branche, commit de base et `git status --short`.
+5. Executer les commandes avec `scripts/worktree-run <commande>` afin de charger `WORKTREE_ID`, ports,
+   DB et Redis propres au worktree.
+6. Ne jamais copier, deplacer ou symlinker `node_modules` entre worktrees. pnpm partage deja son store
+   de contenu; chaque worktree conserve ses propres liens `node_modules`.
+7. `scripts/worktree-up` tente toujours `pnpm install --offline --frozen-lockfile` avec le store partage.
+   Le reseau n'est autorise que par `WORKTREE_ALLOW_NETWORK=1`; utiliser d'abord `pnpm deps:fetch` depuis
+   le checkout source quand une connexion est disponible.
+8. Ne pas lancer directement `pnpm install` avec un lockfile inchange. Relancer `scripts/worktree-up`.
+9. Avant suppression : worktree propre, `scripts/worktree-down`, puis `git worktree remove <path>` depuis
+   le checkout source. Ne jamais supprimer le dossier manuellement.
+
+Configuration Codex partagee : `.codex/environments/environment.toml`. Procedure complete :
+`docs/05-workflows/agent-worktree-convention.md`. Merge train et ownership :
+`docs/05-workflows/apex-parallel-worktrees.md`.
+
 ## Workflow de fonctionnalite
 
 Aucune fonctionnalite ne commence par un composant, une table ou un endpoint.

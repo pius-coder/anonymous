@@ -4,21 +4,33 @@ Ce workflow complete `apex-workflow.md`. Git worktree separe le `HEAD` et l'inde
 les worktrees partagent le depot Git et ses references. Une meme branche ne doit pas etre ouverte dans
 deux worktrees.
 
+Avant toute creation ou session parallele, lire la convention autonome obligatoire :
+`docs/05-workflows/agent-worktree-convention.md`.
+
 ## 1. Preparation sequentielle
 
 1. Verifier un worktree d'integration propre avec `git status --short`.
 2. Creer la branche `integration/v0.1-completion` depuis le commit de baseline documente.
 3. Executer SEQ-00, SEQ-01 et SEQ-02 dans cet ordre.
 4. Publier le commit de base de chaque vague et ne plus le reecrire.
-5. Creer un worktree par tache avec une branche `apex/<task-id>`.
+5. Creer un worktree par tache avec `pnpm worktree:create -- <task-id> [base-ref]`.
 
 Exemple apres validation de la baseline :
 
 ```bash
-git worktree add ../anonymous-wt/a-identity -b apex/a-identity integration/v0.1-completion
-git worktree add ../anonymous-wt/a-payment -b apex/a-payment integration/v0.1-completion
+pnpm worktree:create -- a-identity HEAD
+pnpm worktree:create -- a-payment HEAD
 git worktree list --porcelain
 ```
+
+Le dossier parent par defaut est `/home/afreeserv/worktrees/anonymous`. Pour le changer :
+
+```bash
+export SESSION_JEU_WORKTREE_ROOT=/mnt/fast-disk/session-jeu-worktrees
+```
+
+`scripts/worktree-create` exige un checkout source propre, cree `apex/<task-id>`, initialise le dossier
+et appelle `scripts/worktree-up`.
 
 ## 2. Isolation obligatoire
 
@@ -33,8 +45,36 @@ Chaque worktree recoit un `WORKTREE_ID` stable et des ressources derivees :
 | Web | port et `PLAYWRIGHT_BASE_URL` uniques |
 | Next/coverage | sorties locales au worktree; aucun dossier genere copie entre worktrees |
 | Turbo | cache local partage autorise; les outputs de tache restent declares dans `turbo.json` |
+| pnpm | store de contenu global partage; `node_modules` et virtual store locaux au worktree |
 
 Les secrets ne sont ni commits ni inclus dans le nom du worktree, les logs ou les commandes Context7.
+
+### Installation avec connexion lente
+
+Le depot utilise pnpm 9.15.4. Le store global est partage entre worktrees, mais le global virtual store
+des versions pnpm recentes n'est pas active. Ne jamais partager directement `node_modules`.
+
+`scripts/worktree-up` applique cet ordre :
+
+1. si le hash lockfile est deja installe, ne rien faire;
+2. `pnpm install --offline --frozen-lockfile` avec le store global;
+3. si le cache est incomplet, arreter sans telecharger;
+4. seulement avec `WORKTREE_ALLOW_NETWORK=1`, retenter en `--prefer-offline`.
+
+Pour precharger le cache une seule fois depuis le checkout source :
+
+```bash
+pnpm deps:fetch
+```
+
+Le chemin courant peut etre verifie avec `pnpm store path --silent`. Chaque worktree reutilise ce meme
+store et ne telecharge que les paquets absents lorsque le fallback reseau est explicitement autorise.
+
+### Environnement Codex automatique
+
+`.codex/environments/environment.toml` appelle `scripts/worktree-up` a la creation et
+`scripts/worktree-down` au nettoyage. Les actions Codex passent par `scripts/worktree-run`, qui charge
+`.env.worktree.local` sans exposer son contenu.
 
 ## 3. Ownership et conflits
 
@@ -93,6 +133,14 @@ Pour chaque lot :
 
 Un worktree n'est supprime qu'apres merge confirme, branche integree et `git status --short` vide. Ne
 jamais forcer la suppression d'un worktree sale.
+
+```bash
+cd /home/afreeserv/worktrees/anonymous/a-identity
+scripts/worktree-down
+cd /home/afreeserv/anonymous
+git worktree remove /home/afreeserv/worktrees/anonymous/a-identity
+git worktree prune
+```
 
 ## 7. Regles anti-retour en arriere
 
