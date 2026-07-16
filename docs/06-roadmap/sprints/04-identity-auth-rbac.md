@@ -59,12 +59,14 @@ externe sans decision documentee.
 
 ## Contrats Protobuf Et ConnectRPC
 
-`Register`, `Login`, `Logout`, `GetCurrentUser`, `RevokeSession`, erreurs `UNAUTHENTICATED`,
-`PERMISSION_DENIED`, `RATE_LIMITED`.
+`Register`, `Login`, `Logout`, `GetCurrentUser`, `RevokeSession`, `RequestPasswordReset`,
+`ResetPassword`, erreurs `UNAUTHENTICATED`, `PERMISSION_DENIED`, `RATE_LIMITED`,
+`INVALID_RESET_TOKEN`, `WEAK_PASSWORD`.
 
 ## Data
 
 Session opaque possible, hash token, session version, roles et audit security.
+Tokens de reset password hashes, usage unique, revocation session + live a la confirmation.
 
 Decision de frontiere auth/live: la session applicative HTTP reste un cookie opaque hashe. Le live utilise
 un token court derive d'une session valide et d'une participation autorisee; ce token n'est pas une session
@@ -73,6 +75,8 @@ auth generale, doit etre stocke hashe si persiste, et expire selon la decision s
 ## UI States
 
 Login/register loading/error, session expired, denied, role missing, local dev cookie warning si applicable.
+Reset request: loading, succes generique, erreur reessayable. Confirm reset: loading, succes, token
+invalide/expire, retry, accessibilite labels.
 
 ## Permissions
 

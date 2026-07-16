@@ -3,11 +3,18 @@ import { IdentityV1 } from "@session-jeu/contracts";
 import { auditRepository } from "@session-jeu/db";
 import { createClearSessionCookieValue, createSessionCookieValue } from "../auth/session.js";
 import { clearRateLimit, consumeRateLimit } from "../auth/rateLimit.js";
-import { loginSchema, registerSchema } from "../auth/validation.js";
+import {
+  loginSchema,
+  passwordResetRequestSchema,
+  passwordResetSchema,
+  registerSchema,
+} from "../auth/validation.js";
 import {
   loginUser,
   logoutUser,
   registerUser,
+  requestPasswordReset,
+  resetPassword,
   UseCaseError,
   type UserResult,
 } from "../use-cases/auth/auth.use-case.js";
@@ -179,5 +186,77 @@ export const identityService: Partial<ServiceImpl<typeof IdentityV1.IdentityServ
     }
     if (targetUser) await logoutUser(targetUser.id);
     return {};
+  },
+
+  async requestPasswordReset(request, context) {
+    const parsed = passwordResetRequestSchema.safeParse(request);
+    if (!parsed.success) validationError(parsed);
+
+    const ip = getRpcClientIp(context);
+    const rateLimitKey = `auth:password-reset-request:${ip}:${parsed.data.email}`;
+    const check = consumeRateLimit(rateLimitKey, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW);
+    if (!check.allowed) {
+      context.responseHeader.set(
+        "retry-after",
+        String(Math.ceil((check.resetAt - Date.now()) / 1_000)),
+      );
+      throw new ConnectError("Trop de tentatives, réessayez plus tard", Code.ResourceExhausted);
+    }
+
+    try {
+      const result = await requestPasswordReset(parsed.data);
+      // Identical public response whether the account exists or not.
+      void auditRepository.createAuditLog({
+        userId: undefined,
+        action: "PASSWORD_RESET_REQUEST",
+        entity: "User",
+        // No email, no token — only a boolean + IP for security telemetry.
+        metadata: { issued: result.issued },
+        ipAddress: ip,
+      });
+      return {};
+    } catch (error) {
+      handleUseCaseError(error);
+    }
+  },
+
+  async resetPassword(request, context) {
+    const parsed = passwordResetSchema.safeParse(request);
+    if (!parsed.success) validationError(parsed);
+
+    const ip = getRpcClientIp(context);
+    const rateLimitKey = `auth:password-reset:${ip}`;
+    const check = consumeRateLimit(rateLimitKey, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW);
+    if (!check.allowed) {
+      context.responseHeader.set(
+        "retry-after",
+        String(Math.ceil((check.resetAt - Date.now()) / 1_000)),
+      );
+      throw new ConnectError("Trop de tentatives, réessayez plus tard", Code.ResourceExhausted);
+    }
+
+    try {
+      const result = await resetPassword({
+        token: parsed.data.token,
+        newPassword: parsed.data.newPassword,
+      });
+      clearRateLimit(rateLimitKey);
+      context.responseHeader.append(
+        "set-cookie",
+        createClearSessionCookieValue(rpcForwardedProto(context)),
+      );
+      void auditRepository.createAuditLog({
+        userId: result.userId,
+        action: "PASSWORD_RESET",
+        entity: "User",
+        entityId: result.userId,
+        // Never log the reset token or the new password.
+        metadata: { sessionsRevoked: true },
+        ipAddress: ip,
+      });
+      return {};
+    } catch (error) {
+      handleUseCaseError(error);
+    }
   },
 };
