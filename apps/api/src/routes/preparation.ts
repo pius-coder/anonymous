@@ -31,53 +31,90 @@ function handleError(c: Parameters<typeof errorResponse>[0], err: unknown) {
   return errorResponse(c, 500 as StatusCode, "INTERNAL", "Erreur interne du serveur");
 }
 
-preparationRouter.post("/parties/:code/preparation/mark-present", requireAuth, zValidator("param", codeParamSchema), async (c) => {
-  try {
-    const { code } = c.req.valid("param");
-    const user = c.get("user");
-    const party = await (await import("../use-cases/party/party.use-case.js")).getPublicParty({ code });
-    const result = await markPresent({ partyId: party.id, userId: user.id });
-    return successResponse(c, result);
-  } catch (err) {
-    return handleError(c, err);
-  }
-});
+preparationRouter.post(
+  "/parties/:code/preparation/mark-present",
+  requireAuth,
+  zValidator("param", codeParamSchema),
+  async (c) => {
+    try {
+      const { code } = c.req.valid("param");
+      const user = c.get("user");
+      const party = await (
+        await import("../use-cases/party/party.use-case.js")
+      ).getPublicParty({ code });
+      const result = await markPresent({ partyId: party.id, userId: user.id });
+      return successResponse(c, result);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  },
+);
 
-preparationRouter.post("/parties/:code/preparation/mark-ready", requireAuth, zValidator("param", codeParamSchema), async (c) => {
-  try {
-    const { code } = c.req.valid("param");
-    const user = c.get("user");
-    const party = await (await import("../use-cases/party/party.use-case.js")).getPublicParty({ code });
-    const result = await markReady({ partyId: party.id, userId: user.id });
-    return successResponse(c, result);
-  } catch (err) {
-    return handleError(c, err);
-  }
-});
+preparationRouter.post(
+  "/parties/:code/preparation/mark-ready",
+  requireAuth,
+  zValidator("param", codeParamSchema),
+  async (c) => {
+    try {
+      const { code } = c.req.valid("param");
+      const user = c.get("user");
+      const party = await (
+        await import("../use-cases/party/party.use-case.js")
+      ).getPublicParty({ code });
+      const result = await markReady({ partyId: party.id, userId: user.id });
+      return successResponse(c, result);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  },
+);
 
-preparationRouter.post("/parties/:code/preparation/leave", requireAuth, zValidator("param", codeParamSchema), async (c) => {
-  try {
-    const { code } = c.req.valid("param");
-    const user = c.get("user");
-    const party = await (await import("../use-cases/party/party.use-case.js")).getPublicParty({ code });
-    const result = await leavePreparation({ partyId: party.id, userId: user.id });
-    return successResponse(c, result);
-  } catch (err) {
-    return handleError(c, err);
-  }
-});
+preparationRouter.post(
+  "/parties/:code/preparation/leave",
+  requireAuth,
+  zValidator("param", codeParamSchema),
+  async (c) => {
+    try {
+      const { code } = c.req.valid("param");
+      const user = c.get("user");
+      const party = await (
+        await import("../use-cases/party/party.use-case.js")
+      ).getPublicParty({ code });
+      const result = await leavePreparation({ partyId: party.id, userId: user.id });
+      return successResponse(c, result);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  },
+);
 
-preparationRouter.get("/parties/:code/preparation", requireAuth, zValidator("param", codeParamSchema), async (c) => {
-  try {
-    const { code } = c.req.valid("param");
-    const user = c.get("user");
-    const party = await (await import("../use-cases/party/party.use-case.js")).getPublicParty({ code });
-    await (await import("../use-cases/party/participation.use-case.js")).getMyParticipation({ code, userId: user.id });
-    const result = await getPreparationState({ partyId: party.id });
-    return successResponse(c, result);
-  } catch (err) {
-    return handleError(c, err);
-  }
-});
+preparationRouter.get(
+  "/parties/:code/preparation",
+  requireAuth,
+  zValidator("param", codeParamSchema),
+  async (c) => {
+    try {
+      const { code } = c.req.valid("param");
+      const user = c.get("user");
+      const party = await (
+        await import("../use-cases/party/party.use-case.js")
+      ).getPublicParty({ code });
+      await (
+        await import("../use-cases/party/participation.use-case.js")
+      ).getMyParticipation({ code, userId: user.id });
+      const result = await getPreparationState({ partyId: party.id });
+      if (!["SCHEDULED", "PREPARATION_OPEN", "PREPARATION_LOCKED"].includes(result.status)) {
+        throw new PreparationUseCaseError(
+          "PREPARATION_NOT_AVAILABLE",
+          "Les annonces de préparation ne sont plus disponibles pendant la partie",
+          422,
+        );
+      }
+      return successResponse(c, { ...result, selfUserId: user.id });
+    } catch (err) {
+      return handleError(c, err);
+    }
+  },
+);
 
 export { preparationRouter };

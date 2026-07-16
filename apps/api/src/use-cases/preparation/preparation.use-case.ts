@@ -1,4 +1,10 @@
-import { partyRepository, participationRepository, announcementRepository, auditRepository } from "@session-jeu/db";
+import {
+  prisma,
+  partyRepository,
+  participationRepository,
+  announcementRepository,
+  auditRepository,
+} from "@session-jeu/db";
 import {
   GameStatus,
   ParticipationStatus,
@@ -6,8 +12,10 @@ import {
   lockPreparation as domainLockPreparation,
   checkIn,
   markReady as domainMarkReady,
+  InvalidTransitionError,
 } from "@session-jeu/game-engine";
 import type { GameParticipation } from "@session-jeu/game-engine";
+import type { Prisma } from "@prisma/client";
 
 export class PreparationUseCaseError extends Error {
   readonly code: string;
@@ -82,6 +90,12 @@ export type PreparationStateOutput = {
   };
 };
 
+export type SendAnnouncementResult = {
+  id: string;
+  notificationJobId: string | null;
+  notificationJobIds: string[];
+};
+
 const STATUS_MAP: Record<string, ParticipationStatus> = {
   INVITED: ParticipationStatus.Invited,
   REGISTERED: ParticipationStatus.Registered,
@@ -97,6 +111,12 @@ const STATUS_MAP: Record<string, ParticipationStatus> = {
   COMPLETED: ParticipationStatus.Completed,
   ABANDONED: ParticipationStatus.Abandoned,
 };
+
+const PRESENT_ELIGIBLE = new Set(["REGISTERED", "PAID"]);
+const PRESENT_ALREADY = new Set(["PRESENT", "READY"]);
+const READY_ALREADY = new Set(["READY"]);
+const CANCELLED = new Set(["ABANDONED", "CANCELLED"]);
+const ABSENT_STATUSES = new Set(["REGISTERED", "PAID", "INVITED"]);
 
 function toDomainParticipation(p: {
   id: string;
@@ -119,14 +139,30 @@ function toDomainParticipation(p: {
   };
 }
 
+function mapDomainError(err: unknown): never {
+  if (err instanceof InvalidTransitionError) {
+    throw new PreparationUseCaseError("INVALID_TRANSITION", err.message, 422);
+  }
+  throw err;
+}
+
 export async function openPreparation(input: OpenPreparationInput): Promise<{ status: string }> {
   const party = await partyRepository.findPartyById(input.partyId);
   if (!party) {
     throw new PreparationUseCaseError("PARTY_NOT_FOUND", "Partie introuvable", 404);
   }
 
+  // Idempotent: already open stays open; no timer ever starts the match.
+  if (party.status === "PREPARATION_OPEN") {
+    return { status: party.status };
+  }
+
   if (party.status !== "SCHEDULED") {
-    throw new PreparationUseCaseError("PARTY_CANNOT_OPEN_PREPARATION", "La partie ne peut pas ouvrir la préparation dans son état actuel", 422);
+    throw new PreparationUseCaseError(
+      "PARTY_CANNOT_OPEN_PREPARATION",
+      "La partie ne peut pas ouvrir la préparation dans son état actuel",
+      422,
+    );
   }
 
   const domainGame = {
@@ -141,7 +177,11 @@ export async function openPreparation(input: OpenPreparationInput): Promise<{ st
     roundProgram: party.roundProgram,
   };
 
-  domainOpenPreparation(domainGame);
+  try {
+    domainOpenPreparation(domainGame);
+  } catch (err) {
+    mapDomainError(err);
+  }
 
   const updated = await partyRepository.updatePartyStatus(input.partyId, "PREPARATION_OPEN");
 
@@ -155,28 +195,63 @@ export async function openPreparation(input: OpenPreparationInput): Promise<{ st
   return { status: updated.status };
 }
 
-export async function markPresent(input: MarkPresentInput): Promise<{ id: string; status: string; readinessState: string }> {
+export async function markPresent(
+  input: MarkPresentInput,
+): Promise<{ id: string; status: string; readinessState: string }> {
   const party = await partyRepository.findPartyById(input.partyId);
   if (!party) {
     throw new PreparationUseCaseError("PARTY_NOT_FOUND", "Partie introuvable", 404);
   }
 
   if (party.status !== "PREPARATION_OPEN") {
-    throw new PreparationUseCaseError("PREPARATION_NOT_OPEN", "La préparation n'est pas ouverte", 422);
+    throw new PreparationUseCaseError(
+      "PREPARATION_NOT_OPEN",
+      "La préparation n'est pas ouverte",
+      422,
+    );
   }
 
-  const participation = await participationRepository.findParticipation(input.partyId, input.userId);
+  const participation = await participationRepository.findParticipation(
+    input.partyId,
+    input.userId,
+  );
   if (!participation) {
     throw new PreparationUseCaseError("PARTICIPATION_NOT_FOUND", "Participation introuvable", 404);
   }
 
-  const cancelStatuses = ["ABANDONED", "CANCELLED"];
-  if (cancelStatuses.includes(participation.status)) {
-    throw new PreparationUseCaseError("PARTICIPATION_CANCELLED", "Votre participation a été annulée", 422);
+  if (CANCELLED.has(participation.status)) {
+    throw new PreparationUseCaseError(
+      "PARTICIPATION_CANCELLED",
+      "Votre participation a été annulée",
+      422,
+    );
   }
 
-  const domainP = toDomainParticipation(participation);
-  checkIn(domainP);
+  // Idempotent present (and already-ready is still present).
+  if (PRESENT_ALREADY.has(participation.status)) {
+    return {
+      id: participation.id,
+      status: participation.status,
+      readinessState: participation.readinessState,
+    };
+  }
+
+  if (!PRESENT_ELIGIBLE.has(participation.status)) {
+    throw new PreparationUseCaseError(
+      "NOT_ELIGIBLE",
+      "Participation non éligible pour signaler la présence",
+      422,
+    );
+  }
+
+  // Domain allows Paid -> Present. Registered participants (free / unpaid path) check in at use-case.
+  if (participation.status === "PAID") {
+    try {
+      checkIn(toDomainParticipation(participation));
+    } catch (err) {
+      mapDomainError(err);
+    }
+  }
 
   const updated = await participationRepository.updateParticipationStatusReadiness(
     participation.id,
@@ -187,23 +262,60 @@ export async function markPresent(input: MarkPresentInput): Promise<{ id: string
   return { id: updated.id, status: updated.status, readinessState: updated.readinessState };
 }
 
-export async function markReady(input: MarkReadyInput): Promise<{ id: string; status: string; readinessState: string }> {
+export async function markReady(
+  input: MarkReadyInput,
+): Promise<{ id: string; status: string; readinessState: string }> {
   const party = await partyRepository.findPartyById(input.partyId);
   if (!party) {
     throw new PreparationUseCaseError("PARTY_NOT_FOUND", "Partie introuvable", 404);
   }
 
   if (party.status !== "PREPARATION_OPEN") {
-    throw new PreparationUseCaseError("PREPARATION_NOT_OPEN", "La préparation n'est pas ouverte", 422);
+    throw new PreparationUseCaseError(
+      "PREPARATION_NOT_OPEN",
+      "La préparation n'est pas ouverte",
+      422,
+    );
   }
 
-  const participation = await participationRepository.findParticipation(input.partyId, input.userId);
+  const participation = await participationRepository.findParticipation(
+    input.partyId,
+    input.userId,
+  );
   if (!participation) {
     throw new PreparationUseCaseError("PARTICIPATION_NOT_FOUND", "Participation introuvable", 404);
   }
 
-  const domainP = toDomainParticipation(participation);
-  domainMarkReady(domainP);
+  if (CANCELLED.has(participation.status)) {
+    throw new PreparationUseCaseError(
+      "PARTICIPATION_CANCELLED",
+      "Votre participation a été annulée",
+      422,
+    );
+  }
+
+  // Idempotent ready.
+  if (READY_ALREADY.has(participation.status)) {
+    return {
+      id: participation.id,
+      status: participation.status,
+      readinessState: participation.readinessState,
+    };
+  }
+
+  if (participation.status !== "PRESENT") {
+    throw new PreparationUseCaseError(
+      "NOT_PRESENT",
+      "La présence doit être confirmée avant de signaler prêt",
+      422,
+    );
+  }
+
+  try {
+    domainMarkReady(toDomainParticipation(participation));
+  } catch (err) {
+    mapDomainError(err);
+  }
 
   const updated = await participationRepository.updateParticipationStatusReadiness(
     participation.id,
@@ -214,7 +326,13 @@ export async function markReady(input: MarkReadyInput): Promise<{ id: string; st
   return { id: updated.id, status: updated.status, readinessState: updated.readinessState };
 }
 
-export async function sendPreparationAnnouncement(input: SendAnnouncementInput): Promise<{ id: string }> {
+/**
+ * Atomically creates Announcement + AuditLog + NotificationJob (PENDING intent only).
+ * Delivery is owned by A-WORKERS — this task never sends the message.
+ */
+export async function sendPreparationAnnouncement(
+  input: SendAnnouncementInput,
+): Promise<SendAnnouncementResult> {
   const party = await partyRepository.findPartyById(input.partyId);
   if (!party) {
     throw new PreparationUseCaseError("PARTY_NOT_FOUND", "Partie introuvable", 404);
@@ -222,35 +340,111 @@ export async function sendPreparationAnnouncement(input: SendAnnouncementInput):
 
   const allowedStatuses = ["PREPARATION_OPEN", "PREPARATION_LOCKED"];
   if (!allowedStatuses.includes(party.status)) {
-    throw new PreparationUseCaseError("PARTY_NOT_IN_PREPARATION", "La partie n'est pas en phase de préparation", 422);
+    throw new PreparationUseCaseError(
+      "PARTY_NOT_IN_PREPARATION",
+      "La partie n'est pas en phase de préparation",
+      422,
+    );
   }
 
-  const announcement = await announcementRepository.createAnnouncement({
-    partyId: input.partyId,
-    title: input.title,
-    body: input.body,
-    createdBy: input.userId,
-  });
+  const title = input.title.trim();
+  const body = input.body.trim();
+  if (!title || !body || title.length > 200 || body.length > 5_000) {
+    throw new PreparationUseCaseError(
+      "ANNOUNCEMENT_INVALID",
+      "Titre et corps de l'annonce requis",
+      400,
+    );
+  }
 
-  await auditRepository.createAuditLog({
-    userId: input.userId,
-    action: "ANNOUNCEMENT_SEND",
-    entity: "Announcement",
-    entityId: announcement.id,
-    metadata: { partyId: input.partyId, title: input.title },
-  });
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const announcement = await tx.announcement.create({
+        data: {
+          partyId: input.partyId,
+          title,
+          body,
+          createdBy: input.userId,
+        },
+      });
 
-  return { id: announcement.id };
+      await tx.auditLog.create({
+        data: {
+          userId: input.userId,
+          action: "ANNOUNCEMENT_SEND",
+          entity: "Announcement",
+          entityId: announcement.id,
+          metadata: {
+            partyId: input.partyId,
+            title,
+            phase: "PREPARATION",
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      const recipients = await tx.partyParticipation.findMany({
+        where: {
+          partyId: input.partyId,
+          status: { notIn: ["ABANDONED", "CANCELLED"] },
+        },
+        select: { userId: true },
+        distinct: ["userId"],
+      });
+
+      // NotificationJob.userId is the delivery recipient consumed by A-WORKERS.
+      const jobs = await Promise.all(
+        recipients.map(({ userId }) =>
+          tx.notificationJob.create({
+            data: {
+              userId,
+              type: "PREPARATION_ANNOUNCEMENT",
+              status: "PENDING",
+              payload: {
+                announcementId: announcement.id,
+                partyId: input.partyId,
+                title,
+                body,
+                phase: "PREPARATION",
+              } as Prisma.InputJsonValue,
+            },
+          }),
+        ),
+      );
+
+      return {
+        id: announcement.id,
+        notificationJobId: jobs[0]?.id ?? null,
+        notificationJobIds: jobs.map((job) => job.id),
+      };
+    });
+  } catch (err) {
+    console.error("sendPreparationAnnouncement transaction failed:", err);
+    throw new PreparationUseCaseError(
+      "ANNOUNCEMENT_PERSIST_FAILED",
+      "Échec de la persistance atomique de l'annonce",
+      500,
+    );
+  }
 }
 
-export async function confirmStart(input: ConfirmStartInput): Promise<{ status: string; overriddenAbsents: number }> {
+export async function confirmStart(
+  input: ConfirmStartInput,
+): Promise<{ status: string; overriddenAbsents: number }> {
   const party = await partyRepository.findPartyById(input.partyId);
   if (!party) {
     throw new PreparationUseCaseError("PARTY_NOT_FOUND", "Partie introuvable", 404);
   }
 
+  if (party.status === "PREPARATION_LOCKED") {
+    return { status: party.status, overriddenAbsents: 0 };
+  }
+
   if (party.status !== "PREPARATION_OPEN") {
-    throw new PreparationUseCaseError("PARTY_CANNOT_CONFIRM_START", "La partie ne peut pas confirmer le départ dans son état actuel", 422);
+    throw new PreparationUseCaseError(
+      "PARTY_CANNOT_CONFIRM_START",
+      "La partie ne peut pas confirmer le départ dans son état actuel",
+      422,
+    );
   }
 
   const domainGame = {
@@ -265,13 +459,17 @@ export async function confirmStart(input: ConfirmStartInput): Promise<{ status: 
     roundProgram: party.roundProgram,
   };
 
-  domainLockPreparation(domainGame);
+  try {
+    domainLockPreparation(domainGame);
+  } catch (err) {
+    mapDomainError(err);
+  }
 
   const participations = await participationRepository.listParticipationsByParty(input.partyId);
-
-  const absentStatuses = new Set(["REGISTERED", "PAID"]);
-  const overriddenAbsents = participations.filter((p) => absentStatuses.has(p.status)).length;
+  const active = participations.filter((p) => !CANCELLED.has(p.status));
+  const overriddenAbsents = active.filter((p) => ABSENT_STATUSES.has(p.status)).length;
   const overrideReason = input.overrideReason?.trim();
+
   if (overriddenAbsents > 0 && (!input.forceWithAbsents || !overrideReason)) {
     throw new PreparationUseCaseError(
       "ABSENT_CONFIRMATION_REQUIRED",
@@ -304,12 +502,32 @@ export async function leavePreparation(input: LeavePreparationInput): Promise<{ 
   }
 
   if (party.status !== "PREPARATION_OPEN") {
-    throw new PreparationUseCaseError("PREPARATION_NOT_OPEN", "La préparation n'est pas ouverte", 422);
+    throw new PreparationUseCaseError(
+      "PREPARATION_NOT_OPEN",
+      "La préparation n'est pas ouverte",
+      422,
+    );
   }
 
-  const participation = await participationRepository.findParticipation(input.partyId, input.userId);
+  const participation = await participationRepository.findParticipation(
+    input.partyId,
+    input.userId,
+  );
   if (!participation) {
     throw new PreparationUseCaseError("PARTICIPATION_NOT_FOUND", "Participation introuvable", 404);
+  }
+
+  if (CANCELLED.has(participation.status)) {
+    throw new PreparationUseCaseError(
+      "PARTICIPATION_CANCELLED",
+      "Votre participation a été annulée",
+      422,
+    );
+  }
+
+  // Idempotent leave: already offline/registered.
+  if (participation.status === "REGISTERED" && participation.readinessState === "offline") {
+    return { status: participation.status };
   }
 
   const updated = await participationRepository.updateParticipation(participation.id, {
@@ -320,7 +538,9 @@ export async function leavePreparation(input: LeavePreparationInput): Promise<{ 
   return { status: updated.status };
 }
 
-export async function getPreparationState(input: { partyId: string }): Promise<PreparationStateOutput> {
+export async function getPreparationState(input: {
+  partyId: string;
+}): Promise<PreparationStateOutput> {
   const party = await partyRepository.findPartyById(input.partyId);
   if (!party) {
     throw new PreparationUseCaseError("PARTY_NOT_FOUND", "Partie introuvable", 404);
@@ -339,15 +559,21 @@ export async function getPreparationState(input: { partyId: string }): Promise<P
     role: p.role,
     status: p.status,
     readinessState: p.readinessState,
-    userName: null,
+    userName: null as string | null,
   }));
 
   const stats = {
     total: activeParticipations.length,
     present: activeParticipations.filter((p) => p.status === "PRESENT").length,
     ready: activeParticipations.filter((p) => p.status === "READY").length,
-    noResponse: activeParticipations.filter((p) => p.readinessState === "noResponse" || p.status === "REGISTERED" || p.status === "PAID").length,
-    absent: activeParticipations.filter((p) => p.status === "ABANDONED").length,
+    noResponse: activeParticipations.filter(
+      (p) =>
+        p.readinessState === "noResponse" ||
+        p.status === "REGISTERED" ||
+        p.status === "PAID" ||
+        p.status === "INVITED",
+    ).length,
+    absent: participations.filter((p) => p.status === "ABANDONED").length,
   };
 
   return {
