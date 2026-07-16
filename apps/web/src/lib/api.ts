@@ -35,6 +35,7 @@ export async function api<T>(url: string, options?: RequestInit): Promise<ApiRes
       credentials: "include",
       headers: { "Content-Type": "application/json", ...options?.headers },
       ...options,
+      signal: options?.signal ?? AbortSignal.timeout(15_000),
     });
 
     const body = await res.json();

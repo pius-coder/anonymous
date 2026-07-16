@@ -35,3 +35,19 @@ legacy acquisition. Context7 : ConnectRPC, TanStack Query et Next.js.
 L3 capacite/concurrence, L4 Session/Participation avec RBAC/erreurs, L5 catalogue->detail->register/cancel.
 Executer validations scope + integration/E2E/typecheck/lint/build. Commit atomique, rapport AC -> test;
 laisser le montage central a SEQ-03.
+
+## Livraison (worktree `apex/a-acquisition`)
+
+Exports a monter par SEQ-03 :
+
+- `apps/api/src/rpc/session-service.ts` → `sessionService`
+- `apps/api/src/rpc/participation-service.ts` → `participationService`
+
+Adaptateurs web (hors `rpcServices.ts`) :
+
+- `apps/web/src/services/session/sessionAdapter.ts`
+- `apps/web/src/services/participation/participationAdapter.ts`
+
+Cancel participation reste REST (`POST /v1/parties/:code/cancel`) tant qu'aucun RPC Cancel n'est
+contracte. Le catalogue/detail public filtrent brouillons et champs admin via use-cases
+`listPublicParties` / `getPublicParty`.

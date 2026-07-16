@@ -1,33 +1,167 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   CheckCircle2,
   CircleAlert,
+  RefreshCw,
   TicketCheck,
   Users,
   WalletCards,
 } from "lucide-react";
-import type { UiParty } from "@/lib/ui-data";
+import {
+  cancelMyParticipation,
+  getMyParticipation,
+  isRegisteredStatus,
+  participationMutationInvalidateKeys,
+  participationQueryKeys,
+  registerForParty,
+} from "@/services/participation/participationAdapter";
+import {
+  getPublicPartyByCode,
+  sessionQueryKeys,
+} from "@/services/session/sessionAdapter";
+import type { PublicPartyDetail } from "@/services/session/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageState } from "@/components/ui/PageState";
 import { Progress } from "@/components/ui/progress";
-import { isPartyFull } from "./player-data";
 
-export function ParticipationPanel({ party }: { party: UiParty }) {
-  const [status, setStatus] = useState<"available" | "pending" | "registered">("available");
-  const full = isPartyFull(party);
+export function ParticipationPanel({ partyCode }: { partyCode: string }) {
+  const code = decodeURIComponent(partyCode).toUpperCase();
+  const queryClient = useQueryClient();
+  const registerKeyRef = useRef<string | null>(null);
 
-  if (full) {
+  const partyQuery = useQuery({
+    queryKey: sessionQueryKeys.detail(code),
+    queryFn: async () => {
+      const result = await getPublicPartyByCode(code);
+      if (!result.success) {
+        throw Object.assign(new Error(result.error.message), { code: result.error.code });
+      }
+      return result.data;
+    },
+    staleTime: 20_000,
+  });
+
+  const mineQuery = useQuery({
+    queryKey: participationQueryKeys.mine(code),
+    queryFn: async () => {
+      const result = await getMyParticipation(code);
+      if (!result.success) {
+        throw Object.assign(new Error(result.error.message), { code: result.error.code });
+      }
+      return result.data;
+    },
+    staleTime: 10_000,
+    retry: false,
+  });
+
+  const invalidateAll = async () => {
+    await Promise.all(
+      participationMutationInvalidateKeys(code).map((key) =>
+        queryClient.invalidateQueries({ queryKey: [...key] }),
+      ),
+    );
+  };
+
+  const registerMutation = useMutation({
+    mutationFn: async () => {
+      // Stable key for double-click / retry of the same intent.
+      registerKeyRef.current ??= `register-${code}-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Date.now()}`;
+      const result = await registerForParty(code, { idempotencyKey: registerKeyRef.current });
+      if (!result.success) {
+        throw Object.assign(new Error(result.error.message), { code: result.error.code });
+      }
+      return result.data;
+    },
+    onSuccess: async () => {
+      await invalidateAll();
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      const result = await cancelMyParticipation(code);
+      if (!result.success) {
+        throw Object.assign(new Error(result.error.message), { code: result.error.code });
+      }
+      return result.data;
+    },
+    onSuccess: async () => {
+      registerKeyRef.current = null;
+      await invalidateAll();
+    },
+  });
+
+  if (partyQuery.isLoading || mineQuery.isLoading) {
+    return (
+      <PageState
+        kind="loading"
+        title="Chargement de la participation"
+        message="Vérification de la partie et de votre statut serveur…"
+      />
+    );
+  }
+
+  if (partyQuery.isError) {
+    const errCode = (partyQuery.error as { code?: string }).code;
+    const denied = errCode === "PARTY_NOT_FOUND" || errCode === "PARTY_INACCESSIBLE";
+    return (
+      <PageState
+        kind={denied ? "denied" : "error"}
+        title={denied ? "Partie inaccessible" : "Erreur de chargement"}
+        message={
+          partyQuery.error instanceof Error
+            ? partyQuery.error.message
+            : "Impossible de charger la partie."
+        }
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Button render={<Link href="/parties" />}>Catalogue</Button>
+            <Button type="button" variant="outline" onClick={() => void partyQuery.refetch()}>
+              <RefreshCw /> Réessayer
+            </Button>
+          </div>
+        }
+      />
+    );
+  }
+
+  const party = partyQuery.data;
+  if (!party) {
+    return (
+      <PageState
+        kind="empty"
+        title="Partie indisponible"
+        message="Aucune donnée publique n’a été renvoyée pour ce code."
+        action={<Button render={<Link href="/parties" />}>Catalogue</Button>}
+      />
+    );
+  }
+
+  const participation = mineQuery.data ?? null;
+  const registered = isRegisteredStatus(participation?.status);
+  const capacity = Math.max(party.capacity, 0);
+  const full = capacity > 0 && party.players >= capacity;
+  const busy = registerMutation.isPending || cancelMutation.isPending;
+  const actionError =
+    (registerMutation.error as Error | null)?.message ||
+    (cancelMutation.error as Error | null)?.message ||
+    (mineQuery.isError && (mineQuery.error as { code?: string }).code === "UNAUTHENTICATED"
+      ? "Connectez-vous pour gérer votre inscription."
+      : null);
+
+  if (full && !registered) {
     return (
       <PageState
         kind="denied"
         title="Cette partie est complète"
-        message="Aucune place ne peut être réservée et aucun débit ne sera effectué."
+        message="Aucune place ne peut être réservée. La capacité est décidée uniquement côté serveur."
         action={<Button render={<Link href="/parties" />}>Choisir une autre partie</Button>}
       />
     );
@@ -40,63 +174,78 @@ export function ParticipationPanel({ party }: { party: UiParty }) {
           <div className="flex items-center justify-between gap-3">
             <Badge variant="outline">PARTICIPATION</Badge>
             <span className="text-sm text-muted-foreground">
-              {party.capacity - party.players} places restantes
+              {capacity > 0 ? `${Math.max(capacity - party.players, 0)} places restantes` : "Capacité ouverte"}
             </span>
           </div>
           <CardTitle>Confirmer votre inscription</CardTitle>
-          <CardDescription>Une seule participation sera créée pour votre compte.</CardDescription>
+          <CardDescription>
+            Une seule participation active par compte. Double clic ou retry partagent la même clé
+            d’idempotence.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>Capacité</span>
-              <strong>
-                {party.players}/{party.capacity}
-              </strong>
-            </div>
-            <Progress value={(party.players / party.capacity) * 100} />
-          </div>
+          <CapacityBlock party={party} />
           <div className="grid gap-3 sm:grid-cols-3">
-            <FlowFact icon={Users} label="Admission" value="Ouverte" />
+            <FlowFact icon={Users} label="Admission" value="Décidée serveur" />
             <FlowFact icon={WalletCards} label="Montant" value={party.entryFee} />
             <FlowFact icon={TicketCheck} label="Ticket" value="Personnel" />
           </div>
           <div className="rounded-md border bg-muted/40 p-4 text-sm">
-            <strong>Conditions publiques</strong>
+            <strong>Périmètre de cette étape</strong>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-              <li>Être présent pendant la préparation.</li>
-              <li>Confirmer le paiement avant l’admission.</li>
-              <li>Respecter les règles publiques du mini-jeu.</li>
+              <li>Inscription / annulation uniquement.</li>
+              <li>Le paiement est un service séparé — non décidé ici.</li>
+              <li>Readiness et admission live ne sont pas contrôlés par ce panneau.</li>
             </ul>
           </div>
-          {status === "registered" ? (
+
+          {registered ? (
             <PageState
               kind="success"
               title="Inscription confirmée"
-              message="Votre place est réservée. Finalisez maintenant le paiement."
+              message={`Statut serveur : ${participation?.status ?? "REGISTERED"}. Prochaine étape éventuelle : paiement (service dédié).`}
             />
           ) : null}
-          {status !== "registered" ? (
+
+          {actionError ? (
+            <PageState kind="error" title="Action refusée" message={actionError} />
+          ) : null}
+
+          {!registered ? (
             <Button
               className="w-full"
               size="lg"
-              disabled={status === "pending"}
+              disabled={busy || full}
               onClick={() => {
-                setStatus("pending");
-                window.setTimeout(() => setStatus("registered"), 500);
+                if (registerMutation.isPending) return;
+                registerMutation.mutate();
               }}
             >
               <CheckCircle2 />
-              {status === "pending" ? "Confirmation…" : "Confirmer mon inscription"}
+              {registerMutation.isPending ? "Confirmation…" : "Confirmer mon inscription"}
             </Button>
           ) : (
-            <Button
-              className="w-full"
-              size="lg"
-              render={<Link href={`/parties/${party.code}/payment`} />}
-            >
-              Continuer vers le paiement <ArrowRight />
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button
+                className="w-full"
+                size="lg"
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  if (cancelMutation.isPending) return;
+                  cancelMutation.mutate();
+                }}
+              >
+                {cancelMutation.isPending ? "Annulation…" : "Annuler mon inscription"}
+              </Button>
+              <Button
+                className="w-full"
+                size="lg"
+                render={<Link href={`/parties/${party.code}/payment`} />}
+              >
+                Continuer vers le paiement <ArrowRight />
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -114,15 +263,47 @@ export function ParticipationPanel({ party }: { party: UiParty }) {
             <span className="text-muted-foreground">Départ</span>
             <p className="font-semibold">{party.startsAt}</p>
           </div>
+          <div>
+            <span className="text-muted-foreground">Votre statut</span>
+            <p className="font-semibold">{participation?.status ?? "Non inscrit"}</p>
+          </div>
           <div className="flex gap-2 rounded-md border p-3 text-muted-foreground">
             <CircleAlert className="size-5 shrink-0" />
             <p>
-              La réservation n’autorise pas encore l’accès live. Le paiement et la préparation
-              restent obligatoires.
+              La réservation n’autorise pas l’accès live. Paiement, readiness et admission restent des
+              décisions serveur hors de ce panneau.
             </p>
           </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={partyQuery.isFetching || mineQuery.isFetching}
+            onClick={() => {
+              void partyQuery.refetch();
+              void mineQuery.refetch();
+            }}
+          >
+            <RefreshCw /> Actualiser le statut
+          </Button>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function CapacityBlock({ party }: { party: PublicPartyDetail }) {
+  const capacity = Math.max(party.capacity, 0);
+  const progress = capacity > 0 ? Math.min(100, (party.players / capacity) * 100) : 0;
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between text-sm">
+        <span>Capacité</span>
+        <strong>
+          {party.players}/{capacity || "—"}
+        </strong>
+      </div>
+      <Progress value={progress} />
     </div>
   );
 }

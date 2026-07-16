@@ -85,10 +85,32 @@ export function cancelParticipation(
   });
 }
 
+export function reactivateParticipation(id: string): Promise<PartyParticipation> {
+  return prisma.partyParticipation.update({
+    where: { id },
+    data: {
+      status: "REGISTERED",
+      cancelledAt: null,
+      cancellationReason: null,
+    },
+  });
+}
+
 export function deleteParticipation(id: string): Promise<PartyParticipation> {
   return prisma.partyParticipation.delete({ where: { id } });
 }
 
 export function countByPartyId(partyId: string): Promise<number> {
   return prisma.partyParticipation.count({ where: { partyId } });
+}
+
+/** Count seats that still occupy capacity (excludes abandoned / cancelled). */
+export function countActiveByPartyId(partyId: string): Promise<number> {
+  return prisma.partyParticipation.count({
+    where: {
+      partyId,
+      status: { notIn: ["ABANDONED"] },
+      cancelledAt: null,
+    },
+  });
 }
