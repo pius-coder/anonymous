@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
   CreditCard,
@@ -15,13 +16,168 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageState } from "@/components/ui/PageState";
+import {
+  formatXaf,
+  mapPaymentStatusLabel,
+  paymentApi,
+  type PaymentDetail,
+} from "@/services/payment/payment-api";
 
 type Method = "mobile" | "card" | "wallet";
-type Status = "idle" | "processing" | "confirmed";
+
+/** UI phase derived only from server payment status + local transport errors. */
+type UiPhase =
+  | "idle"
+  | "pending"
+  | "success"
+  | "failed"
+  | "timeout"
+  | "retry"
+  | "network_error";
+
+const POLL_MS = 2_000;
+const TIMEOUT_MS = 45_000;
+
+function phaseFromServerStatus(status: string | undefined): UiPhase | null {
+  if (!status) return null;
+  if (status === "SUCCESSFUL") return "success";
+  if (status === "FAILED" || status === "EXPIRED") return "failed";
+  if (status === "PENDING") return "pending";
+  return null;
+}
 
 export function PaymentPanel({ party }: { party: UiParty }) {
   const [method, setMethod] = useState<Method>("mobile");
-  const [status, setStatus] = useState<Status>("idle");
+  const [phase, setPhase] = useState<UiPhase>("idle");
+  const [payment, setPayment] = useState<PaymentDetail | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [idempotencyKey] = useState(() => paymentApi.newIdempotencyKey(`party-${party.code}`));
+  const pollStartedAt = useRef<number | null>(null);
+
+  const walletQuery = useQuery({
+    queryKey: ["wallet", "me"],
+    queryFn: async () => {
+      const res = await paymentApi.getWallet();
+      if (!res.success) throw new Error(res.error.message);
+      return res.data;
+    },
+    staleTime: 15_000,
+  });
+
+  const applyServerPayment = useCallback((detail: PaymentDetail) => {
+    setPayment(detail);
+    const next = phaseFromServerStatus(detail.status);
+    if (next) setPhase(next);
+  }, []);
+
+  const pollStatus = useQuery({
+    queryKey: ["payment-status", payment?.id],
+    enabled: Boolean(payment?.id) && phase === "pending",
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data && (data.status === "SUCCESSFUL" || data.status === "FAILED")) return false;
+      if (pollStartedAt.current && Date.now() - pollStartedAt.current > TIMEOUT_MS) return false;
+      return POLL_MS;
+    },
+    queryFn: async () => {
+      if (!payment?.id) throw new Error("missing payment");
+      const res = await paymentApi.getStatus(payment.id);
+      if (!res.success) throw new Error(res.error.message);
+      // Apply server status in the query path (not an effect) to avoid cascading renders.
+      applyServerPayment(res.data);
+      if (
+        pollStartedAt.current &&
+        Date.now() - pollStartedAt.current > TIMEOUT_MS &&
+        res.data.status === "PENDING"
+      ) {
+        setPhase("timeout");
+      }
+      return res.data;
+    },
+  });
+
+  const initiateMutation = useMutation({
+    mutationFn: async () => {
+      const res = await paymentApi.initiate({
+        purpose: "ACCESS_FEE",
+        productCode: party.code,
+        idempotencyKey,
+      });
+      if (!res.success) throw new Error(res.error.message);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      pollStartedAt.current = Date.now();
+      applyServerPayment(data);
+      if (data.status === "PENDING") setPhase("pending");
+    },
+    onError: (err: Error) => {
+      setErrorMessage(err.message);
+      setPhase("network_error");
+    },
+  });
+
+  const walletPayMutation = useMutation({
+    mutationFn: async () => {
+      const res = await paymentApi.payWithWallet({
+        productCode: party.code,
+        reason: `Droit d'entrée ${party.code}`,
+        idempotencyKey: `${idempotencyKey}-wallet`,
+      });
+      if (!res.success) throw new Error(res.error.message);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      applyServerPayment(data.payment);
+      void walletQuery.refetch();
+    },
+    onError: (err: Error) => {
+      setErrorMessage(err.message);
+      setPhase(err.message.toLowerCase().includes("solde") ? "failed" : "network_error");
+    },
+  });
+
+  function pay() {
+    setErrorMessage(null);
+    if (method === "wallet") {
+      setPhase("pending");
+      walletPayMutation.mutate();
+      return;
+    }
+    setPhase("pending");
+    initiateMutation.mutate();
+  }
+
+  function retry() {
+    setErrorMessage(null);
+    setPayment(null);
+    pollStartedAt.current = null;
+    setPhase("idle");
+  }
+
+  function verify() {
+    if (!payment?.id) return;
+    setPhase("pending");
+    pollStartedAt.current = Date.now();
+    void pollStatus.refetch().then((result) => {
+      if (result.data) applyServerPayment(result.data);
+      else if (result.error) {
+        setErrorMessage((result.error as Error).message);
+        setPhase("retry");
+      }
+    });
+  }
+
+  // Keep phase in sync when React Query already holds a terminal status after remount.
+  const polled = pollStatus.data;
+  const effectivePhase =
+    polled && phase === "pending"
+      ? phaseFromServerStatus(polled.status) ?? phase
+      : phase;
+
+  const serverAmount = payment?.amount ?? polled?.amount;
+  const displayPayment = payment ?? polled ?? null;
+  const walletBalance = walletQuery.data?.balance;
   const methods = [
     {
       id: "mobile" as const,
@@ -34,14 +190,15 @@ export function PaymentPanel({ party }: { party: UiParty }) {
       id: "wallet" as const,
       icon: WalletCards,
       label: "Portefeuille",
-      detail: "Solde disponible : 18 450 FCFA",
+      detail:
+        walletBalance === undefined
+          ? "Solde en cours de chargement…"
+          : `Solde disponible : ${formatXaf(walletBalance)}`,
     },
   ];
 
-  function pay() {
-    setStatus("processing");
-    window.setTimeout(() => setStatus("confirmed"), 700);
-  }
+  const amountLabel =
+    serverAmount !== undefined ? formatXaf(serverAmount) : party.entryFee;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
@@ -49,11 +206,11 @@ export function PaymentPanel({ party }: { party: UiParty }) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <Badge variant="outline">PAIEMENT REQUIS</Badge>
-            <strong>{party.entryFee}</strong>
+            <strong>{amountLabel}</strong>
           </div>
           <CardTitle>Choisissez un moyen de paiement</CardTitle>
           <CardDescription>
-            Vous ne serez débité qu’une fois, après confirmation du prestataire.
+            Le montant et le statut viennent du serveur. Aucun débit n’est inventé côté navigateur.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -65,6 +222,7 @@ export function PaymentPanel({ party }: { party: UiParty }) {
                 onClick={() => setMethod(id)}
                 className={`flex items-center gap-4 rounded-md border p-4 text-left transition-colors ${method === id ? "border-primary bg-primary/5" : "hover:bg-muted"}`}
                 aria-pressed={method === id}
+                disabled={effectivePhase === "pending" || effectivePhase === "success"}
               >
                 <span className="grid size-10 place-items-center rounded-md bg-muted">
                   <Icon className="size-5" />
@@ -79,31 +237,71 @@ export function PaymentPanel({ party }: { party: UiParty }) {
               </button>
             ))}
           </div>
-          {status === "processing" ? (
+
+          {effectivePhase === "pending" ? (
             <PageState
               kind="loading"
               title="Paiement en cours"
-              message="Nous attendons une confirmation. Ne relancez pas un second débit."
+              message={
+                displayPayment
+                  ? `Statut serveur : ${mapPaymentStatusLabel(displayPayment.status)}. Ne relancez pas un second débit.`
+                  : "Transmission au serveur… Ne relancez pas un second débit."
+              }
             />
           ) : null}
-          {status === "confirmed" ? (
+          {effectivePhase === "success" ? (
             <PageState
               kind="success"
               title="Paiement confirmé"
               message="Votre participation est débloquée et l’accès à la préparation est disponible."
             />
           ) : null}
-          {status === "idle" ? (
+          {effectivePhase === "failed" ? (
+            <PageState
+              kind="error"
+              title="Paiement échoué"
+              message={errorMessage ?? "Le serveur a marqué la transaction comme échouée."}
+            />
+          ) : null}
+          {effectivePhase === "timeout" ? (
+            <PageState
+              kind="error"
+              title="Délai dépassé"
+              message="Le prestataire n’a pas confirmé à temps. Vérifiez le statut ou réessayez avec une nouvelle clé d’idempotence."
+            />
+          ) : null}
+          {effectivePhase === "network_error" || effectivePhase === "retry" ? (
+            <PageState
+              kind="error"
+              title="Erreur de communication"
+              message={errorMessage ?? "Impossible de contacter l’API paiement."}
+            />
+          ) : null}
+
+          {effectivePhase === "idle" ? (
             <Button className="w-full" size="lg" onClick={pay}>
-              Payer {party.entryFee} <ArrowRight />
+              Payer {amountLabel} <ArrowRight />
             </Button>
           ) : null}
-          {status === "processing" ? (
-            <Button className="w-full" variant="outline" onClick={() => setStatus("confirmed")}>
+          {effectivePhase === "pending" && displayPayment?.id ? (
+            <Button className="w-full" variant="outline" onClick={verify}>
               <RefreshCw /> Vérifier le paiement
             </Button>
           ) : null}
-          {status === "confirmed" ? (
+          {effectivePhase === "timeout" ||
+          effectivePhase === "failed" ||
+          effectivePhase === "network_error" ||
+          effectivePhase === "retry" ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {displayPayment?.id ? (
+                <Button variant="outline" onClick={verify}>
+                  <RefreshCw /> Vérifier
+                </Button>
+              ) : null}
+              <Button onClick={retry}>Réessayer</Button>
+            </div>
+          ) : null}
+          {effectivePhase === "success" ? (
             <Button
               className="w-full"
               size="lg"
@@ -122,15 +320,27 @@ export function PaymentPanel({ party }: { party: UiParty }) {
         <CardContent className="space-y-4">
           <div className="flex justify-between border-b pb-3 text-sm">
             <span>{party.name}</span>
-            <strong>{party.entryFee}</strong>
+            <strong>{amountLabel}</strong>
           </div>
           <div className="flex justify-between text-sm">
-            <span>Total</span>
-            <strong className="text-lg">{party.entryFee}</strong>
+            <span>Total (serveur)</span>
+            <strong className="text-lg">{amountLabel}</strong>
           </div>
+          {displayPayment ? (
+            <div className="space-y-1 rounded-md border p-3 text-sm">
+              <div className="flex justify-between">
+                <span>Référence</span>
+                <span className="font-mono text-xs">{displayPayment.id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Statut</span>
+                <Badge variant="outline">{mapPaymentStatusLabel(displayPayment.status)}</Badge>
+              </div>
+            </div>
+          ) : null}
           <p className="flex gap-2 rounded-md bg-muted p-3 text-sm text-muted-foreground">
             <ShieldCheck className="size-5 shrink-0" />
-            Aucune donnée sensible du prestataire n’est affichée ou conservée dans cette interface.
+            Aucune donnée sensible du prestataire n’est affichée. Les gains ne sont jamais crédités ici.
           </p>
         </CardContent>
       </Card>

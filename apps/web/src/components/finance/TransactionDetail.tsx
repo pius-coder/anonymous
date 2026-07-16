@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -24,166 +25,179 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageState } from "@/components/ui/PageState";
 import { Textarea } from "@/components/ui/textarea";
-import type { FinanceTransaction } from "./finance-data";
+import { mapPaymentStatusLabel, paymentApi } from "@/services/payment/payment-api";
+import { mapPaymentToFinanceRow } from "./finance-data";
 
-export function TransactionDetail({ transaction }: { transaction: FinanceTransaction }) {
+export function TransactionDetail({ transactionId }: { transactionId: string }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
-  const [reconciled, setReconciled] = useState(transaction.reconciliation === "Rapprochée");
-  const [audit, setAudit] = useState([
-    {
-      time: "15:44",
-      actor: "Système",
-      action: "Lecture provider actualisée",
-      reason: "Vérification planifiée",
-    },
-  ]);
+  const queryClient = useQueryClient();
 
-  function reconcile() {
-    if (!reason.trim()) return;
-    setReconciled(true);
-    setAudit((rows) => [
-      {
-        time: new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
-        actor: "Inès T.",
-        action: "Retry idempotent confirmé",
-        reason: reason.trim(),
-      },
-      ...rows,
-    ]);
-    setReason("");
-    setOpen(false);
+  const detailQuery = useQuery({
+    queryKey: ["admin-payment", transactionId],
+    queryFn: async () => {
+      const res = await paymentApi.getAdminPayment(transactionId);
+      if (!res.success) throw new Error(res.error.message);
+      return res.data;
+    },
+  });
+
+  const reconcileMutation = useMutation({
+    mutationFn: async (why: string) => {
+      const res = await paymentApi.reconcile(transactionId, why);
+      if (!res.success) throw new Error(res.error.message);
+      return res.data;
+    },
+    onSuccess: async () => {
+      setOpen(false);
+      setReason("");
+      await queryClient.invalidateQueries({ queryKey: ["admin-payment", transactionId] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-payments"] });
+    },
+  });
+
+  if (detailQuery.isLoading) {
+    return <PageState kind="loading" title="Transaction" message="Chargement serveur…" />;
   }
 
+  if (detailQuery.isError || !detailQuery.data) {
+    return (
+      <PageState
+        kind="error"
+        title="Transaction introuvable"
+        message={(detailQuery.error as Error | undefined)?.message ?? "Erreur serveur"}
+      />
+    );
+  }
+
+  const payment = detailQuery.data;
+  const transaction = mapPaymentToFinanceRow(payment);
+  const terminal = payment.status === "SUCCESSFUL" || payment.status === "FAILED";
+  const canReconcile = payment.status === "PENDING";
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-auto pb-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button variant="outline" render={<Link href="/finance" />}>
-          <ArrowLeft /> Retour au ledger
-        </Button>
-        <Badge variant={reconciled ? "default" : "destructive"}>
-          {reconciled ? "Rapprochée" : transaction.reconciliation}
-        </Badge>
-      </div>
-      {reconciled ? (
-        <Alert status="success">
-          <CheckCircle2 />
-          <AlertTitle>Transaction rapprochée</AlertTitle>
-          <AlertDescription>
-            L’état local et l’état provider ont été comparés. La piste d’audit conserve la raison et
-            la clé idempotente redigée.
-          </AlertDescription>
-        </Alert>
-      ) : (
-        <Alert status="warning">
-          <TriangleAlert />
-          <AlertTitle>Écart à vérifier</AlertTitle>
-          <AlertDescription>
-            Aucun mouvement supplémentaire ne sera créé sans confirmation explicite d’un retry
-            idempotent.
-          </AlertDescription>
-        </Alert>
-      )}
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>{transaction.id}</CardTitle>
-            <CardDescription>
-              {transaction.type} · {transaction.user} · {transaction.party}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
-            <Field label="Montant" value={transaction.amount} />
-            <Field label="Statut public" value={transaction.status} />
-            <Field label="Statut provider" value={transaction.providerStatus} />
-            <Field label="Mouvement ledger" value={transaction.ledgerStatus} />
-            <Field label="Référence provider" value={transaction.providerRef} mono />
-            <Field label="Clé idempotente" value={transaction.idempotency} mono />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Réconciliation</CardTitle>
-            <CardDescription>
-              Comparaison uniquement; aucune édition directe du ledger.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <CheckLine label="Montant local/provider" ok={transaction.status !== "Échoué"} />
-              <CheckLine
-                label="Mouvement wallet"
-                ok={transaction.ledgerStatus !== "Aucun mouvement"}
-              />
-              <CheckLine label="Référence idempotente" ok />
-            </div>
-            <Button className="w-full" disabled={reconciled} onClick={() => setOpen(true)}>
-              <RefreshCw /> {reconciled ? "Déjà rapprochée" : "Confirmer le retry idempotent"}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+    <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
       <Card>
         <CardHeader>
-          <CardTitle>Piste d’audit finance</CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Button variant="ghost" size="sm" render={<Link href="/finance" />}>
+              <ArrowLeft /> Ledger
+            </Button>
+            <Badge variant={terminal && payment.status === "SUCCESSFUL" ? "default" : "destructive"}>
+              {mapPaymentStatusLabel(payment.status)}
+            </Badge>
+          </div>
+          <CardTitle className="font-mono text-base">{payment.id}</CardTitle>
+          <CardDescription>
+            Statut provider et ledger lus depuis le serveur — jamais inventés dans l’UI.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {audit.map((row, index) => (
-            <div
-              key={`${row.time}-${index}`}
-              className="grid gap-1 rounded border-2 p-3 sm:grid-cols-[70px_120px_1fr]"
-            >
-              <span className="font-mono text-xs">{row.time}</span>
-              <strong>{row.actor}</strong>
-              <span>
-                {row.action} · <span className="text-muted-foreground">{row.reason}</span>
-              </span>
+        <CardContent className="space-y-4">
+          <dl className="grid gap-3 sm:grid-cols-2 text-sm">
+            <div>
+              <dt className="text-muted-foreground">Montant serveur</dt>
+              <dd className="font-medium">{transaction.amount}</dd>
             </div>
-          ))}
+            <div>
+              <dt className="text-muted-foreground">Type</dt>
+              <dd className="font-medium">{payment.type}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Provider</dt>
+              <dd className="font-medium">{payment.provider ?? "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Référence redigée</dt>
+              <dd className="font-mono text-xs">{transaction.providerRef}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Ledger</dt>
+              <dd className="font-medium">{transaction.ledgerStatus}</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Créé</dt>
+              <dd className="font-medium">{transaction.date}</dd>
+            </div>
+          </dl>
+
+          {payment.status === "PENDING" ? (
+            <Alert>
+              <TriangleAlert />
+              <AlertTitle>En attente de confirmation</AlertTitle>
+              <AlertDescription>
+                Seule une réconciliation finance autorisée et auditée peut clôturer ce PENDING.
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          {canReconcile ? (
+            <>
+              <Button className="w-full" onClick={() => setOpen(true)} disabled={reconcileMutation.isPending}>
+                <RefreshCw /> Confirmer le retry / rapprochement idempotent
+              </Button>
+              <AlertDialog open={open} onOpenChange={setOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Réconcilier la transaction</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Action finance audité. Le serveur marquera un PENDING divergent comme FAILED
+                      sans inventer un succès client.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <Textarea
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="Motif de rapprochement (obligatoire)"
+                    aria-label="Motif de réconciliation"
+                  />
+                  {reconcileMutation.isError ? (
+                    <p className="text-sm text-destructive" role="alert">
+                      {(reconcileMutation.error as Error).message}
+                    </p>
+                  ) : null}
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction
+                      disabled={!reason.trim() || reconcileMutation.isPending}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        reconcileMutation.mutate(reason.trim());
+                      }}
+                    >
+                      Confirmer
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </>
+          ) : (
+            <p className="flex gap-2 text-sm text-muted-foreground">
+              <CheckCircle2 className="size-4 shrink-0" />
+              Transaction terminale — lecture seule, aucun double crédit possible via l’UI.
+            </p>
+          )}
         </CardContent>
       </Card>
-      <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmer la réconciliation</AlertDialogTitle>
-            <AlertDialogDescription>
-              Le retry réutilise la clé idempotente existante. Il ne doit produire ni double débit,
-              ni double crédit. La raison sera auditée.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <Textarea
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder="Raison obligatoire…"
-            aria-label="Raison de la réconciliation"
-          />
-          <AlertDialogFooter>
-            <AlertDialogCancel>Annuler</AlertDialogCancel>
-            <AlertDialogAction disabled={!reason.trim()} onClick={reconcile}>
-              Confirmer et auditer
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
 
-function Field({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="rounded border-2 bg-muted/20 p-3">
-      <span className="block text-xs text-muted-foreground">{label}</span>
-      <strong className={mono ? "font-mono text-xs" : ""}>{value}</strong>
-    </div>
-  );
-}
-function CheckLine({ label, ok }: { label: string; ok: boolean }) {
-  const Icon = ok ? ShieldCheck : History;
-  return (
-    <div className="flex items-center justify-between gap-3 border-b-2 pb-2">
-      <span>{label}</span>
-      <Icon className={ok ? "size-4 text-primary" : "size-4 text-muted-foreground"} />
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="size-4" /> Audit
+          </CardTitle>
+          <CardDescription>Traçabilité côté serveur (middleware + use-case).</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3 text-sm text-muted-foreground">
+          <p className="flex gap-2">
+            <ShieldCheck className="size-4 shrink-0" />
+            Les gains restent invisibles tant que les scores ne sont pas publiés explicitement.
+          </p>
+          <p>
+            Rapprochement : statut courant <strong>{mapPaymentStatusLabel(payment.status)}</strong>.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

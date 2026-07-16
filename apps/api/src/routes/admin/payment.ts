@@ -16,6 +16,10 @@ import type { StatusCode } from "hono/utils/http-status";
 
 const adminPaymentRouter = new Hono<AppEnv>();
 
+/** Finance reads; only FINANCE (plus super/admin operators) may reconcile. */
+const FINANCE_READ = ["FINANCE", "ADMIN", "SUPER_ADMIN"] as const;
+const FINANCE_WRITE = ["FINANCE", "ADMIN", "SUPER_ADMIN"] as const;
+
 const paginationSchema = z.object({
   skip: z.coerce.number().int().min(0).optional().default(0),
   take: z.coerce.number().int().min(1).max(100).optional().default(50),
@@ -26,6 +30,10 @@ const paymentIdParamSchema = z.object({
   id: z.string().min(1),
 });
 
+const reconcileBodySchema = z.object({
+  reason: z.string().min(1).max(500).optional(),
+});
+
 function handleError(c: Parameters<typeof errorResponse>[0], err: unknown) {
   if (err instanceof PaymentUseCaseError) {
     return errorResponse(c, err.httpStatus as StatusCode, err.code, err.message);
@@ -34,35 +42,62 @@ function handleError(c: Parameters<typeof errorResponse>[0], err: unknown) {
   return errorResponse(c, 500 as StatusCode, "INTERNAL", "Erreur interne du serveur");
 }
 
-adminPaymentRouter.get("/payments", requireAuth, requireRole("FINANCE", "ADMIN", "SUPER_ADMIN"), zValidator("query", paginationSchema), async (c) => {
-  try {
-    const { skip, take, status } = c.req.valid("query");
-    const result = await listAllTransactions({ skip, take, status });
-    return successResponse(c, result);
-  } catch (err) {
-    return handleError(c, err);
-  }
-});
+adminPaymentRouter.get(
+  "/payments",
+  requireAuth,
+  requireRole(...FINANCE_READ),
+  zValidator("query", paginationSchema),
+  async (c) => {
+    try {
+      const { skip, take, status } = c.req.valid("query");
+      const result = await listAllTransactions({ skip, take, status });
+      return successResponse(c, result);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  },
+);
 
-adminPaymentRouter.get("/payments/:id", requireAuth, requireRole("FINANCE", "ADMIN", "SUPER_ADMIN"), zValidator("param", paymentIdParamSchema), async (c) => {
-  try {
-    const { id } = c.req.valid("param");
-    const result = await getPaymentStatus(id);
-    return successResponse(c, result);
-  } catch (err) {
-    return handleError(c, err);
-  }
-});
+adminPaymentRouter.get(
+  "/payments/:id",
+  requireAuth,
+  requireRole(...FINANCE_READ),
+  zValidator("param", paymentIdParamSchema),
+  async (c) => {
+    try {
+      const { id } = c.req.valid("param");
+      const result = await getPaymentStatus(id);
+      return successResponse(c, result);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  },
+);
 
-adminPaymentRouter.post("/payments/:id/reconcile", requireAuth, requireRole("FINANCE", "ADMIN", "SUPER_ADMIN"), zValidator("param", paymentIdParamSchema), auditLog("PAYMENT_RECONCILE", "PaymentTransaction"), async (c) => {
-  try {
-    const { id } = c.req.valid("param");
-    const user = c.get("user");
-    const result = await reconcilePayment(id, user.id);
-    return successResponse(c, result);
-  } catch (err) {
-    return handleError(c, err);
-  }
-});
+adminPaymentRouter.post(
+  "/payments/:id/reconcile",
+  requireAuth,
+  requireRole(...FINANCE_WRITE),
+  zValidator("param", paymentIdParamSchema),
+  auditLog("PAYMENT_RECONCILE", "PaymentTransaction"),
+  async (c) => {
+    try {
+      const { id } = c.req.valid("param");
+      const user = c.get("user");
+      let reason: string | undefined;
+      try {
+        const raw = await c.req.json();
+        const parsed = reconcileBodySchema.safeParse(raw ?? {});
+        if (parsed.success) reason = parsed.data.reason;
+      } catch {
+        // empty body is allowed
+      }
+      const result = await reconcilePayment(id, user.id, reason);
+      return successResponse(c, result);
+    } catch (err) {
+      return handleError(c, err);
+    }
+  },
+);
 
 export { adminPaymentRouter };

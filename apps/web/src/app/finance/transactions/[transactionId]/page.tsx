@@ -1,4 +1,3 @@
-import { getFinanceTransaction } from "@/components/finance/finance-data";
 import { TransactionDetail } from "@/components/finance/TransactionDetail";
 import { AppShell } from "@/components/ui/AppShell";
 
@@ -8,15 +7,15 @@ export default async function FinanceTransactionPage({
   params: Promise<{ transactionId: string }>;
 }) {
   const { transactionId } = await params;
-  const transaction = getFinanceTransaction(decodeURIComponent(transactionId));
+  const id = decodeURIComponent(transactionId);
   return (
     <AppShell
       audience="Finance"
       eyebrow="Détail transaction"
-      title={transaction.id}
+      title={id}
       subtitle="Statut provider redigé, mouvement ledger et réconciliation auditable."
     >
-      <TransactionDetail transaction={transaction} />
+      <TransactionDetail transactionId={id} />
     </AppShell>
   );
 }

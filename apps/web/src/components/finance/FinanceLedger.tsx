@@ -1,22 +1,39 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Download, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { PageState } from "@/components/ui/PageState";
-import { financeTransactions } from "./finance-data";
+import { paymentApi } from "@/services/payment/payment-api";
+import { mapPaymentToFinanceRow } from "./finance-data";
 import { TransactionTable } from "./TransactionTable";
 
 export function FinanceLedger() {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("Tous");
   const [exported, setExported] = useState(false);
+
+  const listQuery = useQuery({
+    queryKey: ["admin-payments"],
+    queryFn: async () => {
+      const res = await paymentApi.listAdminPayments({ take: 100 });
+      if (!res.success) throw new Error(res.error.message);
+      return res.data;
+    },
+  });
+
+  const rows = useMemo(
+    () => (listQuery.data?.transactions ?? []).map(mapPaymentToFinanceRow),
+    [listQuery.data],
+  );
+
   const filtered = useMemo(
     () =>
-      financeTransactions.filter((item) => {
+      rows.filter((item) => {
         const search = query.toLocaleLowerCase("fr");
         return (
           (status === "Tous" || item.reconciliation === status) &&
@@ -25,7 +42,7 @@ export function FinanceLedger() {
           )
         );
       }),
-    [query, status],
+    [query, status, rows],
   );
 
   return (
@@ -35,10 +52,11 @@ export function FinanceLedger() {
           <div>
             <CardTitle>Ledger et mouvements</CardTitle>
             <CardDescription>
-              Recherche par transaction, joueur, partie ou référence redigée.
+              Données serveur (finance read-only). La réconciliation est une commande audité
+              séparée.
             </CardDescription>
           </div>
-          <Button variant="outline" onClick={() => setExported(true)}>
+          <Button variant="outline" onClick={() => setExported(true)} disabled={!filtered.length}>
             <Download /> Exporter la vue
           </Button>
         </div>
@@ -48,6 +66,16 @@ export function FinanceLedger() {
           <p className="text-sm text-primary" role="status">
             Export local préparé avec {filtered.length} lignes autorisées.
           </p>
+        ) : null}
+        {listQuery.isLoading ? (
+          <PageState kind="loading" title="Chargement finance" message="Lecture des transactions serveur…" />
+        ) : null}
+        {listQuery.isError ? (
+          <PageState
+            kind="error"
+            title="Finance indisponible"
+            message={(listQuery.error as Error).message}
+          />
         ) : null}
         <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_180px]">
           <label className="relative">
@@ -72,26 +100,16 @@ export function FinanceLedger() {
             <NativeSelectOption>Divergente</NativeSelectOption>
           </NativeSelect>
         </div>
-        {filtered.length ? (
+        {!listQuery.isLoading && !listQuery.isError && filtered.length ? (
           <TransactionTable transactions={filtered} showAction />
-        ) : (
+        ) : null}
+        {!listQuery.isLoading && !listQuery.isError && !filtered.length ? (
           <PageState
             kind="empty"
             title="Aucun mouvement"
-            message="Aucune transaction autorisée ne correspond à la recherche."
-            action={
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setQuery("");
-                  setStatus("Tous");
-                }}
-              >
-                Réinitialiser
-              </Button>
-            }
+            message="Aucune transaction ne correspond aux filtres, ou le ledger est vide."
           />
-        )}
+        ) : null}
       </CardContent>
     </Card>
   );

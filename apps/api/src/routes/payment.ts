@@ -18,9 +18,12 @@ import type { StatusCode } from "hono/utils/http-status";
 const paymentRouter = new Hono<AppEnv>();
 
 const initiatePaymentSchema = z.object({
-  amount: z.number().positive(),
+  purpose: z.enum(["ACCESS_FEE", "TOP_UP"]).optional().default("ACCESS_FEE"),
+  productCode: z.string().min(1).optional(),
   currency: z.string().optional(),
-  idempotencyKey: z.string().optional(),
+  /** Client may send amount for TOP_UP only; ACCESS_FEE always uses server catalog. */
+  amount: z.number().positive().optional(),
+  idempotencyKey: z.string().min(8),
 });
 
 const webhookSchema = z.object({
@@ -31,9 +34,12 @@ const webhookSchema = z.object({
 });
 
 const payWithWalletSchema = z.object({
-  amount: z.number().positive(),
+  purpose: z.enum(["ACCESS_FEE"]).optional().default("ACCESS_FEE"),
+  productCode: z.string().min(1).optional(),
   reason: z.string().min(1),
-  idempotencyKey: z.string().optional(),
+  /** Optional client hint — ignored for ACCESS_FEE (server amount). */
+  amount: z.number().positive().optional(),
+  idempotencyKey: z.string().min(8),
 });
 
 const paymentIdParamSchema = z.object({
@@ -52,7 +58,14 @@ paymentRouter.post("/payments/initiate", requireAuth, zValidator("json", initiat
   try {
     const input = c.req.valid("json");
     const user = c.get("user");
-    const result = await initiatePayment({ userId: user.id, ...input });
+    const result = await initiatePayment({
+      userId: user.id,
+      purpose: input.purpose,
+      productCode: input.productCode,
+      currency: input.currency,
+      requestedAmount: input.amount,
+      idempotencyKey: input.idempotencyKey,
+    });
     return successResponse(c, result, 201);
   } catch (err) {
     return handleError(c, err);
@@ -78,7 +91,14 @@ paymentRouter.post("/payments/wallet/pay", requireAuth, zValidator("json", payWi
   try {
     const input = c.req.valid("json");
     const user = c.get("user");
-    const result = await payWithWallet({ userId: user.id, amount: input.amount, reason: input.reason, idempotencyKey: input.idempotencyKey });
+    const result = await payWithWallet({
+      userId: user.id,
+      purpose: input.purpose,
+      productCode: input.productCode,
+      reason: input.reason,
+      requestedAmount: input.amount,
+      idempotencyKey: input.idempotencyKey,
+    });
     return successResponse(c, result, 201);
   } catch (err) {
     return handleError(c, err);
