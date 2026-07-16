@@ -1,4 +1,29 @@
+import { spawnSync } from "node:child_process";
+import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+
+/**
+ * CI `pnpm test:e2e` migrates an empty DB and does not seed.
+ * Acquisition catalogue needs at least one published public party — seed is idempotent.
+ */
+function ensureDeterministicSeed() {
+  const monorepoRoot = process.env.MONOREPO_ROOT || join(process.cwd(), "../..");
+  const databaseUrl = process.env.DATABASE_URL || process.env.TEST_DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL/TEST_DATABASE_URL required to seed acquisition E2E fixtures");
+  }
+
+  const result = spawnSync("pnpm", ["--filter", "@session-jeu/db", "db:seed"], {
+    cwd: monorepoRoot,
+    env: process.env,
+    encoding: "utf8",
+  });
+  if (result.status !== 0) {
+    throw new Error(
+      `db:seed failed (status ${result.status}): ${result.stderr || result.stdout || "no output"}`,
+    );
+  }
+}
 
 const isSessionCookie = (cookie: { name: string; httpOnly: boolean }) =>
   (cookie.name === "__session" || cookie.name === "__Host-session") && cookie.httpOnly;
@@ -23,13 +48,17 @@ async function registerPlayer(page: Page) {
 }
 
 test.describe("L5 acquisition catalogue → detail → register/cancel", () => {
+  test.beforeAll(() => {
+    ensureDeterministicSeed();
+  });
+
   test("player browses public catalogue and registers once", async ({ page }) => {
     test.setTimeout(120_000);
 
     await page.goto("/parties");
     await expect(page.getByRole("heading", { name: /Choisissez votre prochaine partie/i })).toBeVisible();
 
-    // Catalogue section appears when data loads (Base UI CTAs are buttons, not links).
+    // Wait out loading → catalogue with seeded party (Base UI CTAs are buttons, not links).
     const catalogue = page.getByRole("region", { name: "Sessions disponibles" });
     await expect(catalogue).toBeVisible({ timeout: 45_000 });
     await expect(catalogue.getByText("SEED-PARTY-01")).toBeVisible();
