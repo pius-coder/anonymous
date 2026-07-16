@@ -5,6 +5,7 @@ Cette documentation est la source de verite de reconstruction. Elle ne valide pa
 ## Lecture obligatoire
 
 1. `00-audit/` decrit l'etat observe, les erreurs et la matrice KEEP/REWRITE/DELETE/UNKNOWN.
+   Pour l'etat **code v0.1 actuel** : `00-audit/v0.1-current-state.md`.
 2. `01-product/` fixe le vocabulaire, les acteurs, le cycle de vie produit et le catalogue des mini-jeux.
 3. `02-ux/` separe les parcours administrateur, joueur et observateur lecture seule.
 4. `03-architecture/` decrit la cible technique, les frontieres, le temps reel, Protobuf et les UML par theme.

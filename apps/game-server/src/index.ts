@@ -11,7 +11,7 @@ if (process.env.NODE_ENV !== "test") {
       : undefined,
   });
 
-  gameServer.define("game_room", GameRoom);
+  gameServer.define("game_room", GameRoom).filterBy(["partyId"]);
   gameServer.listen(config.port);
   console.log(`Game server listening on port ${config.port}`);
 }

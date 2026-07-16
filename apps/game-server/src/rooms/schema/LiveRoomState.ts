@@ -8,13 +8,20 @@ export class PlayerState extends Schema {
   previousStatus = "";
   @type("boolean") connected = false;
   @type("string") status = "pending";
+  @type("number") x = 0;
+  @type("number") y = 0;
+  @type("string") facing = "down";
+  @type("boolean") moving = false;
+  @type("number") lastProcessedInputSequence = 0;
+
+  pendingInput?: { sequence: number; x: number; y: number };
 }
 
 export class LiveRoomState extends Schema {
   @type("string") partyId = "";
   @type("string") partyStatus = "";
   @type("number") connectedCount = 0;
-  players = new MapSchema<PlayerState>();
+  @type({ map: PlayerState }) players = new MapSchema<PlayerState>();
 
   @type("string") currentRoundStatus = "";
   @type("number") currentRoundNumber = 0;

@@ -30,7 +30,7 @@ La refonte doit donc conserver l'ambition, mais retirer les melanges de responsa
 | Colyseus | KEEP | Serveur autoritaire multijoueur deja present |
 | Prisma/PostgreSQL | KEEP | Modele relationnel necessaire aux paiements, scores, audit |
 | BullMQ/Redis | KEEP | Jobs idempotents, rappels, deadlines, reconciliation |
-| Pixi.js | KEEP optional | Surface canvas pour jeux 2D, a utiliser seulement par runtime le justifiant |
+| Phaser 3 | KEEP | Tilemaps Kenney, camera, inputs et Arcade Physics pour les scenes 2D |
 
 ## Principe directeur
 

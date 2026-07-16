@@ -84,7 +84,7 @@ const playerNavigation: NavItem[] = [
 ];
 
 const adminNavigation: NavItem[] = [
-  { label: "Pilotage", href: "/", icon: ShieldCheck },
+  { label: "Pilotage", href: "/admin", icon: ShieldCheck },
   { label: "Sessions", href: "/admin/parties", icon: Gamepad2 },
   { label: "Utilisateurs", href: "/admin/users", icon: Users },
   { label: "Paiements", href: "/admin/payments", icon: WalletCards },
@@ -92,14 +92,13 @@ const adminNavigation: NavItem[] = [
 ];
 
 const observerNavigation: NavItem[] = [
-  { label: "Vue d’ensemble", href: "/", icon: House },
+  { label: "Vue d’ensemble", href: "/observe/parties/demo-party", icon: House },
   { label: "Parties en direct", href: "/observe/parties/demo-party", icon: Binoculars },
 ];
 
 const supportNavigation: NavItem[] = [
   { label: "File support", href: "/support", icon: CircleHelp },
-  { label: "Sessions", href: "/admin/parties", icon: Gamepad2 },
-  { label: "Utilisateurs", href: "/admin/users", icon: Users },
+  { label: "Dossiers parties", href: "/support/parties/demo-party", icon: Gamepad2 },
 ];
 
 const financeNavigation: NavItem[] = [
@@ -124,6 +123,15 @@ function navigationFor(audience: Audience): NavItem[] {
   return playerNavigation;
 }
 
+function homeFor(audience: Audience) {
+  if (audience === "Super admin") return "/super-admin";
+  if (audience === "Support") return "/support";
+  if (audience === "Finance") return "/finance";
+  if (audience === "Admin") return "/admin";
+  if (audience === "Observateur") return "/observe/parties/demo-party";
+  return "/parties";
+}
+
 export function AppShell({ audience, eyebrow, title, subtitle, actions, children }: AppShellProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -141,7 +149,7 @@ export function AppShell({ audience, eyebrow, title, subtitle, actions, children
       <div className="app-shell-frame">
         <Sidebar collapsible="icon" variant="sidebar">
           <SidebarHeader className="p-3">
-            <Link className="brand-lockup" href="/" aria-label="Noya — accueil">
+            <Link className="brand-lockup" href={homeFor(audience)} aria-label="Noya — accueil">
               <span className="brand-mark" aria-hidden="true">
                 <Sparkles />
               </span>
@@ -242,7 +250,7 @@ export function AppShell({ audience, eyebrow, title, subtitle, actions, children
                     <span className="profile-menu-role">{audience}</span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem render={<Link href="/account" />}>
                     <Settings />
                     Préférences
                   </DropdownMenuItem>

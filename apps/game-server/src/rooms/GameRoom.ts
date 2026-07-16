@@ -15,6 +15,7 @@ import {
 import { dispatchCommand, type CommandMessage } from "../handlers/command-dispatcher.js";
 import { registerRoundHandlers } from "../handlers/round-handler.js";
 import { registerReadonlyHandlers } from "../handlers/readonly-handler.js";
+import { applyMovementTick, registerMovementHandler } from "../handlers/movement-handler.js";
 import { participationRepository, partyRepository, roundRepository } from "@session-jeu/db";
 
 type GameRoomOptions = {
@@ -41,6 +42,8 @@ export class GameRoom extends Room<{ state: LiveRoomState }> {
 
     registerRoundHandlers();
     registerReadonlyHandlers();
+    registerMovementHandler();
+    this.setSimulationInterval((deltaMs) => applyMovementTick(this.state, deltaMs), 50);
     this.scheduleRoundDeadlineClose();
 
     this.onMessage("*", (client: Client, type: string | number, message: unknown) => {
@@ -51,7 +54,7 @@ export class GameRoom extends Room<{ state: LiveRoomState }> {
       const result = dispatchCommand(this.state, client, command);
       if (!result.accepted) {
         client.send("command:rejected", { type: command.type, error: result.error });
-      } else {
+      } else if (result.acknowledge !== false) {
         client.send("command:accepted", { type: command.type });
       }
     });

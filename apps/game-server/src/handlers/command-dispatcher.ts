@@ -11,7 +11,7 @@ export type CommandHandler = (
   state: LiveRoomState,
   client: Client,
   command: CommandMessage,
-) => { accepted: boolean; error?: string };
+) => { accepted: boolean; error?: string; acknowledge?: boolean };
 
 const handlers = new Map<string, CommandHandler>();
 
@@ -23,7 +23,7 @@ export function dispatchCommand(
   state: LiveRoomState,
   client: Client,
   command: CommandMessage,
-): { accepted: boolean; error?: string } {
+): { accepted: boolean; error?: string; acknowledge?: boolean } {
   const handler = handlers.get(command.type);
   if (!handler) {
     return { accepted: false, error: "UNKNOWN_COMMAND" };

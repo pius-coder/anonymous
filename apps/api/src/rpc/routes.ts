@@ -1,9 +1,11 @@
 import type { ConnectRouter } from "@connectrpc/connect";
-import { IdentityV1, RoundV1 } from "@session-jeu/contracts";
+import { IdentityV1, RealtimeV1, RoundV1 } from "@session-jeu/contracts";
 import { identityService } from "./identity-service.js";
 import { roundService } from "./round-service.js";
+import { realtimeService } from "./realtime-service.js";
 
 export function registerRpcRoutes(router: ConnectRouter): void {
   router.service(IdentityV1.IdentityService, identityService);
   router.service(RoundV1.RoundService, roundService);
+  router.service(RealtimeV1.RealtimeAccessService, realtimeService);
 }

@@ -1,4 +1,4 @@
-import { useSyncExternalStore, useCallback, useEffect, useRef } from "react";
+import { useSyncExternalStore, useCallback, useEffect } from "react";
 import { AuthService } from "../services/auth/AuthService";
 
 type AuthUser = {
@@ -20,6 +20,8 @@ type SessionState = {
 type Listener = () => void;
 
 let cache: SessionState = { user: null, loading: true, error: null };
+let initialized = false;
+let refreshPromise: Promise<void> | null = null;
 const listeners = new Set<Listener>();
 
 function notify() {
@@ -31,14 +33,24 @@ function setState(next: Partial<SessionState>) {
   notify();
 }
 
-async function refresh() {
+function refresh() {
+  if (refreshPromise) return refreshPromise;
+
+  initialized = true;
   setState({ loading: true, error: null });
-  const res = await AuthService.getMe();
-  if (res.success) {
-    setState({ user: res.data.user, loading: false });
-  } else {
-    setState({ user: null, loading: false, error: null });
-  }
+  refreshPromise = AuthService.getMe()
+    .then((res) => {
+      if (res.success) {
+        setState({ user: res.data.user, loading: false });
+      } else {
+        setState({ user: null, loading: false, error: null });
+      }
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
 }
 
 function subscribe(listener: Listener) {
@@ -50,21 +62,20 @@ function getSnapshot() {
   return cache;
 }
 
-export function useSession() {
+export function useSession({ refreshOnMount = true }: { refreshOnMount?: boolean } = {}) {
   const state = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  const hydrated = useRef(false);
 
   useEffect(() => {
-    if (!hydrated.current) {
-      hydrated.current = true;
-      refresh();
+    if (refreshOnMount && !initialized) {
+      void refresh();
     }
-  }, []);
+  }, [refreshOnMount]);
 
   const login = useCallback(async (email: string, password: string) => {
     setState({ loading: true, error: null });
     const res = await AuthService.login(email, password);
     if (res.success) {
+      initialized = true;
       setState({ user: res.data.user, loading: false });
     } else {
       setState({ loading: false, error: res.error.message });
@@ -76,6 +87,7 @@ export function useSession() {
     setState({ loading: true, error: null });
     const res = await AuthService.register(email, password, name);
     if (res.success) {
+      initialized = true;
       setState({ user: res.data.user, loading: false });
     } else {
       setState({ loading: false, error: res.error.message });

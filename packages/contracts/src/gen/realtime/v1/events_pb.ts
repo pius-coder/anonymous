@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file realtime/v1/events.proto.
  */
 export const file_realtime_v1_events: GenFile = /*@__PURE__*/
-  fileDesc("ChhyZWFsdGltZS92MS9ldmVudHMucHJvdG8SFnNlc3Npb25qZXUucmVhbHRpbWUudjEiqwEKDkNvbm5lY3RlZEV2ZW50EjEKCXBsYXllcl9pZBgBIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEi8KCHBhcnR5X2lkGAIgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBI1Cgxjb25uZWN0ZWRfYXQYAyABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXAisQEKEURpc2Nvbm5lY3RlZEV2ZW50EjEKCXBsYXllcl9pZBgBIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEi8KCHBhcnR5X2lkGAIgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBI4Cg9kaXNjb25uZWN0ZWRfYXQYAyABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXAirwEKEFJlY29ubmVjdGVkRXZlbnQSMQoJcGxheWVyX2lkGAEgASgLMh4uc2Vzc2lvbmpldS5jb21tb24udjEuUGxheWVySWQSLwoIcGFydHlfaWQYAiABKAsyHS5zZXNzaW9uamV1LmNvbW1vbi52MS5QYXJ0eUlkEjcKDnJlY29ubmVjdGVkX2F0GAMgASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wIroBChdDcmVhdGVMaXZlQWNjZXNzUmVxdWVzdBI7Cg5jb3JyZWxhdGlvbl9pZBgBIAEoCzIjLnNlc3Npb25qZXUuY29tbW9uLnYxLkNvcnJlbGF0aW9uSWQSLwoIcGFydHlfaWQYAiABKAsyHS5zZXNzaW9uamV1LmNvbW1vbi52MS5QYXJ0eUlkEjEKCXBsYXllcl9pZBgDIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkIooBChZDcmVhdGVMaXZlQWNjZXNzUmVzdWx0EhgKEGNvbm5lY3Rpb25fdG9rZW4YASABKAkSDwoHcm9vbV9pZBgCIAEoCRIQCghlbmRwb2ludBgDIAEoCRIzCgpleHBpcmVzX2F0GAQgASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wIpIBCghKb2luTGl2ZRI7Cg5jb3JyZWxhdGlvbl9pZBgBIAEoCzIjLnNlc3Npb25qZXUuY29tbW9uLnYxLkNvcnJlbGF0aW9uSWQSLwoIcGFydHlfaWQYAiABKAsyHS5zZXNzaW9uamV1LmNvbW1vbi52MS5QYXJ0eUlkEhgKEGNvbm5lY3Rpb25fdG9rZW4YAyABKAkitAEKDVJlY29ubmVjdExpdmUSOwoOY29ycmVsYXRpb25faWQYASABKAsyIy5zZXNzaW9uamV1LmNvbW1vbi52MS5Db3JyZWxhdGlvbklkEi8KCHBhcnR5X2lkGAIgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBIYChBjb25uZWN0aW9uX3Rva2VuGAMgASgJEhsKE3ByZXZpb3VzX3Nlc3Npb25faWQYBCABKAki3gEKDUxpdmVTdGF0ZVZpZXcSMAoIYXVkaWVuY2UYASABKA4yHi5zZXNzaW9uamV1LmNvbW1vbi52MS5BdWRpZW5jZRIvCghwYXJ0eV9pZBgCIAEoCzIdLnNlc3Npb25qZXUuY29tbW9uLnYxLlBhcnR5SWQSFQoNY3VycmVudF9waGFzZRgDIAEoCRIXCg9jb25uZWN0ZWRfY291bnQYBCABKAUSHAoUY3VycmVudF9yb3VuZF9udW1iZXIYBSABKAUSHAoUY3VycmVudF9yb3VuZF9zdGF0dXMYBiABKAkirQEKE0xpdmVDb21tYW5kUmVqZWN0ZWQSOwoOY29ycmVsYXRpb25faWQYASABKAsyIy5zZXNzaW9uamV1LmNvbW1vbi52MS5Db3JyZWxhdGlvbklkEhQKDGNvbW1hbmRfdHlwZRgCIAEoCRIOCgZyZWFzb24YAyABKAkSMwoKZXJyb3JfY29kZRgEIAEoDjIfLnNlc3Npb25qZXUuY29tbW9uLnYxLkVycm9yQ29kZSJ5ChNHZXRQbGF5ZXJTdGF0ZVF1ZXJ5EjEKCXBsYXllcl9pZBgBIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEi8KCHBhcnR5X2lkGAIgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZCL3AQoTUGxheWVyU3RhdGVTbmFwc2hvdBIxCglwbGF5ZXJfaWQYASABKAsyHi5zZXNzaW9uamV1LmNvbW1vbi52MS5QbGF5ZXJJZBJDChFjb25uZWN0aW9uX3N0YXR1cxgCIAEoDjIoLnNlc3Npb25qZXUucmVhbHRpbWUudjEuQ29ubmVjdGlvblN0YXR1cxIVCg1jdXJyZW50X3BoYXNlGAMgASgJEhgKEGN1cnJlbnRfcm91bmRfaWQYBCABKAkSNwoObGFzdF9oZWFydGJlYXQYBSABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXAiVAoWR2V0UGxheWVyU3RhdGVSZXNwb25zZRI6CgVzdGF0ZRgBIAEoCzIrLnNlc3Npb25qZXUucmVhbHRpbWUudjEuUGxheWVyU3RhdGVTbmFwc2hvdCJMChlHZXRBZG1pbkdhbWVTbmFwc2hvdFF1ZXJ5Ei8KCHBhcnR5X2lkGAEgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZCLFAgoRQWRtaW5HYW1lU25hcHNob3QSTQoMcGFydGljaXBhbnRzGAEgAygLMjcuc2Vzc2lvbmpldS5yZWFsdGltZS52MS5BZG1pbkdhbWVTbmFwc2hvdC5QbGF5ZXJTdW1tYXJ5EhUKDWN1cnJlbnRfcGhhc2UYAiABKAkSGQoRcGFydGljaXBhbnRfY291bnQYAyABKAUSFwoPY29ubmVjdGVkX2NvdW50GAQgASgFGpUBCg1QbGF5ZXJTdW1tYXJ5EjEKCXBsYXllcl9pZBgBIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEkMKEWNvbm5lY3Rpb25fc3RhdHVzGAIgASgOMiguc2Vzc2lvbmpldS5yZWFsdGltZS52MS5Db25uZWN0aW9uU3RhdHVzEgwKBG5hbWUYAyABKAkiWwocR2V0QWRtaW5HYW1lU25hcHNob3RSZXNwb25zZRI7CghzbmFwc2hvdBgBIAEoCzIpLnNlc3Npb25qZXUucmVhbHRpbWUudjEuQWRtaW5HYW1lU25hcHNob3QiiwEKEVJvdW5kU3RhcnRlZEV2ZW50Ei8KCHBhcnR5X2lkGAEgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBIQCghyb3VuZF9pZBgCIAEoCRIzCgpzdGFydGVkX2F0GAMgASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wIpwBChJSb3VuZFN0YXRlU25hcHNob3QSEAoIcm91bmRfaWQYASABKAkSDQoFcGhhc2UYAiABKAkSMwoKc3RhcnRlZF9hdBgDIAEoCzIfLnNlc3Npb25qZXUuY29tbW9uLnYxLlRpbWVzdGFtcBIwCgdlbmRzX2F0GAQgASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wIksKGEdldFJlYWRvbmx5U25hcHNob3RRdWVyeRIvCghwYXJ0eV9pZBgBIAEoCzIdLnNlc3Npb25qZXUuY29tbW9uLnYxLlBhcnR5SWQihgIKEFJlYWRvbmx5U25hcHNob3QSFQoNY3VycmVudF9waGFzZRgBIAEoCRIZChFwYXJ0aWNpcGFudF9jb3VudBgCIAEoBRI6CgZyb3VuZHMYAyADKAsyKi5zZXNzaW9uamV1LnJlYWx0aW1lLnYxLlJvdW5kU3RhdGVTbmFwc2hvdBIvCghwYXJ0eV9pZBgEIAEoCzIdLnNlc3Npb25qZXUuY29tbW9uLnYxLlBhcnR5SWQSFwoPY29ubmVjdGVkX2NvdW50GAUgASgFEhwKFGN1cnJlbnRfcm91bmRfbnVtYmVyGAYgASgFEhwKFGN1cnJlbnRfcm91bmRfc3RhdHVzGAcgASgJIlkKG0dldFJlYWRvbmx5U25hcHNob3RSZXNwb25zZRI6CghzbmFwc2hvdBgBIAEoCzIoLnNlc3Npb25qZXUucmVhbHRpbWUudjEuUmVhZG9ubHlTbmFwc2hvdCqeAQoQQ29ubmVjdGlvblN0YXR1cxIhCh1DT05ORUNUSU9OX1NUQVRVU19VTlNQRUNJRklFRBAAEh8KG0NPTk5FQ1RJT05fU1RBVFVTX0NPTk5FQ1RFRBABEiIKHkNPTk5FQ1RJT05fU1RBVFVTX0RJU0NPTk5FQ1RFRBACEiIKHkNPTk5FQ1RJT05fU1RBVFVTX1JFQ09OTkVDVElORxADMvoDChVSZWFsdGltZUFjY2Vzc1NlcnZpY2UScwoQQ3JlYXRlTGl2ZUFjY2VzcxIvLnNlc3Npb25qZXUucmVhbHRpbWUudjEuQ3JlYXRlTGl2ZUFjY2Vzc1JlcXVlc3QaLi5zZXNzaW9uamV1LnJlYWx0aW1lLnYxLkNyZWF0ZUxpdmVBY2Nlc3NSZXN1bHQSbQoOR2V0UGxheWVyU3RhdGUSKy5zZXNzaW9uamV1LnJlYWx0aW1lLnYxLkdldFBsYXllclN0YXRlUXVlcnkaLi5zZXNzaW9uamV1LnJlYWx0aW1lLnYxLkdldFBsYXllclN0YXRlUmVzcG9uc2USfwoUR2V0QWRtaW5HYW1lU25hcHNob3QSMS5zZXNzaW9uamV1LnJlYWx0aW1lLnYxLkdldEFkbWluR2FtZVNuYXBzaG90UXVlcnkaNC5zZXNzaW9uamV1LnJlYWx0aW1lLnYxLkdldEFkbWluR2FtZVNuYXBzaG90UmVzcG9uc2USfAoTR2V0UmVhZG9ubHlTbmFwc2hvdBIwLnNlc3Npb25qZXUucmVhbHRpbWUudjEuR2V0UmVhZG9ubHlTbmFwc2hvdFF1ZXJ5GjMuc2Vzc2lvbmpldS5yZWFsdGltZS52MS5HZXRSZWFkb25seVNuYXBzaG90UmVzcG9uc2ViBnByb3RvMw", [file_common_v1_errors, file_common_v1_shared]);
+  fileDesc("ChhyZWFsdGltZS92MS9ldmVudHMucHJvdG8SFnNlc3Npb25qZXUucmVhbHRpbWUudjEiqwEKDkNvbm5lY3RlZEV2ZW50EjEKCXBsYXllcl9pZBgBIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEi8KCHBhcnR5X2lkGAIgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBI1Cgxjb25uZWN0ZWRfYXQYAyABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXAisQEKEURpc2Nvbm5lY3RlZEV2ZW50EjEKCXBsYXllcl9pZBgBIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEi8KCHBhcnR5X2lkGAIgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBI4Cg9kaXNjb25uZWN0ZWRfYXQYAyABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXAirwEKEFJlY29ubmVjdGVkRXZlbnQSMQoJcGxheWVyX2lkGAEgASgLMh4uc2Vzc2lvbmpldS5jb21tb24udjEuUGxheWVySWQSLwoIcGFydHlfaWQYAiABKAsyHS5zZXNzaW9uamV1LmNvbW1vbi52MS5QYXJ0eUlkEjcKDnJlY29ubmVjdGVkX2F0GAMgASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wIroBChdDcmVhdGVMaXZlQWNjZXNzUmVxdWVzdBI7Cg5jb3JyZWxhdGlvbl9pZBgBIAEoCzIjLnNlc3Npb25qZXUuY29tbW9uLnYxLkNvcnJlbGF0aW9uSWQSLwoIcGFydHlfaWQYAiABKAsyHS5zZXNzaW9uamV1LmNvbW1vbi52MS5QYXJ0eUlkEjEKCXBsYXllcl9pZBgDIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkIooBChZDcmVhdGVMaXZlQWNjZXNzUmVzdWx0EhgKEGNvbm5lY3Rpb25fdG9rZW4YASABKAkSDwoHcm9vbV9pZBgCIAEoCRIQCghlbmRwb2ludBgDIAEoCRIzCgpleHBpcmVzX2F0GAQgASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wIpIBCghKb2luTGl2ZRI7Cg5jb3JyZWxhdGlvbl9pZBgBIAEoCzIjLnNlc3Npb25qZXUuY29tbW9uLnYxLkNvcnJlbGF0aW9uSWQSLwoIcGFydHlfaWQYAiABKAsyHS5zZXNzaW9uamV1LmNvbW1vbi52MS5QYXJ0eUlkEhgKEGNvbm5lY3Rpb25fdG9rZW4YAyABKAkitAEKDVJlY29ubmVjdExpdmUSOwoOY29ycmVsYXRpb25faWQYASABKAsyIy5zZXNzaW9uamV1LmNvbW1vbi52MS5Db3JyZWxhdGlvbklkEi8KCHBhcnR5X2lkGAIgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBIYChBjb25uZWN0aW9uX3Rva2VuGAMgASgJEhsKE3ByZXZpb3VzX3Nlc3Npb25faWQYBCABKAkiRgoSUm9vbU1vdmVtZW50SW50ZW50EhAKCHNlcXVlbmNlGAEgASgDEg4KBmF4aXNfeBgCIAEoAhIOCgZheGlzX3kYAyABKAIihgEKE1Jvb21QbGF5ZXJUcmFuc2Zvcm0SEgoKc2Vzc2lvbl9pZBgBIAEoCRIJCgF4GAIgASgCEgkKAXkYAyABKAISDgoGZmFjaW5nGAQgASgJEg4KBm1vdmluZxgFIAEoCBIlCh1sYXN0X3Byb2Nlc3NlZF9pbnB1dF9zZXF1ZW5jZRgGIAEoAyLeAQoNTGl2ZVN0YXRlVmlldxIwCghhdWRpZW5jZRgBIAEoDjIeLnNlc3Npb25qZXUuY29tbW9uLnYxLkF1ZGllbmNlEi8KCHBhcnR5X2lkGAIgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBIVCg1jdXJyZW50X3BoYXNlGAMgASgJEhcKD2Nvbm5lY3RlZF9jb3VudBgEIAEoBRIcChRjdXJyZW50X3JvdW5kX251bWJlchgFIAEoBRIcChRjdXJyZW50X3JvdW5kX3N0YXR1cxgGIAEoCSKtAQoTTGl2ZUNvbW1hbmRSZWplY3RlZBI7Cg5jb3JyZWxhdGlvbl9pZBgBIAEoCzIjLnNlc3Npb25qZXUuY29tbW9uLnYxLkNvcnJlbGF0aW9uSWQSFAoMY29tbWFuZF90eXBlGAIgASgJEg4KBnJlYXNvbhgDIAEoCRIzCgplcnJvcl9jb2RlGAQgASgOMh8uc2Vzc2lvbmpldS5jb21tb24udjEuRXJyb3JDb2RlInkKE0dldFBsYXllclN0YXRlUXVlcnkSMQoJcGxheWVyX2lkGAEgASgLMh4uc2Vzc2lvbmpldS5jb21tb24udjEuUGxheWVySWQSLwoIcGFydHlfaWQYAiABKAsyHS5zZXNzaW9uamV1LmNvbW1vbi52MS5QYXJ0eUlkIvcBChNQbGF5ZXJTdGF0ZVNuYXBzaG90EjEKCXBsYXllcl9pZBgBIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEkMKEWNvbm5lY3Rpb25fc3RhdHVzGAIgASgOMiguc2Vzc2lvbmpldS5yZWFsdGltZS52MS5Db25uZWN0aW9uU3RhdHVzEhUKDWN1cnJlbnRfcGhhc2UYAyABKAkSGAoQY3VycmVudF9yb3VuZF9pZBgEIAEoCRI3Cg5sYXN0X2hlYXJ0YmVhdBgFIAEoCzIfLnNlc3Npb25qZXUuY29tbW9uLnYxLlRpbWVzdGFtcCJUChZHZXRQbGF5ZXJTdGF0ZVJlc3BvbnNlEjoKBXN0YXRlGAEgASgLMisuc2Vzc2lvbmpldS5yZWFsdGltZS52MS5QbGF5ZXJTdGF0ZVNuYXBzaG90IkwKGUdldEFkbWluR2FtZVNuYXBzaG90UXVlcnkSLwoIcGFydHlfaWQYASABKAsyHS5zZXNzaW9uamV1LmNvbW1vbi52MS5QYXJ0eUlkIsUCChFBZG1pbkdhbWVTbmFwc2hvdBJNCgxwYXJ0aWNpcGFudHMYASADKAsyNy5zZXNzaW9uamV1LnJlYWx0aW1lLnYxLkFkbWluR2FtZVNuYXBzaG90LlBsYXllclN1bW1hcnkSFQoNY3VycmVudF9waGFzZRgCIAEoCRIZChFwYXJ0aWNpcGFudF9jb3VudBgDIAEoBRIXCg9jb25uZWN0ZWRfY291bnQYBCABKAUalQEKDVBsYXllclN1bW1hcnkSMQoJcGxheWVyX2lkGAEgASgLMh4uc2Vzc2lvbmpldS5jb21tb24udjEuUGxheWVySWQSQwoRY29ubmVjdGlvbl9zdGF0dXMYAiABKA4yKC5zZXNzaW9uamV1LnJlYWx0aW1lLnYxLkNvbm5lY3Rpb25TdGF0dXMSDAoEbmFtZRgDIAEoCSJbChxHZXRBZG1pbkdhbWVTbmFwc2hvdFJlc3BvbnNlEjsKCHNuYXBzaG90GAEgASgLMikuc2Vzc2lvbmpldS5yZWFsdGltZS52MS5BZG1pbkdhbWVTbmFwc2hvdCKLAQoRUm91bmRTdGFydGVkRXZlbnQSLwoIcGFydHlfaWQYASABKAsyHS5zZXNzaW9uamV1LmNvbW1vbi52MS5QYXJ0eUlkEhAKCHJvdW5kX2lkGAIgASgJEjMKCnN0YXJ0ZWRfYXQYAyABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXAinAEKElJvdW5kU3RhdGVTbmFwc2hvdBIQCghyb3VuZF9pZBgBIAEoCRINCgVwaGFzZRgCIAEoCRIzCgpzdGFydGVkX2F0GAMgASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wEjAKB2VuZHNfYXQYBCABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXAiSwoYR2V0UmVhZG9ubHlTbmFwc2hvdFF1ZXJ5Ei8KCHBhcnR5X2lkGAEgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZCKGAgoQUmVhZG9ubHlTbmFwc2hvdBIVCg1jdXJyZW50X3BoYXNlGAEgASgJEhkKEXBhcnRpY2lwYW50X2NvdW50GAIgASgFEjoKBnJvdW5kcxgDIAMoCzIqLnNlc3Npb25qZXUucmVhbHRpbWUudjEuUm91bmRTdGF0ZVNuYXBzaG90Ei8KCHBhcnR5X2lkGAQgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBIXCg9jb25uZWN0ZWRfY291bnQYBSABKAUSHAoUY3VycmVudF9yb3VuZF9udW1iZXIYBiABKAUSHAoUY3VycmVudF9yb3VuZF9zdGF0dXMYByABKAkiWQobR2V0UmVhZG9ubHlTbmFwc2hvdFJlc3BvbnNlEjoKCHNuYXBzaG90GAEgASgLMiguc2Vzc2lvbmpldS5yZWFsdGltZS52MS5SZWFkb25seVNuYXBzaG90Kp4BChBDb25uZWN0aW9uU3RhdHVzEiEKHUNPTk5FQ1RJT05fU1RBVFVTX1VOU1BFQ0lGSUVEEAASHwobQ09OTkVDVElPTl9TVEFUVVNfQ09OTkVDVEVEEAESIgoeQ09OTkVDVElPTl9TVEFUVVNfRElTQ09OTkVDVEVEEAISIgoeQ09OTkVDVElPTl9TVEFUVVNfUkVDT05ORUNUSU5HEAMy+gMKFVJlYWx0aW1lQWNjZXNzU2VydmljZRJzChBDcmVhdGVMaXZlQWNjZXNzEi8uc2Vzc2lvbmpldS5yZWFsdGltZS52MS5DcmVhdGVMaXZlQWNjZXNzUmVxdWVzdBouLnNlc3Npb25qZXUucmVhbHRpbWUudjEuQ3JlYXRlTGl2ZUFjY2Vzc1Jlc3VsdBJtCg5HZXRQbGF5ZXJTdGF0ZRIrLnNlc3Npb25qZXUucmVhbHRpbWUudjEuR2V0UGxheWVyU3RhdGVRdWVyeRouLnNlc3Npb25qZXUucmVhbHRpbWUudjEuR2V0UGxheWVyU3RhdGVSZXNwb25zZRJ/ChRHZXRBZG1pbkdhbWVTbmFwc2hvdBIxLnNlc3Npb25qZXUucmVhbHRpbWUudjEuR2V0QWRtaW5HYW1lU25hcHNob3RRdWVyeRo0LnNlc3Npb25qZXUucmVhbHRpbWUudjEuR2V0QWRtaW5HYW1lU25hcHNob3RSZXNwb25zZRJ8ChNHZXRSZWFkb25seVNuYXBzaG90EjAuc2Vzc2lvbmpldS5yZWFsdGltZS52MS5HZXRSZWFkb25seVNuYXBzaG90UXVlcnkaMy5zZXNzaW9uamV1LnJlYWx0aW1lLnYxLkdldFJlYWRvbmx5U25hcHNob3RSZXNwb25zZWIGcHJvdG8z", [file_common_v1_errors, file_common_v1_shared]);
 
 /**
  * @generated from message sessionjeu.realtime.v1.ConnectedEvent
@@ -216,6 +216,75 @@ export const ReconnectLiveSchema: GenMessage<ReconnectLive> = /*@__PURE__*/
   messageDesc(file_realtime_v1_events, 6);
 
 /**
+ * @generated from message sessionjeu.realtime.v1.RoomMovementIntent
+ */
+export type RoomMovementIntent = Message<"sessionjeu.realtime.v1.RoomMovementIntent"> & {
+  /**
+   * @generated from field: int64 sequence = 1;
+   */
+  sequence: bigint;
+
+  /**
+   * @generated from field: float axis_x = 2;
+   */
+  axisX: number;
+
+  /**
+   * @generated from field: float axis_y = 3;
+   */
+  axisY: number;
+};
+
+/**
+ * Describes the message sessionjeu.realtime.v1.RoomMovementIntent.
+ * Use `create(RoomMovementIntentSchema)` to create a new message.
+ */
+export const RoomMovementIntentSchema: GenMessage<RoomMovementIntent> = /*@__PURE__*/
+  messageDesc(file_realtime_v1_events, 7);
+
+/**
+ * @generated from message sessionjeu.realtime.v1.RoomPlayerTransform
+ */
+export type RoomPlayerTransform = Message<"sessionjeu.realtime.v1.RoomPlayerTransform"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+
+  /**
+   * @generated from field: float x = 2;
+   */
+  x: number;
+
+  /**
+   * @generated from field: float y = 3;
+   */
+  y: number;
+
+  /**
+   * @generated from field: string facing = 4;
+   */
+  facing: string;
+
+  /**
+   * @generated from field: bool moving = 5;
+   */
+  moving: boolean;
+
+  /**
+   * @generated from field: int64 last_processed_input_sequence = 6;
+   */
+  lastProcessedInputSequence: bigint;
+};
+
+/**
+ * Describes the message sessionjeu.realtime.v1.RoomPlayerTransform.
+ * Use `create(RoomPlayerTransformSchema)` to create a new message.
+ */
+export const RoomPlayerTransformSchema: GenMessage<RoomPlayerTransform> = /*@__PURE__*/
+  messageDesc(file_realtime_v1_events, 8);
+
+/**
  * @generated from message sessionjeu.realtime.v1.LiveStateView
  */
 export type LiveStateView = Message<"sessionjeu.realtime.v1.LiveStateView"> & {
@@ -255,7 +324,7 @@ export type LiveStateView = Message<"sessionjeu.realtime.v1.LiveStateView"> & {
  * Use `create(LiveStateViewSchema)` to create a new message.
  */
 export const LiveStateViewSchema: GenMessage<LiveStateView> = /*@__PURE__*/
-  messageDesc(file_realtime_v1_events, 7);
+  messageDesc(file_realtime_v1_events, 9);
 
 /**
  * @generated from message sessionjeu.realtime.v1.LiveCommandRejected
@@ -287,7 +356,7 @@ export type LiveCommandRejected = Message<"sessionjeu.realtime.v1.LiveCommandRej
  * Use `create(LiveCommandRejectedSchema)` to create a new message.
  */
 export const LiveCommandRejectedSchema: GenMessage<LiveCommandRejected> = /*@__PURE__*/
-  messageDesc(file_realtime_v1_events, 8);
+  messageDesc(file_realtime_v1_events, 10);
 
 /**
  * @generated from message sessionjeu.realtime.v1.GetPlayerStateQuery
@@ -309,7 +378,7 @@ export type GetPlayerStateQuery = Message<"sessionjeu.realtime.v1.GetPlayerState
  * Use `create(GetPlayerStateQuerySchema)` to create a new message.
  */
 export const GetPlayerStateQuerySchema: GenMessage<GetPlayerStateQuery> = /*@__PURE__*/
-  messageDesc(file_realtime_v1_events, 9);
+  messageDesc(file_realtime_v1_events, 11);
 
 /**
  * @generated from message sessionjeu.realtime.v1.PlayerStateSnapshot
@@ -346,7 +415,7 @@ export type PlayerStateSnapshot = Message<"sessionjeu.realtime.v1.PlayerStateSna
  * Use `create(PlayerStateSnapshotSchema)` to create a new message.
  */
 export const PlayerStateSnapshotSchema: GenMessage<PlayerStateSnapshot> = /*@__PURE__*/
-  messageDesc(file_realtime_v1_events, 10);
+  messageDesc(file_realtime_v1_events, 12);
 
 /**
  * @generated from message sessionjeu.realtime.v1.GetPlayerStateResponse
@@ -363,7 +432,7 @@ export type GetPlayerStateResponse = Message<"sessionjeu.realtime.v1.GetPlayerSt
  * Use `create(GetPlayerStateResponseSchema)` to create a new message.
  */
 export const GetPlayerStateResponseSchema: GenMessage<GetPlayerStateResponse> = /*@__PURE__*/
-  messageDesc(file_realtime_v1_events, 11);
+  messageDesc(file_realtime_v1_events, 13);
 
 /**
  * @generated from message sessionjeu.realtime.v1.GetAdminGameSnapshotQuery
@@ -380,7 +449,7 @@ export type GetAdminGameSnapshotQuery = Message<"sessionjeu.realtime.v1.GetAdmin
  * Use `create(GetAdminGameSnapshotQuerySchema)` to create a new message.
  */
 export const GetAdminGameSnapshotQuerySchema: GenMessage<GetAdminGameSnapshotQuery> = /*@__PURE__*/
-  messageDesc(file_realtime_v1_events, 12);
+  messageDesc(file_realtime_v1_events, 14);
 
 /**
  * @generated from message sessionjeu.realtime.v1.AdminGameSnapshot
@@ -412,7 +481,7 @@ export type AdminGameSnapshot = Message<"sessionjeu.realtime.v1.AdminGameSnapsho
  * Use `create(AdminGameSnapshotSchema)` to create a new message.
  */
 export const AdminGameSnapshotSchema: GenMessage<AdminGameSnapshot> = /*@__PURE__*/
-  messageDesc(file_realtime_v1_events, 13);
+  messageDesc(file_realtime_v1_events, 15);
 
 /**
  * @generated from message sessionjeu.realtime.v1.AdminGameSnapshot.PlayerSummary
@@ -439,7 +508,7 @@ export type AdminGameSnapshot_PlayerSummary = Message<"sessionjeu.realtime.v1.Ad
  * Use `create(AdminGameSnapshot_PlayerSummarySchema)` to create a new message.
  */
 export const AdminGameSnapshot_PlayerSummarySchema: GenMessage<AdminGameSnapshot_PlayerSummary> = /*@__PURE__*/
-  messageDesc(file_realtime_v1_events, 13, 0);
+  messageDesc(file_realtime_v1_events, 15, 0);
 
 /**
  * @generated from message sessionjeu.realtime.v1.GetAdminGameSnapshotResponse
@@ -456,7 +525,7 @@ export type GetAdminGameSnapshotResponse = Message<"sessionjeu.realtime.v1.GetAd
  * Use `create(GetAdminGameSnapshotResponseSchema)` to create a new message.
  */
 export const GetAdminGameSnapshotResponseSchema: GenMessage<GetAdminGameSnapshotResponse> = /*@__PURE__*/
-  messageDesc(file_realtime_v1_events, 14);
+  messageDesc(file_realtime_v1_events, 16);
 
 /**
  * @generated from message sessionjeu.realtime.v1.RoundStartedEvent
@@ -483,7 +552,7 @@ export type RoundStartedEvent = Message<"sessionjeu.realtime.v1.RoundStartedEven
  * Use `create(RoundStartedEventSchema)` to create a new message.
  */
 export const RoundStartedEventSchema: GenMessage<RoundStartedEvent> = /*@__PURE__*/
-  messageDesc(file_realtime_v1_events, 15);
+  messageDesc(file_realtime_v1_events, 17);
 
 /**
  * @generated from message sessionjeu.realtime.v1.RoundStateSnapshot
@@ -515,7 +584,7 @@ export type RoundStateSnapshot = Message<"sessionjeu.realtime.v1.RoundStateSnaps
  * Use `create(RoundStateSnapshotSchema)` to create a new message.
  */
 export const RoundStateSnapshotSchema: GenMessage<RoundStateSnapshot> = /*@__PURE__*/
-  messageDesc(file_realtime_v1_events, 16);
+  messageDesc(file_realtime_v1_events, 18);
 
 /**
  * @generated from message sessionjeu.realtime.v1.GetReadonlySnapshotQuery
@@ -532,7 +601,7 @@ export type GetReadonlySnapshotQuery = Message<"sessionjeu.realtime.v1.GetReadon
  * Use `create(GetReadonlySnapshotQuerySchema)` to create a new message.
  */
 export const GetReadonlySnapshotQuerySchema: GenMessage<GetReadonlySnapshotQuery> = /*@__PURE__*/
-  messageDesc(file_realtime_v1_events, 17);
+  messageDesc(file_realtime_v1_events, 19);
 
 /**
  * @generated from message sessionjeu.realtime.v1.ReadonlySnapshot
@@ -579,7 +648,7 @@ export type ReadonlySnapshot = Message<"sessionjeu.realtime.v1.ReadonlySnapshot"
  * Use `create(ReadonlySnapshotSchema)` to create a new message.
  */
 export const ReadonlySnapshotSchema: GenMessage<ReadonlySnapshot> = /*@__PURE__*/
-  messageDesc(file_realtime_v1_events, 18);
+  messageDesc(file_realtime_v1_events, 20);
 
 /**
  * @generated from message sessionjeu.realtime.v1.GetReadonlySnapshotResponse
@@ -596,7 +665,7 @@ export type GetReadonlySnapshotResponse = Message<"sessionjeu.realtime.v1.GetRea
  * Use `create(GetReadonlySnapshotResponseSchema)` to create a new message.
  */
 export const GetReadonlySnapshotResponseSchema: GenMessage<GetReadonlySnapshotResponse> = /*@__PURE__*/
-  messageDesc(file_realtime_v1_events, 19);
+  messageDesc(file_realtime_v1_events, 21);
 
 /**
  * @generated from enum sessionjeu.realtime.v1.ConnectionStatus

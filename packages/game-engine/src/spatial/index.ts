@@ -1,0 +1,16 @@
+export {
+  ROOM_TILE_SIZE,
+  ROOM_MAP_WIDTH,
+  ROOM_MAP_HEIGHT,
+  ROOM_WORLD_WIDTH,
+  ROOM_WORLD_HEIGHT,
+  ROOM_PLAYER_RADIUS,
+  ROOM_PLAYER_SPEED,
+  ROOM_COLLISION_GRID,
+  ROOM_SPAWNS,
+  type RoomPoint,
+  type RoomMovementInput,
+  isRoomTileBlocked,
+  canOccupyRoomPosition,
+  resolveRoomMovement,
+} from "./room-map.js";

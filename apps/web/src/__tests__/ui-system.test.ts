@@ -60,16 +60,24 @@ describe("complete UI foundation", () => {
     expect(read("src/lib/rpc.ts")).toContain("createConnectTransport");
   });
 
-  it("uses a responsive Pixi lifecycle with managed CC0 room assets", () => {
-    const room = read("src/components/game/ArenaRoomCanvas.tsx");
+  it("proxies ConnectRPC service paths to the API", () => {
+    const config = read("next.config.ts");
+
+    expect(config).toContain('source: "/api/:path*"');
+    expect(config).toContain('destination: `${apiUrl}/:path*`');
+  });
+
+  it("uses a responsive Phaser lifecycle with managed CC0 room assets", () => {
+    const room = read("src/components/game/phaser/createRoomGame.ts");
+    const canvas = read("src/components/game/PhaserRoomCanvas.tsx");
     const assetDirectory = `${appRoot}/public/game-assets/kenney-tiny-dungeon/Tiles`;
     const tiles = readdirSync(assetDirectory).filter((file) => /^tile_\d{4}\.png$/.test(file));
 
-    expect(room).toContain("new Application()");
-    expect(room).toContain("resizeTo: hostElement");
-    expect(room).toContain("Assets.addBundle");
-    expect(room).toContain("Assets.loadBundle");
-    expect(room).toContain("app.destroy");
+    expect(room).toContain("new Phaser.Game");
+    expect(room).toContain("Phaser.Scale.RESIZE");
+    expect(room).toContain("setCollisionByExclusion");
+    expect(room).toContain("joinOrCreate");
+    expect(canvas).toContain("handle.destroy()");
     expect(tiles).toHaveLength(132);
     expect(existsSync(`${appRoot}/public/game-assets/kenney-tiny-dungeon/License.txt`)).toBe(true);
     expect(existsSync(`${appRoot}/public/game-assets/manifest.json`)).toBe(true);

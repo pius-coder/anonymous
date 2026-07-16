@@ -2,6 +2,7 @@ import type { Client } from "colyseus";
 import type { LiveRoomState } from "../rooms/schema/LiveRoomState.js";
 import { PlayerState } from "../rooms/schema/LiveRoomState.js";
 import { realtimeRepository } from "@session-jeu/db";
+import { ROOM_SPAWNS } from "@session-jeu/game-engine";
 
 export type LiveAuthInfo = {
   participationId: string;
@@ -25,6 +26,11 @@ export function addPlayer(state: LiveRoomState, client: Client, auth: LiveAuthIn
   player.role = auth.role;
   player.connected = true;
   player.status = statusFromParticipation(auth.participationStatus);
+  const spawn = ROOM_SPAWNS[state.players.size % ROOM_SPAWNS.length];
+  player.x = existing?.player.x || spawn.x;
+  player.y = existing?.player.y || spawn.y;
+  player.facing = existing?.player.facing || "down";
+  player.lastProcessedInputSequence = existing?.player.lastProcessedInputSequence || 0;
 
   state.players.set(client.sessionId, player);
   state.connectedCount = Array.from(state.players.values()).filter((p) => p.connected).length;

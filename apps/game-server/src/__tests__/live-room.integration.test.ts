@@ -7,6 +7,7 @@ import { dispatchCommand } from "../handlers/command-dispatcher.js";
 import { getAdminSnapshot, getReadonlySnapshot } from "../handlers/readonly-handler.js";
 import { registerRoundHandlers } from "../handlers/round-handler.js";
 import { registerReadonlyHandlers } from "../handlers/readonly-handler.js";
+import { applyMovementTick, registerMovementHandler } from "../handlers/movement-handler.js";
 import { LiveRoomState } from "../rooms/schema/LiveRoomState.js";
 
 const dbMocks = vi.hoisted(() => ({
@@ -51,6 +52,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   registerRoundHandlers();
   registerReadonlyHandlers();
+  registerMovementHandler();
 });
 
 describe("live token validation", () => {
@@ -117,6 +119,38 @@ describe("live token validation", () => {
 });
 
 describe("live room state and commands", () => {
+  it("applies fresh movement inputs and rejects stale sequences", () => {
+    const state = makeState();
+    const client = makeClient("session-1");
+    const player = addLivePlayer(state, client);
+    const startX = player.x;
+
+    expect(dispatchCommand(state, client, {
+      type: "room:move",
+      payload: { sequence: 1, x: 1, y: 0 },
+    })).toMatchObject({ accepted: true, acknowledge: false });
+    applyMovementTick(state, 50);
+    expect(player.x).toBeGreaterThan(startX);
+    expect(player.lastProcessedInputSequence).toBe(1);
+    expect(player.facing).toBe("right");
+
+    expect(dispatchCommand(state, client, {
+      type: "room:move",
+      payload: { sequence: 1, x: -1, y: 0 },
+    })).toMatchObject({ accepted: false, error: "STALE_MOVEMENT_INPUT" });
+  });
+
+  it("rejects malformed movement vectors", () => {
+    const state = makeState();
+    const client = makeClient("session-1");
+    addLivePlayer(state, client);
+
+    expect(dispatchCommand(state, client, {
+      type: "room:move",
+      payload: { sequence: 1, x: 4, y: 0 },
+    })).toMatchObject({ accepted: false, error: "INVALID_MOVEMENT_INPUT" });
+  });
+
   it("keeps one active state entry for concurrent double connection", () => {
     const state = makeState();
     const firstClient = makeClient("session-1");

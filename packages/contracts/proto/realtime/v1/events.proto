@@ -56,6 +56,21 @@ message ReconnectLive {
   string previous_session_id = 4;
 }
 
+message RoomMovementIntent {
+  int64 sequence = 1;
+  float axis_x = 2;
+  float axis_y = 3;
+}
+
+message RoomPlayerTransform {
+  string session_id = 1;
+  float x = 2;
+  float y = 3;
+  string facing = 4;
+  bool moving = 5;
+  int64 last_processed_input_sequence = 6;
+}
+
 message LiveStateView {
   sessionjeu.common.v1.Audience audience = 1;
   sessionjeu.common.v1.PartyId party_id = 2;

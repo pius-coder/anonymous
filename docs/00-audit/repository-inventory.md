@@ -1,5 +1,25 @@
 # Repository Inventory
 
+## Analyse v0.1 courante (2026-07-16)
+
+Documents produits par analyse du depot actif sur `v0.1` :
+
+| Document | Contenu |
+|---|---|
+| [v0.1-current-state.md](v0.1-current-state.md) | Resume executif, validations, ecarts, roadmap |
+| [v0.1-implementation-matrix.md](v0.1-implementation-matrix.md) | Matrice par workspace et domaine produit |
+| [v0.1-routes-and-flows.md](v0.1-routes-and-flows.md) | Routes web, API, RPC, Colyseus et flux |
+| [v0.1-gap-analysis.md](v0.1-gap-analysis.md) | Ecart complet docs/sprints vs code par couche |
+
+Constats rapides :
+
+- Monorepo : 5 apps, 4 packages, pnpm 9 + Turbo 2
+- Validations : typecheck, lint, tests, build, docs et E2E Playwright OK (2026-07-16)
+- 40 pages Next.js, 21 modeles Prisma, 13 protos, 3 services ConnectRPC implementes
+- UI en avance sur branchement backend (mock data sauf auth et live partiel)
+
+Les sections ci-dessous documentent l'inventaire initial de creation de branche et l'audit HEAD.
+
 ## Git initial
 
 - Repertoire: `/home/afreeserv/anonymous`.

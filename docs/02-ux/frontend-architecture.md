@@ -8,7 +8,7 @@
 3. **Product components**: lifecycle, connexion, player status, finance status, timeline, command rail.
 4. **Shells par audience**: public, player, admin, observer, support et finance.
 5. **Screens**: composition routee sans regle metier autoritaire.
-6. **Pixi scenes**: room et mini-jeux; aucune navigation ou permission globale dans le canvas.
+6. **Phaser scenes**: room et mini-jeux; aucune navigation ou permission globale dans le canvas.
 7. **Generated clients**: clients ConnectRPC par domaine et client Colyseus pour le live.
 
 ## Viewport et scroll
@@ -41,14 +41,15 @@
 - DataTable, DatePicker et Typography sont des patterns composes; ils ne sont pas de faux items du
   registre.
 
-## Pixi
+## Phaser
 
-- Une scene est une classe ou fonction de cycle de vie: `preload -> mount -> update -> resize -> destroy`.
-- `Application.init({ resizeTo: container })` adapte le renderer au panneau.
-- `Assets.addBundle()` et `Assets.loadBundle()` chargent seulement les bundles necessaires sans
-  reinitialiser le cache global lors de chaque montage.
+- Une scene suit le cycle de vie `preload -> create -> update -> shutdown -> destroy`.
+- `Phaser.Scale.RESIZE` adapte le renderer au viewport sans redimensionner la carte du monde.
+- La tilemap, la camera et Arcade Physics restent dans Phaser; le HUD accessible reste en DOM.
+- Le clavier et le joystick produisent un vecteur normalise, jamais une position competitive.
+- Colyseus applique les mouvements et collisions autoritaires a intervalle fixe et synchronise les transformations.
 - Les scenes separent public state, player private state et observer state.
-- Les textures, listeners et tickers sont detruits au demontage.
+- Le jeu, les listeners et la connexion live sont detruits au demontage.
 
 ## Gates avant reprise de la roadmap
 
