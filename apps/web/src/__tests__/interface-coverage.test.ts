@@ -47,7 +47,8 @@ describe("documented interface coverage", () => {
 
     expect(read("src/app/admin/layout.tsx")).toContain("RoleGate");
     expect(read("src/app/admin/parties/[partyId]/monitor/page.tsx").toLowerCase()).toContain("lecture seule");
-    expect(read("src/app/admin/parties/[partyId]/scores/page.tsx")).toContain("SensitiveActionPanel");
+    expect(read("src/app/admin/parties/[partyId]/scores/page.tsx")).toContain("AdminScoresPanel");
+    expect(read("src/components/admin/AdminScoresPanel.tsx")).toContain("SensitiveActionPanel");
   });
 
   it("ships readonly observer, support and finance detail workflows", () => {

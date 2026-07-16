@@ -15,6 +15,8 @@ type SensitiveActionPanelProps = {
   disabled?: boolean;
   disabledReason?: string;
   tone?: "default" | "danger";
+  /** When set, invoked after local audit confirmation instead of a simulated-only submit. */
+  onConfirm?: (auditReason: string) => void | Promise<void>;
 };
 
 export function SensitiveActionPanel({
@@ -25,6 +27,7 @@ export function SensitiveActionPanel({
   disabled = false,
   disabledReason,
   tone = "default",
+  onConfirm,
 }: SensitiveActionPanelProps) {
   const [reason, setReason] = useState("");
   const [confirmed, setConfirmed] = useState(false);
@@ -94,13 +97,20 @@ export function SensitiveActionPanel({
         {submitted ? (
           <p className="flex items-center gap-2 text-xs text-emerald-300" role="status">
             <CheckCircle2 size={15} />
-            Commande simulée et prête à être envoyée au service autoritaire.
+            {onConfirm
+              ? "Commande envoyée au service autoritaire."
+              : "Commande simulée et prête à être envoyée au service autoritaire."}
           </p>
         ) : null}
         <Button
           variant={tone === "danger" ? "destructive" : "default"}
           disabled={!ready}
-          onClick={() => setSubmitted(true)}
+          onClick={() => {
+            setSubmitted(true);
+            if (onConfirm) {
+              void onConfirm(reason.trim());
+            }
+          }}
         >
           {actionLabel}
         </Button>
