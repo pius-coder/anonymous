@@ -52,6 +52,7 @@ describe("L1 repository export surface", () => {
     expect(scoreRepository.createProvisionalScore).toBeInstanceOf(Function);
     expect(scoreRepository.listProvisionalScoresByRound).toBeInstanceOf(Function);
     expect(scoreRepository.publishScore).toBeInstanceOf(Function);
+    expect(scoreRepository.publishRoundScores).toBeInstanceOf(Function);
     expect(scoreRepository.createScoreReview).toBeInstanceOf(Function);
     expect(scoreRepository.listScoreReviewsByProvisional).toBeInstanceOf(Function);
     expect(scoreRepository.createScoreReviewAndUpdateProvisional).toBeInstanceOf(Function);
