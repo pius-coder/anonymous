@@ -67,19 +67,31 @@ message ListProvisionalScoresQuery {
   string round_id = 1;
 }
 
+// Admin/support review only — never project to player or observer (AC-13-01, AC-13-06).
 message ListProvisionalScoresResponse {
   repeated PlayerScore scores = 1;
   ScoreStatus status = 2;
+  sessionjeu.common.v1.Audience audience = 3;
 }
 
 message GetPublishedResultsQuery {
   sessionjeu.common.v1.PartyId party_id = 1;
 }
 
+// Safe for player and readonly observer after explicit publication.
 message GetPublishedResultsResponse {
   string round_id = 1;
   repeated PlayerScore final_scores = 2;
   sessionjeu.common.v1.Timestamp published_at = 3;
+  sessionjeu.common.v1.Audience audience = 4;
+}
+
+// Player waiting view while provisional scores exist but are not published.
+message ScoreWaitingReviewView {
+  string round_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  bool waiting_verification = 3;
+  // Explicitly excludes provisional scores/ranks.
 }
 
 service ScoringService {

@@ -13,6 +13,15 @@ Cette documentation est la source de verite de reconstruction. Elle ne valide pa
 6. `05-workflows/` impose le pipeline agentique des futures features.
 7. `06-roadmap/` decoupe la reconstruction en sprints fonctionnels et explique la couverture narrative des cas d'utilisation.
 
+Pour terminer v0.1 avec plusieurs agents/worktrees, lire dans cet ordre :
+
+1. `00-audit/v0.1-gap-analysis.md` pour l'etat prouve au commit audite;
+2. `06-roadmap/apex-parallel-execution-plan.md` pour les dependances et ownership;
+3. `05-workflows/apex-parallel-worktrees.md` pour l'isolation et le merge train;
+4. `05-workflows/test-strategy.md` pour les gates L0 a L6.
+5. `05-workflows/test-commands.md` pour les commandes `test:unit|integration|e2e`, timeouts et diagnostic.
+6. `06-roadmap/apex-tasks/README.md` pour lancer une session Codex par fiche autonome.
+
 ## Decisions v0.1
 
 - La branche `v0.1` a ete creee depuis l'etat courant sale de `feature/rules-lifecycle-v1`, sur validation explicite.

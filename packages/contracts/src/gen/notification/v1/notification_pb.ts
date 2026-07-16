@@ -12,9 +12,12 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file notification/v1/notification.proto.
  */
 export const file_notification_v1_notification: GenFile = /*@__PURE__*/
-  fileDesc("CiJub3RpZmljYXRpb24vdjEvbm90aWZpY2F0aW9uLnByb3RvEhpzZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MSKWAgoXU2VuZE5vdGlmaWNhdGlvbkNvbW1hbmQSOwoOY29ycmVsYXRpb25faWQYASABKAsyIy5zZXNzaW9uamV1LmNvbW1vbi52MS5Db3JyZWxhdGlvbklkEjEKCXBsYXllcl9pZBgCIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEjMKBHR5cGUYAyABKA4yJS5zZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MS5Ob3RpZlR5cGUSOQoHY2hhbm5lbBgEIAEoDjIoLnNlc3Npb25qZXUubm90aWZpY2F0aW9uLnYxLk5vdGlmQ2hhbm5lbBINCgV0aXRsZRgFIAEoCRIMCgRib2R5GAYgASgJIjMKGFNlbmROb3RpZmljYXRpb25SZXNwb25zZRIXCg9ub3RpZmljYXRpb25faWQYASABKAkihQIKFU5vdGlmaWNhdGlvblNlbnRFdmVudBIXCg9ub3RpZmljYXRpb25faWQYASABKAkSMQoJcGxheWVyX2lkGAIgASgLMh4uc2Vzc2lvbmpldS5jb21tb24udjEuUGxheWVySWQSMwoEdHlwZRgDIAEoDjIlLnNlc3Npb25qZXUubm90aWZpY2F0aW9uLnYxLk5vdGlmVHlwZRI5CgdjaGFubmVsGAQgASgOMiguc2Vzc2lvbmpldS5ub3RpZmljYXRpb24udjEuTm90aWZDaGFubmVsEjAKB3NlbnRfYXQYBSABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXAirQEKGk5vdGlmaWNhdGlvbkRlbGl2ZXJlZEV2ZW50EhcKD25vdGlmaWNhdGlvbl9pZBgBIAEoCRI/CgZzdGF0dXMYAiABKA4yLy5zZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MS5Ob3RpZkRlbGl2ZXJ5U3RhdHVzEjUKDGRlbGl2ZXJlZF9hdBgDIAEoCzIfLnNlc3Npb25qZXUuY29tbW9uLnYxLlRpbWVzdGFtcCI1ChpHZXROb3RpZmljYXRpb25TdGF0dXNRdWVyeRIXCg9ub3RpZmljYXRpb25faWQYASABKAki/gEKHUdldE5vdGlmaWNhdGlvblN0YXR1c1Jlc3BvbnNlEjMKBHR5cGUYASABKA4yJS5zZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MS5Ob3RpZlR5cGUSPwoGc3RhdHVzGAIgASgOMi8uc2Vzc2lvbmpldS5ub3RpZmljYXRpb24udjEuTm90aWZEZWxpdmVyeVN0YXR1cxIwCgdzZW50X2F0GAMgASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wEjUKDGRlbGl2ZXJlZF9hdBgEIAEoCzIfLnNlc3Npb25qZXUuY29tbW9uLnYxLlRpbWVzdGFtcCJyChZMaXN0Tm90aWZpY2F0aW9uc1F1ZXJ5EjEKCXBsYXllcl9pZBgBIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEhEKCXBhZ2Vfc2l6ZRgCIAEoBRISCgpwYWdlX3Rva2VuGAMgASgJIvMBChNOb3RpZmljYXRpb25TdW1tYXJ5EhcKD25vdGlmaWNhdGlvbl9pZBgBIAEoCRIzCgR0eXBlGAIgASgOMiUuc2Vzc2lvbmpldS5ub3RpZmljYXRpb24udjEuTm90aWZUeXBlEg0KBXRpdGxlGAMgASgJEgwKBGJvZHkYBCABKAkSPwoGc3RhdHVzGAUgASgOMi8uc2Vzc2lvbmpldS5ub3RpZmljYXRpb24udjEuTm90aWZEZWxpdmVyeVN0YXR1cxIwCgdzZW50X2F0GAYgASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wInwKGUxpc3ROb3RpZmljYXRpb25zUmVzcG9uc2USRgoNbm90aWZpY2F0aW9ucxgBIAMoCzIvLnNlc3Npb25qZXUubm90aWZpY2F0aW9uLnYxLk5vdGlmaWNhdGlvblN1bW1hcnkSFwoPbmV4dF9wYWdlX3Rva2VuGAIgASgJKmMKDE5vdGlmQ2hhbm5lbBIdChlOT1RJRl9DSEFOTkVMX1VOU1BFQ0lGSUVEEAASGAoUTk9USUZfQ0hBTk5FTF9JTl9BUFAQARIaChZOT1RJRl9DSEFOTkVMX1dIQVRTQVBQEAIqiAIKE05vdGlmRGVsaXZlcnlTdGF0dXMSJQohTk9USUZfREVMSVZFUllfU1RBVFVTX1VOU1BFQ0lGSUVEEAASIAocTk9USUZfREVMSVZFUllfU1RBVFVTX1FVRVVFRBABEh4KGk5PVElGX0RFTElWRVJZX1NUQVRVU19TRU5UEAISIwofTk9USUZfREVMSVZFUllfU1RBVFVTX0RFTElWRVJFRBADEh4KGk5PVElGX0RFTElWRVJZX1NUQVRVU19SRUFEEAQSIAocTk9USUZfREVMSVZFUllfU1RBVFVTX0ZBSUxFRBAFEiEKHU5PVElGX0RFTElWRVJZX1NUQVRVU19TS0lQUEVEEAYq2QEKCU5vdGlmVHlwZRIaChZOT1RJRl9UWVBFX1VOU1BFQ0lGSUVEEAASGwoXTk9USUZfVFlQRV9SRUdJU1RSQVRJT04QARIWChJOT1RJRl9UWVBFX1BBWU1FTlQQAhIXChNOT1RJRl9UWVBFX0NIRUNLX0lOEAMSFQoRTk9USUZfVFlQRV9SRVNVTFQQBBIXChNOT1RJRl9UWVBFX1JFTUlOREVSEAUSGwoXTk9USUZfVFlQRV9BTk5PVU5DRU1FTlQQBhIVChFOT1RJRl9UWVBFX1NZU1RFTRAHMqEDChNOb3RpZmljYXRpb25TZXJ2aWNlEn0KEFNlbmROb3RpZmljYXRpb24SMy5zZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MS5TZW5kTm90aWZpY2F0aW9uQ29tbWFuZBo0LnNlc3Npb25qZXUubm90aWZpY2F0aW9uLnYxLlNlbmROb3RpZmljYXRpb25SZXNwb25zZRKKAQoVR2V0Tm90aWZpY2F0aW9uU3RhdHVzEjYuc2Vzc2lvbmpldS5ub3RpZmljYXRpb24udjEuR2V0Tm90aWZpY2F0aW9uU3RhdHVzUXVlcnkaOS5zZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MS5HZXROb3RpZmljYXRpb25TdGF0dXNSZXNwb25zZRJ+ChFMaXN0Tm90aWZpY2F0aW9ucxIyLnNlc3Npb25qZXUubm90aWZpY2F0aW9uLnYxLkxpc3ROb3RpZmljYXRpb25zUXVlcnkaNS5zZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MS5MaXN0Tm90aWZpY2F0aW9uc1Jlc3BvbnNlYgZwcm90bzM", [file_common_v1_shared]);
+  fileDesc("CiJub3RpZmljYXRpb24vdjEvbm90aWZpY2F0aW9uLnByb3RvEhpzZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MSLFAgoXU2VuZE5vdGlmaWNhdGlvbkNvbW1hbmQSOwoOY29ycmVsYXRpb25faWQYASABKAsyIy5zZXNzaW9uamV1LmNvbW1vbi52MS5Db3JyZWxhdGlvbklkEjEKCXBsYXllcl9pZBgCIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEjMKBHR5cGUYAyABKA4yJS5zZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MS5Ob3RpZlR5cGUSOQoHY2hhbm5lbBgEIAEoDjIoLnNlc3Npb25qZXUubm90aWZpY2F0aW9uLnYxLk5vdGlmQ2hhbm5lbBINCgV0aXRsZRgFIAEoCRIMCgRib2R5GAYgASgJEhQKDHRlbXBsYXRlX2tleRgHIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYCCABKAkidAoYU2VuZE5vdGlmaWNhdGlvblJlc3BvbnNlEhcKD25vdGlmaWNhdGlvbl9pZBgBIAEoCRI/CgZzdGF0dXMYAiABKA4yLy5zZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MS5Ob3RpZkRlbGl2ZXJ5U3RhdHVzIsoCChxDcmVhdGVOb3RpZmljYXRpb25Kb2JDb21tYW5kEjsKDmNvcnJlbGF0aW9uX2lkGAEgASgLMiMuc2Vzc2lvbmpldS5jb21tb24udjEuQ29ycmVsYXRpb25JZBIxCglwbGF5ZXJfaWQYAiABKAsyHi5zZXNzaW9uamV1LmNvbW1vbi52MS5QbGF5ZXJJZBIzCgR0eXBlGAMgASgOMiUuc2Vzc2lvbmpldS5ub3RpZmljYXRpb24udjEuTm90aWZUeXBlEjkKB2NoYW5uZWwYBCABKA4yKC5zZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MS5Ob3RpZkNoYW5uZWwSDQoFdGl0bGUYBSABKAkSDAoEYm9keRgGIAEoCRIUCgx0ZW1wbGF0ZV9rZXkYByABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAggASgJIoUCChVOb3RpZmljYXRpb25TZW50RXZlbnQSFwoPbm90aWZpY2F0aW9uX2lkGAEgASgJEjEKCXBsYXllcl9pZBgCIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEjMKBHR5cGUYAyABKA4yJS5zZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MS5Ob3RpZlR5cGUSOQoHY2hhbm5lbBgEIAEoDjIoLnNlc3Npb25qZXUubm90aWZpY2F0aW9uLnYxLk5vdGlmQ2hhbm5lbBIwCgdzZW50X2F0GAUgASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wIq0BChpOb3RpZmljYXRpb25EZWxpdmVyZWRFdmVudBIXCg9ub3RpZmljYXRpb25faWQYASABKAkSPwoGc3RhdHVzGAIgASgOMi8uc2Vzc2lvbmpldS5ub3RpZmljYXRpb24udjEuTm90aWZEZWxpdmVyeVN0YXR1cxI1CgxkZWxpdmVyZWRfYXQYAyABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXAi0AEKIE5vdGlmaWNhdGlvbkRlbGl2ZXJ5VXBkYXRlZEV2ZW50EhcKD25vdGlmaWNhdGlvbl9pZBgBIAEoCRI/CgZzdGF0dXMYAiABKA4yLy5zZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MS5Ob3RpZkRlbGl2ZXJ5U3RhdHVzEh0KFWZhaWx1cmVfcmVhc29uX3B1YmxpYxgDIAEoCRIzCgp1cGRhdGVkX2F0GAQgASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wIjUKGkdldE5vdGlmaWNhdGlvblN0YXR1c1F1ZXJ5EhcKD25vdGlmaWNhdGlvbl9pZBgBIAEoCSL+AQodR2V0Tm90aWZpY2F0aW9uU3RhdHVzUmVzcG9uc2USMwoEdHlwZRgBIAEoDjIlLnNlc3Npb25qZXUubm90aWZpY2F0aW9uLnYxLk5vdGlmVHlwZRI/CgZzdGF0dXMYAiABKA4yLy5zZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MS5Ob3RpZkRlbGl2ZXJ5U3RhdHVzEjAKB3NlbnRfYXQYAyABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXASNQoMZGVsaXZlcmVkX2F0GAQgASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wInIKFkxpc3ROb3RpZmljYXRpb25zUXVlcnkSMQoJcGxheWVyX2lkGAEgASgLMh4uc2Vzc2lvbmpldS5jb21tb24udjEuUGxheWVySWQSEQoJcGFnZV9zaXplGAIgASgFEhIKCnBhZ2VfdG9rZW4YAyABKAkiiQIKE05vdGlmaWNhdGlvblN1bW1hcnkSFwoPbm90aWZpY2F0aW9uX2lkGAEgASgJEjMKBHR5cGUYAiABKA4yJS5zZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MS5Ob3RpZlR5cGUSDQoFdGl0bGUYAyABKAkSDAoEYm9keRgEIAEoCRI/CgZzdGF0dXMYBSABKA4yLy5zZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MS5Ob3RpZkRlbGl2ZXJ5U3RhdHVzEjAKB3NlbnRfYXQYBiABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXASFAoMYWNrbm93bGVkZ2VkGAcgASgIInwKGUxpc3ROb3RpZmljYXRpb25zUmVzcG9uc2USRgoNbm90aWZpY2F0aW9ucxgBIAMoCzIvLnNlc3Npb25qZXUubm90aWZpY2F0aW9uLnYxLk5vdGlmaWNhdGlvblN1bW1hcnkSFwoPbmV4dF9wYWdlX3Rva2VuGAIgASgJIqkBCh5BY2tub3dsZWRnZU5vdGlmaWNhdGlvbkNvbW1hbmQSOwoOY29ycmVsYXRpb25faWQYASABKAsyIy5zZXNzaW9uamV1LmNvbW1vbi52MS5Db3JyZWxhdGlvbklkEhcKD25vdGlmaWNhdGlvbl9pZBgCIAEoCRIxCglwbGF5ZXJfaWQYAyABKAsyHi5zZXNzaW9uamV1LmNvbW1vbi52MS5QbGF5ZXJJZCJQCh9BY2tub3dsZWRnZU5vdGlmaWNhdGlvblJlc3BvbnNlEhcKD25vdGlmaWNhdGlvbl9pZBgBIAEoCRIUCgxhY2tub3dsZWRnZWQYAiABKAgqYwoMTm90aWZDaGFubmVsEh0KGU5PVElGX0NIQU5ORUxfVU5TUEVDSUZJRUQQABIYChROT1RJRl9DSEFOTkVMX0lOX0FQUBABEhoKFk5PVElGX0NIQU5ORUxfV0hBVFNBUFAQAiqIAgoTTm90aWZEZWxpdmVyeVN0YXR1cxIlCiFOT1RJRl9ERUxJVkVSWV9TVEFUVVNfVU5TUEVDSUZJRUQQABIgChxOT1RJRl9ERUxJVkVSWV9TVEFUVVNfUVVFVUVEEAESHgoaTk9USUZfREVMSVZFUllfU1RBVFVTX1NFTlQQAhIjCh9OT1RJRl9ERUxJVkVSWV9TVEFUVVNfREVMSVZFUkVEEAMSHgoaTk9USUZfREVMSVZFUllfU1RBVFVTX1JFQUQQBBIgChxOT1RJRl9ERUxJVkVSWV9TVEFUVVNfRkFJTEVEEAUSIQodTk9USUZfREVMSVZFUllfU1RBVFVTX1NLSVBQRUQQBirZAQoJTm90aWZUeXBlEhoKFk5PVElGX1RZUEVfVU5TUEVDSUZJRUQQABIbChdOT1RJRl9UWVBFX1JFR0lTVFJBVElPThABEhYKEk5PVElGX1RZUEVfUEFZTUVOVBACEhcKE05PVElGX1RZUEVfQ0hFQ0tfSU4QAxIVChFOT1RJRl9UWVBFX1JFU1VMVBAEEhcKE05PVElGX1RZUEVfUkVNSU5ERVIQBRIbChdOT1RJRl9UWVBFX0FOTk9VTkNFTUVOVBAGEhUKEU5PVElGX1RZUEVfU1lTVEVNEAcytgQKE05vdGlmaWNhdGlvblNlcnZpY2USfQoQU2VuZE5vdGlmaWNhdGlvbhIzLnNlc3Npb25qZXUubm90aWZpY2F0aW9uLnYxLlNlbmROb3RpZmljYXRpb25Db21tYW5kGjQuc2Vzc2lvbmpldS5ub3RpZmljYXRpb24udjEuU2VuZE5vdGlmaWNhdGlvblJlc3BvbnNlEooBChVHZXROb3RpZmljYXRpb25TdGF0dXMSNi5zZXNzaW9uamV1Lm5vdGlmaWNhdGlvbi52MS5HZXROb3RpZmljYXRpb25TdGF0dXNRdWVyeRo5LnNlc3Npb25qZXUubm90aWZpY2F0aW9uLnYxLkdldE5vdGlmaWNhdGlvblN0YXR1c1Jlc3BvbnNlEn4KEUxpc3ROb3RpZmljYXRpb25zEjIuc2Vzc2lvbmpldS5ub3RpZmljYXRpb24udjEuTGlzdE5vdGlmaWNhdGlvbnNRdWVyeRo1LnNlc3Npb25qZXUubm90aWZpY2F0aW9uLnYxLkxpc3ROb3RpZmljYXRpb25zUmVzcG9uc2USkgEKF0Fja25vd2xlZGdlTm90aWZpY2F0aW9uEjouc2Vzc2lvbmpldS5ub3RpZmljYXRpb24udjEuQWNrbm93bGVkZ2VOb3RpZmljYXRpb25Db21tYW5kGjsuc2Vzc2lvbmpldS5ub3RpZmljYXRpb24udjEuQWNrbm93bGVkZ2VOb3RpZmljYXRpb25SZXNwb25zZWIGcHJvdG8z", [file_common_v1_shared]);
 
 /**
+ * Sprint 17 CreateNotificationJob maps to SendNotification (HTTP Connect).
+ * Does not start a party and does not publish scores.
+ *
  * @generated from message sessionjeu.notification.v1.SendNotificationCommand
  */
 export type SendNotificationCommand = Message<"sessionjeu.notification.v1.SendNotificationCommand"> & {
@@ -47,6 +50,16 @@ export type SendNotificationCommand = Message<"sessionjeu.notification.v1.SendNo
    * @generated from field: string body = 6;
    */
   body: string;
+
+  /**
+   * @generated from field: string template_key = 7;
+   */
+  templateKey: string;
+
+  /**
+   * @generated from field: string idempotency_key = 8;
+   */
+  idempotencyKey: string;
 };
 
 /**
@@ -64,6 +77,11 @@ export type SendNotificationResponse = Message<"sessionjeu.notification.v1.SendN
    * @generated from field: string notification_id = 1;
    */
   notificationId: string;
+
+  /**
+   * @generated from field: sessionjeu.notification.v1.NotifDeliveryStatus status = 2;
+   */
+  status: NotifDeliveryStatus;
 };
 
 /**
@@ -72,6 +90,60 @@ export type SendNotificationResponse = Message<"sessionjeu.notification.v1.SendN
  */
 export const SendNotificationResponseSchema: GenMessage<SendNotificationResponse> = /*@__PURE__*/
   messageDesc(file_notification_v1_notification, 1);
+
+/**
+ * Alias shape for worker job creation (same fields as SendNotificationCommand).
+ *
+ * @generated from message sessionjeu.notification.v1.CreateNotificationJobCommand
+ */
+export type CreateNotificationJobCommand = Message<"sessionjeu.notification.v1.CreateNotificationJobCommand"> & {
+  /**
+   * @generated from field: sessionjeu.common.v1.CorrelationId correlation_id = 1;
+   */
+  correlationId?: CorrelationId | undefined;
+
+  /**
+   * @generated from field: sessionjeu.common.v1.PlayerId player_id = 2;
+   */
+  playerId?: PlayerId | undefined;
+
+  /**
+   * @generated from field: sessionjeu.notification.v1.NotifType type = 3;
+   */
+  type: NotifType;
+
+  /**
+   * @generated from field: sessionjeu.notification.v1.NotifChannel channel = 4;
+   */
+  channel: NotifChannel;
+
+  /**
+   * @generated from field: string title = 5;
+   */
+  title: string;
+
+  /**
+   * @generated from field: string body = 6;
+   */
+  body: string;
+
+  /**
+   * @generated from field: string template_key = 7;
+   */
+  templateKey: string;
+
+  /**
+   * @generated from field: string idempotency_key = 8;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message sessionjeu.notification.v1.CreateNotificationJobCommand.
+ * Use `create(CreateNotificationJobCommandSchema)` to create a new message.
+ */
+export const CreateNotificationJobCommandSchema: GenMessage<CreateNotificationJobCommand> = /*@__PURE__*/
+  messageDesc(file_notification_v1_notification, 2);
 
 /**
  * @generated from message sessionjeu.notification.v1.NotificationSentEvent
@@ -108,7 +180,7 @@ export type NotificationSentEvent = Message<"sessionjeu.notification.v1.Notifica
  * Use `create(NotificationSentEventSchema)` to create a new message.
  */
 export const NotificationSentEventSchema: GenMessage<NotificationSentEvent> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 2);
+  messageDesc(file_notification_v1_notification, 3);
 
 /**
  * @generated from message sessionjeu.notification.v1.NotificationDeliveredEvent
@@ -135,7 +207,43 @@ export type NotificationDeliveredEvent = Message<"sessionjeu.notification.v1.Not
  * Use `create(NotificationDeliveredEventSchema)` to create a new message.
  */
 export const NotificationDeliveredEventSchema: GenMessage<NotificationDeliveredEvent> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 3);
+  messageDesc(file_notification_v1_notification, 4);
+
+/**
+ * Sprint 17 NotificationDeliveryUpdated
+ *
+ * @generated from message sessionjeu.notification.v1.NotificationDeliveryUpdatedEvent
+ */
+export type NotificationDeliveryUpdatedEvent = Message<"sessionjeu.notification.v1.NotificationDeliveryUpdatedEvent"> & {
+  /**
+   * @generated from field: string notification_id = 1;
+   */
+  notificationId: string;
+
+  /**
+   * @generated from field: sessionjeu.notification.v1.NotifDeliveryStatus status = 2;
+   */
+  status: NotifDeliveryStatus;
+
+  /**
+   * @generated from field: string failure_reason_public = 3;
+   */
+  failureReasonPublic: string;
+
+  /**
+   * No provider credentials or raw payloads.
+   *
+   * @generated from field: sessionjeu.common.v1.Timestamp updated_at = 4;
+   */
+  updatedAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message sessionjeu.notification.v1.NotificationDeliveryUpdatedEvent.
+ * Use `create(NotificationDeliveryUpdatedEventSchema)` to create a new message.
+ */
+export const NotificationDeliveryUpdatedEventSchema: GenMessage<NotificationDeliveryUpdatedEvent> = /*@__PURE__*/
+  messageDesc(file_notification_v1_notification, 5);
 
 /**
  * @generated from message sessionjeu.notification.v1.GetNotificationStatusQuery
@@ -152,7 +260,7 @@ export type GetNotificationStatusQuery = Message<"sessionjeu.notification.v1.Get
  * Use `create(GetNotificationStatusQuerySchema)` to create a new message.
  */
 export const GetNotificationStatusQuerySchema: GenMessage<GetNotificationStatusQuery> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 4);
+  messageDesc(file_notification_v1_notification, 6);
 
 /**
  * @generated from message sessionjeu.notification.v1.GetNotificationStatusResponse
@@ -184,9 +292,11 @@ export type GetNotificationStatusResponse = Message<"sessionjeu.notification.v1.
  * Use `create(GetNotificationStatusResponseSchema)` to create a new message.
  */
 export const GetNotificationStatusResponseSchema: GenMessage<GetNotificationStatusResponse> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 5);
+  messageDesc(file_notification_v1_notification, 7);
 
 /**
+ * Sprint 17 ListMyNotifications — player reads own notifications only.
+ *
  * @generated from message sessionjeu.notification.v1.ListNotificationsQuery
  */
 export type ListNotificationsQuery = Message<"sessionjeu.notification.v1.ListNotificationsQuery"> & {
@@ -211,7 +321,7 @@ export type ListNotificationsQuery = Message<"sessionjeu.notification.v1.ListNot
  * Use `create(ListNotificationsQuerySchema)` to create a new message.
  */
 export const ListNotificationsQuerySchema: GenMessage<ListNotificationsQuery> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 6);
+  messageDesc(file_notification_v1_notification, 8);
 
 /**
  * @generated from message sessionjeu.notification.v1.NotificationSummary
@@ -246,6 +356,11 @@ export type NotificationSummary = Message<"sessionjeu.notification.v1.Notificati
    * @generated from field: sessionjeu.common.v1.Timestamp sent_at = 6;
    */
   sentAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: bool acknowledged = 7;
+   */
+  acknowledged: boolean;
 };
 
 /**
@@ -253,7 +368,7 @@ export type NotificationSummary = Message<"sessionjeu.notification.v1.Notificati
  * Use `create(NotificationSummarySchema)` to create a new message.
  */
 export const NotificationSummarySchema: GenMessage<NotificationSummary> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 7);
+  messageDesc(file_notification_v1_notification, 9);
 
 /**
  * @generated from message sessionjeu.notification.v1.ListNotificationsResponse
@@ -275,7 +390,58 @@ export type ListNotificationsResponse = Message<"sessionjeu.notification.v1.List
  * Use `create(ListNotificationsResponseSchema)` to create a new message.
  */
 export const ListNotificationsResponseSchema: GenMessage<ListNotificationsResponse> = /*@__PURE__*/
-  messageDesc(file_notification_v1_notification, 8);
+  messageDesc(file_notification_v1_notification, 10);
+
+/**
+ * Sprint 17 AcknowledgeNotification
+ *
+ * @generated from message sessionjeu.notification.v1.AcknowledgeNotificationCommand
+ */
+export type AcknowledgeNotificationCommand = Message<"sessionjeu.notification.v1.AcknowledgeNotificationCommand"> & {
+  /**
+   * @generated from field: sessionjeu.common.v1.CorrelationId correlation_id = 1;
+   */
+  correlationId?: CorrelationId | undefined;
+
+  /**
+   * @generated from field: string notification_id = 2;
+   */
+  notificationId: string;
+
+  /**
+   * @generated from field: sessionjeu.common.v1.PlayerId player_id = 3;
+   */
+  playerId?: PlayerId | undefined;
+};
+
+/**
+ * Describes the message sessionjeu.notification.v1.AcknowledgeNotificationCommand.
+ * Use `create(AcknowledgeNotificationCommandSchema)` to create a new message.
+ */
+export const AcknowledgeNotificationCommandSchema: GenMessage<AcknowledgeNotificationCommand> = /*@__PURE__*/
+  messageDesc(file_notification_v1_notification, 11);
+
+/**
+ * @generated from message sessionjeu.notification.v1.AcknowledgeNotificationResponse
+ */
+export type AcknowledgeNotificationResponse = Message<"sessionjeu.notification.v1.AcknowledgeNotificationResponse"> & {
+  /**
+   * @generated from field: string notification_id = 1;
+   */
+  notificationId: string;
+
+  /**
+   * @generated from field: bool acknowledged = 2;
+   */
+  acknowledged: boolean;
+};
+
+/**
+ * Describes the message sessionjeu.notification.v1.AcknowledgeNotificationResponse.
+ * Use `create(AcknowledgeNotificationResponseSchema)` to create a new message.
+ */
+export const AcknowledgeNotificationResponseSchema: GenMessage<AcknowledgeNotificationResponse> = /*@__PURE__*/
+  messageDesc(file_notification_v1_notification, 12);
 
 /**
  * @generated from enum sessionjeu.notification.v1.NotifChannel
@@ -427,6 +593,14 @@ export const NotificationService: GenService<{
     methodKind: "unary";
     input: typeof ListNotificationsQuerySchema;
     output: typeof ListNotificationsResponseSchema;
+  },
+  /**
+   * @generated from rpc sessionjeu.notification.v1.NotificationService.AcknowledgeNotification
+   */
+  acknowledgeNotification: {
+    methodKind: "unary";
+    input: typeof AcknowledgeNotificationCommandSchema;
+    output: typeof AcknowledgeNotificationResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_notification_v1_notification, 0);

@@ -3,7 +3,6 @@ syntax = "proto3";
 package sessionjeu.identity.v1;
 
 import "common/v1/shared.proto";
-import "common/v1/errors.proto";
 
 enum UserRole {
   USER_ROLE_UNSPECIFIED = 0;

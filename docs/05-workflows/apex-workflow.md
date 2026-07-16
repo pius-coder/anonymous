@@ -27,13 +27,23 @@ le pipeline produit; il l'execute dans l'ordre.
 7. Tests-first gate:
    - lister les tests par scenario d'acceptation;
    - verifier les refus, no-leak, RBAC, idempotence, erreurs et regressions.
-8. Implementation gate:
+8. Worktree gate:
+   - pour une execution parallele, lire `apex-parallel-worktrees.md`;
+   - declarer commit de base, branche, ownership, chemins interdits, ports et ressources isolees;
+   - ne jamais partager une branche, une DB de test ou un port entre deux taches.
+9. Implementation gate:
    - coder par couche en respectant les dependances autorisees;
    - ne pas ecraser les changements utilisateur.
-9. Validation gate:
-   - executer les commandes adaptees: `pnpm docs:check`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`;
+10. Integration gate:
+   - executer les niveaux L0 a L6 applicables de `test-strategy.md`;
+   - utiliser PostgreSQL reel, un transport reel, un serveur/client Colyseus et Playwright multi-service
+     lorsque ces frontieres sont dans le scope;
+   - un mock de persistence ou un apercu local ne satisfait jamais ce gate.
+11. Validation gate:
+   - executer les commandes disponibles: `pnpm docs:check`, `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build`;
+   - apres SEQ-00, executer aussi `pnpm test:integration`, `pnpm test:e2e` et la migration d'une DB vide;
    - documenter tout echec.
-10. Adversarial review gate:
+12. Adversarial review gate:
    - relire comme reviewer hostile: fuite de state, autorisation client, transition interdite, test faux positif,
      contrat trop large, endpoint sans proto.
 
@@ -44,3 +54,5 @@ le pipeline produit; il l'execute dans l'ordre.
 - Utiliser `Agent`, `API`, `DB` ou `Game-server` comme role de user story.
 - Ajouter une route publique sans contrat `.proto` ou exception documentee.
 - Declarer termine si la Definition of Done de la fiche sprint n'est pas satisfaite.
+- Lancer deux taches qui possedent le meme fichier partage, schema, migration ou code genere.
+- Appeler integration un test qui remplace la frontiere testee par un mock.

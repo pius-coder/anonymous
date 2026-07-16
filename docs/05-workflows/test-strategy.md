@@ -29,6 +29,35 @@ est appelee, qu'un composant rend du texte decoratif ou qu'un repository retourn
 | Worker | claim concurrent, retry, idempotence, redaction logs |
 | Observabilite | audit actor/entity/reason/correlationId, logs sans secrets |
 
+## Niveaux de validation L0 a L6
+
+| Niveau | Portee | Frontieres reelles exigees |
+|---|---|---|
+| L0 | Docs, contrats statiques, generation | liens, lint proto, golden, diff genere |
+| L1 | Unit | fonction/module isole; mocks autorises hors sujet teste |
+| L2 | Composant/service | use-case + domaine ou handler direct; nommer explicitement les frontieres mockees |
+| L3 | Integration persistence | PostgreSQL/Redis reels et jetables; migrations, contraintes, transactions, concurrence |
+| L4 | Integration transport | requete Connect/Hono reelle ou serveur/client Colyseus; auth, mapping erreurs, reconnexion |
+| L5 | E2E systeme | navigateur + services reels + seed; aucun fallback local sur le parcours prouve |
+| L6 | Recette monorepo | docs, generation, migration DB vide, unit, integration, E2E, typecheck, lint, build |
+
+Un lot doit atteindre le plus haut niveau correspondant a ses AC. Par exemple, une correction de
+repository exige L3; une reconnexion live exige L4; inscription -> room -> publication exige L5.
+
+## Harness d'integration attendu
+
+- une base ou un schema PostgreSQL unique par worktree;
+- migrations appliquees depuis une DB vide avant les suites L3-L5;
+- Redis namespace par worktree et nettoyage garanti;
+- serveur Connect/Hono demarre sur un port isole;
+- game-server demarre et client simule connecte pour les preuves realtime;
+- Playwright configure avec tous les `webServer` requis et un seed deterministe;
+- logs et artefacts conserves en cas d'echec, sans secrets.
+
+Les scripts racine `test:unit`, `test:integration`, `test:e2e` et `test:all` sont fournis par SEQ-00.
+Voir `docs/05-workflows/test-commands.md` pour commandes, timeouts, artefacts, isolation `WORKTREE_ID`
+et diagnostic. Ne pas presenter une commande manuelle hors de ces scripts comme preuve d'integration.
+
 ## Definition de preuve
 
 Pour chaque scenario:
@@ -38,3 +67,4 @@ Pour chaque scenario:
 3. Verifier au moins un resultat observable.
 4. Verifier au moins un cas de refus si l'action est sensible.
 5. Documenter tout risque non couvert.
+6. Indiquer le niveau L0-L6 atteint et les frontieres volontairement mockees.

@@ -4,7 +4,6 @@ package sessionjeu.admin.v1;
 
 import "common/v1/shared.proto";
 import "session/v1/session.proto";
-import "participation/v1/participation.proto";
 
 message GetAdminGameStateQuery {
   sessionjeu.common.v1.PartyId party_id = 1;

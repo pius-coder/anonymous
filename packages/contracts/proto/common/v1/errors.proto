@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package sessionjeu.common.v1;
 
+// Public stable error codes. Additive only; never renumber.
+// Sprint-validated domain codes continue from 20.
 enum ErrorCode {
   ERROR_CODE_UNSPECIFIED = 0;
   ERROR_CODE_INTERNAL = 1;
@@ -23,6 +25,21 @@ enum ErrorCode {
   ERROR_CODE_WEAK_PASSWORD = 17;
   ERROR_CODE_INVALID_CREDENTIALS = 18;
   ERROR_CODE_INVALID_RESET_TOKEN = 19;
+  // Realtime (sprint 02/09 AC-02-01, AC-09-04)
+  ERROR_CODE_RECONNECT_EXPIRED = 20;
+  // Scoring (sprint 13)
+  ERROR_CODE_SCORE_NOT_VERIFIED = 21;
+  ERROR_CODE_PUBLICATION_FORBIDDEN = 22;
+  // Compliance / audit (sprint 13/18)
+  ERROR_CODE_AUDIT_REASON_REQUIRED = 23;
+  ERROR_CODE_WAIVER_FORBIDDEN = 24;
+  // Notifications (sprint 17)
+  ERROR_CODE_DELIVERY_FAILED = 25;
+  ERROR_CODE_PROVIDER_UNAVAILABLE = 26;
+  // Minigame (sprint 14)
+  ERROR_CODE_INVALID_MINIGAME_COMMAND = 27;
+  ERROR_CODE_DUPLICATE_NONCE = 28;
+  ERROR_CODE_PRIVATE_STATE_FORBIDDEN = 29;
 }
 
 message ErrorDetail {

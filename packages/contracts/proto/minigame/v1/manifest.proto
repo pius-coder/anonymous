@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package sessionjeu.minigame.v1;
 
+import "common/v1/shared.proto";
+
 enum MiniGameFamily {
   MINI_GAME_FAMILY_UNSPECIFIED = 0;
   MINI_GAME_FAMILY_SOLO = 1;
@@ -36,6 +38,55 @@ message MiniGameConfig {
   MiniGameManifest manifest = 1;
   repeated string allowed_actions = 2;
   string anti_cheat_policy = 3;
+}
+
+// Player command envelope for live minigame input (WS/Colyseus or round submit).
+// Sprint 14: MiniGameCommand — never trust client score fields.
+message MiniGameCommand {
+  string correlation_id = 1;
+  string round_id = 2;
+  string player_id = 3;
+  string action = 4;
+  string nonce = 5;
+  int64 client_sequence = 6;
+  bytes payload = 7;
+  int64 client_timestamp_ms = 8;
+}
+
+// Public state safe for player, observer, and admin projections.
+message MiniGamePublicState {
+  string round_id = 1;
+  string minigame_id = 2;
+  string phase = 3;
+  int32 remaining_seconds = 4;
+  int32 participant_count = 5;
+  string version = 6;
+}
+
+// Private state for the acting player only — never fan-out to observers.
+message MiniGamePrivateState {
+  string round_id = 1;
+  string player_id = 2;
+  bytes private_payload = 3;
+  string version = 4;
+}
+
+message MiniGameServerEvent {
+  string round_id = 1;
+  string event_type = 2;
+  sessionjeu.common.v1.Audience audience = 3;
+  bytes payload = 4;
+  int64 server_timestamp_ms = 5;
+}
+
+// Evidence for provisional scoring — admin/system; not published as official rank.
+message MiniGameScoreEvidence {
+  string round_id = 1;
+  string player_id = 2;
+  double raw_score = 3;
+  string evidence_hash = 4;
+  int64 computed_at_ms = 5;
+  string minigame_version = 6;
 }
 
 message ListMiniGamesQuery {}

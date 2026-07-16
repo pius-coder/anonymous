@@ -1,0 +1,50 @@
+{
+  "list_compliance_gates": {
+    "party_id": { "value": "party-001" },
+    "status_filter": "COMPLIANCE_GATE_STATUS_BLOCKED",
+    "page_size": 20,
+    "page_token": ""
+  },
+  "decide_compliance_gate": {
+    "correlation_id": { "value": "corr-cmp-001" },
+    "gate_id": "gate-001",
+    "decision": "COMPLIANCE_DECISION_APPROVE",
+    "reason": "Evidence complete after KYC review",
+    "decided_by": "admin-001"
+  },
+  "open_incident": {
+    "correlation_id": { "value": "corr-cmp-002" },
+    "party_id": { "value": "party-001" },
+    "subject": "Player disconnect spike",
+    "description": "Multiple reconnects during round 2",
+    "opened_by": "support-001"
+  },
+  "list_audit_events": {
+    "entity_type": "Party",
+    "entity_id": "party-001",
+    "party_id": { "value": "party-001" },
+    "page_size": 50,
+    "page_token": ""
+  },
+  "record_anti_cheat_event": {
+    "correlation_id": { "value": "corr-cmp-003" },
+    "party_id": { "value": "party-001" },
+    "player_id": { "value": "player-001" },
+    "signal_type": "DUPLICATE_NONCE",
+    "summary": "Duplicate action nonce rejected",
+    "redacted_detail": "nonce=*** rate=2"
+  },
+  "list_risk_signals": {
+    "party_id": { "value": "party-001" },
+    "page_size": 20,
+    "page_token": ""
+  },
+  "errors": {
+    "audit_reason_required": "ERROR_CODE_AUDIT_REASON_REQUIRED",
+    "waiver_forbidden": "ERROR_CODE_WAIVER_FORBIDDEN"
+  },
+  "no_leak": {
+    "no_cached_answers": true,
+    "no_secrets_in_signals": true
+  }
+}

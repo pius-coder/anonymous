@@ -39,10 +39,23 @@ de l'etape suivante. Si une sortie manque, l'agent s'arrete et clarifie.
    - unit domaine, contracts/golden, integration API/DB, realtime, UI states, RBAC, no-leak.
 11. Implementation Apex:
    - executer `apex-workflow.md`;
-   - garder les changements scopes a la fiche sprint.
-12. Validation et documentation:
+   - garder les changements scopes a la fiche sprint;
+   - si plusieurs taches sont lancees, appliquer `apex-parallel-worktrees.md` et declarer ownership,
+     chemins interdits, commit de base et ressources isolees.
+12. Integration:
+   - ne pas confondre test unitaire mocke, test de composant, test d'integration et E2E;
+   - prouver PostgreSQL, transport Connect/Hono, Colyseus, Redis/worker et navigateur quand ces couches
+     appartiennent au scenario;
+   - merger les worktrees un par un puis relancer les gates affectes.
+13. Validation et documentation:
    - lancer validations;
-   - mettre a jour decisions, UML, traceability et risques.
+   - mettre a jour decisions, UML, traceability, matrice AC -> test et risques.
+
+## Execution parallele
+
+Le pipeline produit reste sequentiel a l'interieur d'une feature. Seules des features dont les contrats,
+donnees, fichiers partages et dependances sont deja figes peuvent etre executees en parallele. Le plan
+de reference v0.1 est `docs/06-roadmap/apex-parallel-execution-plan.md`.
 
 ## Interdiction principale
 

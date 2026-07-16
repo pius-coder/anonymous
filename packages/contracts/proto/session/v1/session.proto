@@ -3,7 +3,6 @@ syntax = "proto3";
 package sessionjeu.session.v1;
 
 import "common/v1/shared.proto";
-import "minigame/v1/manifest.proto";
 
 enum PartyVisibility {
   PARTY_VISIBILITY_UNSPECIFIED = 0;

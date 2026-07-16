@@ -4,13 +4,15 @@
 
 import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Audience } from "../../common/v1/shared_pb.js";
+import { file_common_v1_shared } from "../../common/v1/shared_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file minigame/v1/manifest.proto.
  */
 export const file_minigame_v1_manifest: GenFile = /*@__PURE__*/
-  fileDesc("ChptaW5pZ2FtZS92MS9tYW5pZmVzdC5wcm90bxIWc2Vzc2lvbmpldS5taW5pZ2FtZS52MSL2AQoQTWluaUdhbWVNYW5pZmVzdBIKCgJpZBgBIAEoCRILCgNrZXkYAiABKAkSDAoEbmFtZRgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRI2CgZmYW1pbHkYBSABKA4yJi5zZXNzaW9uamV1Lm1pbmlnYW1lLnYxLk1pbmlHYW1lRmFtaWx5EjcKC3BsYXllcl9tb2RlGAYgASgOMiIuc2Vzc2lvbmpldS5taW5pZ2FtZS52MS5QbGF5ZXJNb2RlEhMKC3Jlc29sdmVyX2lkGAcgASgJEg8KB2VuYWJsZWQYCCABKAgSDwoHdmVyc2lvbhgJIAEoCSKAAQoOTWluaUdhbWVDb25maWcSOgoIbWFuaWZlc3QYASABKAsyKC5zZXNzaW9uamV1Lm1pbmlnYW1lLnYxLk1pbmlHYW1lTWFuaWZlc3QSFwoPYWxsb3dlZF9hY3Rpb25zGAIgAygJEhkKEWFudGlfY2hlYXRfcG9saWN5GAMgASgJIhQKEkxpc3RNaW5pR2FtZXNRdWVyeSJUChVMaXN0TWluaUdhbWVzUmVzcG9uc2USOwoJbWFuaWZlc3RzGAEgAygLMiguc2Vzc2lvbmpldS5taW5pZ2FtZS52MS5NaW5pR2FtZU1hbmlmZXN0IicKEEdldE1pbmlHYW1lUXVlcnkSEwoLbWluaWdhbWVfaWQYASABKAkiTQoTR2V0TWluaUdhbWVSZXNwb25zZRI2CgZjb25maWcYASABKAsyJi5zZXNzaW9uamV1Lm1pbmlnYW1lLnYxLk1pbmlHYW1lQ29uZmlnKuMBCg5NaW5pR2FtZUZhbWlseRIgChxNSU5JX0dBTUVfRkFNSUxZX1VOU1BFQ0lGSUVEEAASGQoVTUlOSV9HQU1FX0ZBTUlMWV9TT0xPEAESGQoVTUlOSV9HQU1FX0ZBTUlMWV9EVUVMEAISHQoZTUlOSV9HQU1FX0ZBTUlMWV9BTExJQU5DRRADEhkKFU1JTklfR0FNRV9GQU1JTFlfVEVBTRAEEh0KGU1JTklfR0FNRV9GQU1JTFlfU1VSVklWQUwQBRIgChxNSU5JX0dBTUVfRkFNSUxZX0hJRERFTl9ST0xFEAYqggEKClBsYXllck1vZGUSGwoXUExBWUVSX01PREVfVU5TUEVDSUZJRUQQABIUChBQTEFZRVJfTU9ERV9TT0xPEAESFAoQUExBWUVSX01PREVfRFVFTBACEhUKEVBMQVlFUl9NT0RFX0dST1VQEAMSFAoQUExBWUVSX01PREVfVEVBTRAEMuMBCg9NaW5pR2FtZVNlcnZpY2USagoNTGlzdE1pbmlHYW1lcxIqLnNlc3Npb25qZXUubWluaWdhbWUudjEuTGlzdE1pbmlHYW1lc1F1ZXJ5Gi0uc2Vzc2lvbmpldS5taW5pZ2FtZS52MS5MaXN0TWluaUdhbWVzUmVzcG9uc2USZAoLR2V0TWluaUdhbWUSKC5zZXNzaW9uamV1Lm1pbmlnYW1lLnYxLkdldE1pbmlHYW1lUXVlcnkaKy5zZXNzaW9uamV1Lm1pbmlnYW1lLnYxLkdldE1pbmlHYW1lUmVzcG9uc2ViBnByb3RvMw");
+  fileDesc("ChptaW5pZ2FtZS92MS9tYW5pZmVzdC5wcm90bxIWc2Vzc2lvbmpldS5taW5pZ2FtZS52MSL2AQoQTWluaUdhbWVNYW5pZmVzdBIKCgJpZBgBIAEoCRILCgNrZXkYAiABKAkSDAoEbmFtZRgDIAEoCRITCgtkZXNjcmlwdGlvbhgEIAEoCRI2CgZmYW1pbHkYBSABKA4yJi5zZXNzaW9uamV1Lm1pbmlnYW1lLnYxLk1pbmlHYW1lRmFtaWx5EjcKC3BsYXllcl9tb2RlGAYgASgOMiIuc2Vzc2lvbmpldS5taW5pZ2FtZS52MS5QbGF5ZXJNb2RlEhMKC3Jlc29sdmVyX2lkGAcgASgJEg8KB2VuYWJsZWQYCCABKAgSDwoHdmVyc2lvbhgJIAEoCSKAAQoOTWluaUdhbWVDb25maWcSOgoIbWFuaWZlc3QYASABKAsyKC5zZXNzaW9uamV1Lm1pbmlnYW1lLnYxLk1pbmlHYW1lTWFuaWZlc3QSFwoPYWxsb3dlZF9hY3Rpb25zGAIgAygJEhkKEWFudGlfY2hlYXRfcG9saWN5GAMgASgJIrQBCg9NaW5pR2FtZUNvbW1hbmQSFgoOY29ycmVsYXRpb25faWQYASABKAkSEAoIcm91bmRfaWQYAiABKAkSEQoJcGxheWVyX2lkGAMgASgJEg4KBmFjdGlvbhgEIAEoCRINCgVub25jZRgFIAEoCRIXCg9jbGllbnRfc2VxdWVuY2UYBiABKAMSDwoHcGF5bG9hZBgHIAEoDBIbChNjbGllbnRfdGltZXN0YW1wX21zGAggASgDIpIBChNNaW5pR2FtZVB1YmxpY1N0YXRlEhAKCHJvdW5kX2lkGAEgASgJEhMKC21pbmlnYW1lX2lkGAIgASgJEg0KBXBoYXNlGAMgASgJEhkKEXJlbWFpbmluZ19zZWNvbmRzGAQgASgFEhkKEXBhcnRpY2lwYW50X2NvdW50GAUgASgFEg8KB3ZlcnNpb24YBiABKAkiZQoUTWluaUdhbWVQcml2YXRlU3RhdGUSEAoIcm91bmRfaWQYASABKAkSEQoJcGxheWVyX2lkGAIgASgJEhcKD3ByaXZhdGVfcGF5bG9hZBgDIAEoDBIPCgd2ZXJzaW9uGAQgASgJIpsBChNNaW5pR2FtZVNlcnZlckV2ZW50EhAKCHJvdW5kX2lkGAEgASgJEhIKCmV2ZW50X3R5cGUYAiABKAkSMAoIYXVkaWVuY2UYAyABKA4yHi5zZXNzaW9uamV1LmNvbW1vbi52MS5BdWRpZW5jZRIPCgdwYXlsb2FkGAQgASgMEhsKE3NlcnZlcl90aW1lc3RhbXBfbXMYBSABKAMimAEKFU1pbmlHYW1lU2NvcmVFdmlkZW5jZRIQCghyb3VuZF9pZBgBIAEoCRIRCglwbGF5ZXJfaWQYAiABKAkSEQoJcmF3X3Njb3JlGAMgASgBEhUKDWV2aWRlbmNlX2hhc2gYBCABKAkSFgoOY29tcHV0ZWRfYXRfbXMYBSABKAMSGAoQbWluaWdhbWVfdmVyc2lvbhgGIAEoCSIUChJMaXN0TWluaUdhbWVzUXVlcnkiVAoVTGlzdE1pbmlHYW1lc1Jlc3BvbnNlEjsKCW1hbmlmZXN0cxgBIAMoCzIoLnNlc3Npb25qZXUubWluaWdhbWUudjEuTWluaUdhbWVNYW5pZmVzdCInChBHZXRNaW5pR2FtZVF1ZXJ5EhMKC21pbmlnYW1lX2lkGAEgASgJIk0KE0dldE1pbmlHYW1lUmVzcG9uc2USNgoGY29uZmlnGAEgASgLMiYuc2Vzc2lvbmpldS5taW5pZ2FtZS52MS5NaW5pR2FtZUNvbmZpZyrjAQoOTWluaUdhbWVGYW1pbHkSIAocTUlOSV9HQU1FX0ZBTUlMWV9VTlNQRUNJRklFRBAAEhkKFU1JTklfR0FNRV9GQU1JTFlfU09MTxABEhkKFU1JTklfR0FNRV9GQU1JTFlfRFVFTBACEh0KGU1JTklfR0FNRV9GQU1JTFlfQUxMSUFOQ0UQAxIZChVNSU5JX0dBTUVfRkFNSUxZX1RFQU0QBBIdChlNSU5JX0dBTUVfRkFNSUxZX1NVUlZJVkFMEAUSIAocTUlOSV9HQU1FX0ZBTUlMWV9ISURERU5fUk9MRRAGKoIBCgpQbGF5ZXJNb2RlEhsKF1BMQVlFUl9NT0RFX1VOU1BFQ0lGSUVEEAASFAoQUExBWUVSX01PREVfU09MTxABEhQKEFBMQVlFUl9NT0RFX0RVRUwQAhIVChFQTEFZRVJfTU9ERV9HUk9VUBADEhQKEFBMQVlFUl9NT0RFX1RFQU0QBDLjAQoPTWluaUdhbWVTZXJ2aWNlEmoKDUxpc3RNaW5pR2FtZXMSKi5zZXNzaW9uamV1Lm1pbmlnYW1lLnYxLkxpc3RNaW5pR2FtZXNRdWVyeRotLnNlc3Npb25qZXUubWluaWdhbWUudjEuTGlzdE1pbmlHYW1lc1Jlc3BvbnNlEmQKC0dldE1pbmlHYW1lEiguc2Vzc2lvbmpldS5taW5pZ2FtZS52MS5HZXRNaW5pR2FtZVF1ZXJ5Gisuc2Vzc2lvbmpldS5taW5pZ2FtZS52MS5HZXRNaW5pR2FtZVJlc3BvbnNlYgZwcm90bzM", [file_common_v1_shared]);
 
 /**
  * @generated from message sessionjeu.minigame.v1.MiniGameManifest
@@ -97,6 +99,220 @@ export const MiniGameConfigSchema: GenMessage<MiniGameConfig> = /*@__PURE__*/
   messageDesc(file_minigame_v1_manifest, 1);
 
 /**
+ * Player command envelope for live minigame input (WS/Colyseus or round submit).
+ * Sprint 14: MiniGameCommand — never trust client score fields.
+ *
+ * @generated from message sessionjeu.minigame.v1.MiniGameCommand
+ */
+export type MiniGameCommand = Message<"sessionjeu.minigame.v1.MiniGameCommand"> & {
+  /**
+   * @generated from field: string correlation_id = 1;
+   */
+  correlationId: string;
+
+  /**
+   * @generated from field: string round_id = 2;
+   */
+  roundId: string;
+
+  /**
+   * @generated from field: string player_id = 3;
+   */
+  playerId: string;
+
+  /**
+   * @generated from field: string action = 4;
+   */
+  action: string;
+
+  /**
+   * @generated from field: string nonce = 5;
+   */
+  nonce: string;
+
+  /**
+   * @generated from field: int64 client_sequence = 6;
+   */
+  clientSequence: bigint;
+
+  /**
+   * @generated from field: bytes payload = 7;
+   */
+  payload: Uint8Array;
+
+  /**
+   * @generated from field: int64 client_timestamp_ms = 8;
+   */
+  clientTimestampMs: bigint;
+};
+
+/**
+ * Describes the message sessionjeu.minigame.v1.MiniGameCommand.
+ * Use `create(MiniGameCommandSchema)` to create a new message.
+ */
+export const MiniGameCommandSchema: GenMessage<MiniGameCommand> = /*@__PURE__*/
+  messageDesc(file_minigame_v1_manifest, 2);
+
+/**
+ * Public state safe for player, observer, and admin projections.
+ *
+ * @generated from message sessionjeu.minigame.v1.MiniGamePublicState
+ */
+export type MiniGamePublicState = Message<"sessionjeu.minigame.v1.MiniGamePublicState"> & {
+  /**
+   * @generated from field: string round_id = 1;
+   */
+  roundId: string;
+
+  /**
+   * @generated from field: string minigame_id = 2;
+   */
+  minigameId: string;
+
+  /**
+   * @generated from field: string phase = 3;
+   */
+  phase: string;
+
+  /**
+   * @generated from field: int32 remaining_seconds = 4;
+   */
+  remainingSeconds: number;
+
+  /**
+   * @generated from field: int32 participant_count = 5;
+   */
+  participantCount: number;
+
+  /**
+   * @generated from field: string version = 6;
+   */
+  version: string;
+};
+
+/**
+ * Describes the message sessionjeu.minigame.v1.MiniGamePublicState.
+ * Use `create(MiniGamePublicStateSchema)` to create a new message.
+ */
+export const MiniGamePublicStateSchema: GenMessage<MiniGamePublicState> = /*@__PURE__*/
+  messageDesc(file_minigame_v1_manifest, 3);
+
+/**
+ * Private state for the acting player only — never fan-out to observers.
+ *
+ * @generated from message sessionjeu.minigame.v1.MiniGamePrivateState
+ */
+export type MiniGamePrivateState = Message<"sessionjeu.minigame.v1.MiniGamePrivateState"> & {
+  /**
+   * @generated from field: string round_id = 1;
+   */
+  roundId: string;
+
+  /**
+   * @generated from field: string player_id = 2;
+   */
+  playerId: string;
+
+  /**
+   * @generated from field: bytes private_payload = 3;
+   */
+  privatePayload: Uint8Array;
+
+  /**
+   * @generated from field: string version = 4;
+   */
+  version: string;
+};
+
+/**
+ * Describes the message sessionjeu.minigame.v1.MiniGamePrivateState.
+ * Use `create(MiniGamePrivateStateSchema)` to create a new message.
+ */
+export const MiniGamePrivateStateSchema: GenMessage<MiniGamePrivateState> = /*@__PURE__*/
+  messageDesc(file_minigame_v1_manifest, 4);
+
+/**
+ * @generated from message sessionjeu.minigame.v1.MiniGameServerEvent
+ */
+export type MiniGameServerEvent = Message<"sessionjeu.minigame.v1.MiniGameServerEvent"> & {
+  /**
+   * @generated from field: string round_id = 1;
+   */
+  roundId: string;
+
+  /**
+   * @generated from field: string event_type = 2;
+   */
+  eventType: string;
+
+  /**
+   * @generated from field: sessionjeu.common.v1.Audience audience = 3;
+   */
+  audience: Audience;
+
+  /**
+   * @generated from field: bytes payload = 4;
+   */
+  payload: Uint8Array;
+
+  /**
+   * @generated from field: int64 server_timestamp_ms = 5;
+   */
+  serverTimestampMs: bigint;
+};
+
+/**
+ * Describes the message sessionjeu.minigame.v1.MiniGameServerEvent.
+ * Use `create(MiniGameServerEventSchema)` to create a new message.
+ */
+export const MiniGameServerEventSchema: GenMessage<MiniGameServerEvent> = /*@__PURE__*/
+  messageDesc(file_minigame_v1_manifest, 5);
+
+/**
+ * Evidence for provisional scoring — admin/system; not published as official rank.
+ *
+ * @generated from message sessionjeu.minigame.v1.MiniGameScoreEvidence
+ */
+export type MiniGameScoreEvidence = Message<"sessionjeu.minigame.v1.MiniGameScoreEvidence"> & {
+  /**
+   * @generated from field: string round_id = 1;
+   */
+  roundId: string;
+
+  /**
+   * @generated from field: string player_id = 2;
+   */
+  playerId: string;
+
+  /**
+   * @generated from field: double raw_score = 3;
+   */
+  rawScore: number;
+
+  /**
+   * @generated from field: string evidence_hash = 4;
+   */
+  evidenceHash: string;
+
+  /**
+   * @generated from field: int64 computed_at_ms = 5;
+   */
+  computedAtMs: bigint;
+
+  /**
+   * @generated from field: string minigame_version = 6;
+   */
+  minigameVersion: string;
+};
+
+/**
+ * Describes the message sessionjeu.minigame.v1.MiniGameScoreEvidence.
+ * Use `create(MiniGameScoreEvidenceSchema)` to create a new message.
+ */
+export const MiniGameScoreEvidenceSchema: GenMessage<MiniGameScoreEvidence> = /*@__PURE__*/
+  messageDesc(file_minigame_v1_manifest, 6);
+
+/**
  * @generated from message sessionjeu.minigame.v1.ListMiniGamesQuery
  */
 export type ListMiniGamesQuery = Message<"sessionjeu.minigame.v1.ListMiniGamesQuery"> & {
@@ -107,7 +323,7 @@ export type ListMiniGamesQuery = Message<"sessionjeu.minigame.v1.ListMiniGamesQu
  * Use `create(ListMiniGamesQuerySchema)` to create a new message.
  */
 export const ListMiniGamesQuerySchema: GenMessage<ListMiniGamesQuery> = /*@__PURE__*/
-  messageDesc(file_minigame_v1_manifest, 2);
+  messageDesc(file_minigame_v1_manifest, 7);
 
 /**
  * @generated from message sessionjeu.minigame.v1.ListMiniGamesResponse
@@ -124,7 +340,7 @@ export type ListMiniGamesResponse = Message<"sessionjeu.minigame.v1.ListMiniGame
  * Use `create(ListMiniGamesResponseSchema)` to create a new message.
  */
 export const ListMiniGamesResponseSchema: GenMessage<ListMiniGamesResponse> = /*@__PURE__*/
-  messageDesc(file_minigame_v1_manifest, 3);
+  messageDesc(file_minigame_v1_manifest, 8);
 
 /**
  * @generated from message sessionjeu.minigame.v1.GetMiniGameQuery
@@ -141,7 +357,7 @@ export type GetMiniGameQuery = Message<"sessionjeu.minigame.v1.GetMiniGameQuery"
  * Use `create(GetMiniGameQuerySchema)` to create a new message.
  */
 export const GetMiniGameQuerySchema: GenMessage<GetMiniGameQuery> = /*@__PURE__*/
-  messageDesc(file_minigame_v1_manifest, 4);
+  messageDesc(file_minigame_v1_manifest, 9);
 
 /**
  * @generated from message sessionjeu.minigame.v1.GetMiniGameResponse
@@ -158,7 +374,7 @@ export type GetMiniGameResponse = Message<"sessionjeu.minigame.v1.GetMiniGameRes
  * Use `create(GetMiniGameResponseSchema)` to create a new message.
  */
 export const GetMiniGameResponseSchema: GenMessage<GetMiniGameResponse> = /*@__PURE__*/
-  messageDesc(file_minigame_v1_manifest, 5);
+  messageDesc(file_minigame_v1_manifest, 10);
 
 /**
  * @generated from enum sessionjeu.minigame.v1.MiniGameFamily
