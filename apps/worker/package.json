@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@session-jeu/db": "workspace:*",
+    "@session-jeu/whatsapp-gateway": "workspace:*",
     "bullmq": "^5.30.0",
     "dotenv": "^17.4.2",
     "ioredis": "^5.4.0"
