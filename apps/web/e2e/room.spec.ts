@@ -1,6 +1,15 @@
 import { expect, test } from "@playwright/test";
 
-test("mounts, controls and remounts the fullscreen Phaser room", async ({ page }) => {
+/**
+ * Hors E2E live Colyseus.
+ *
+ * This suite intentionally validates the local room shell + keyboard/mobile chrome
+ * in "Aperçu local" when CreateLiveAccess is unavailable (no participation / non-live party).
+ * It must NOT be treated as proof of realtime reconnection or authoritative room sync.
+ *
+ * Live multi-service proof lives in `live-smoke.spec.ts` (fails if Colyseus is down).
+ */
+test("mounts, controls and remounts the fullscreen Phaser room (local preview only)", async ({ page }) => {
   const email = `room-e2e-${Date.now()}-${Math.random().toString(36).slice(2)}@noya.test`;
   const runtimeErrors: string[] = [];
 

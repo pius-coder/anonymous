@@ -10,7 +10,11 @@ import {
   ROOM_WORLD_HEIGHT,
   ROOM_WORLD_WIDTH,
 } from "@session-jeu/game-engine";
-import { LiveAccessService } from "@/services/rpcServices";
+import {
+  buildJoinOptions,
+  GAME_ROOM_NAME,
+  requestLiveAccess,
+} from "../live-room-facade";
 import { getVirtualJoystick, resetVirtualJoystick } from "./room-controls";
 
 type ConnectionState = "connecting" | "connected" | "reconnecting" | "preview" | "offline";
@@ -218,7 +222,8 @@ export function createRoomGame(options: RoomGameOptions): RoomGameHandle {
 
     private async connectLive() {
       options.onConnectionChange("connecting");
-      const access = await LiveAccessService.create(options.partyId);
+      // RealtimeAccess grant; on failure fall back to local preview (explicitly non-E2E live).
+      const access = await requestLiveAccess(options.partyId);
       if (!access.success) {
         this.mountPreviewPlayers();
         options.onConnectionChange("preview");
@@ -227,10 +232,11 @@ export function createRoomGame(options: RoomGameOptions): RoomGameHandle {
 
       try {
         const client = new Client(access.data.endpoint);
-        this.room = await client.joinOrCreate<LiveState>("game_room", {
-          partyId: options.partyId,
-          connectionToken: access.data.connectionToken,
-        });
+        // Only partyId + connectionToken — never reconnectTimeout/maxClients/round fields.
+        this.room = await client.joinOrCreate<LiveState>(
+          GAME_ROOM_NAME,
+          buildJoinOptions(options.partyId, access.data.connectionToken),
+        );
         this.connected = true;
         options.onConnectionChange("connected");
         const callbacks = getStateCallbacks(this.room);
@@ -252,6 +258,7 @@ export function createRoomGame(options: RoomGameOptions): RoomGameHandle {
           options.onConnectionChange("offline");
         });
       } catch {
+        // Join failed after access grant — not silent preview; surface offline.
         this.mountPreviewPlayers();
         options.onConnectionChange("offline");
       }
