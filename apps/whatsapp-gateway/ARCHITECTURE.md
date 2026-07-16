@@ -3,45 +3,39 @@
 ## Objectif
 
 Passerelle isolee pour l'envoi de notifications WhatsApp ou fournisseur equivalent.
+Expose un **port contractuel** consomme par `apps/worker`, sans regle metier de partie.
 
 ## Perimetre
 
-- Adaptation vers API externe de notification.
-- Mapping statut fournisseur vers statut interne.
-- Gestion erreurs fournisseur.
+- Interface `NotificationProvider` (`send` → succes / echec retryable).
+- `FakeNotificationProvider` injectable (tests, local).
+- `ProductionWhatsAppProvider` **fail-closed** : non configure sans token ; SDK non cable meme avec token.
+- Redaction logs : tokens, telephones, emails, cles secretes.
 
 ## Hors perimetre
 
-- Regles de partie.
-- Selection des destinataires sans cas d'utilisation amont.
-- Publication de scores.
-- Stockage de secrets en clair.
+- Regles de partie / demarrage / scores.
+- Selection des destinataires (use-case amont).
+- Schema / migrations.
+- Webhook HTTP (hors scope A-WORKERS).
 
 ## Dependances autorisees
 
-- Contrats de notification internes.
-- Configuration securisee.
-- Client officiel du fournisseur apres decision.
+- Configuration securisee (env).
+- Client officiel du fournisseur **apres** decision + Context7 — non present en v0.1.
 
-## Dependances interdites
+## API publique
 
-- Acces direct aux composants UI.
-- Acces direct aux regles de mini-jeu.
-- Logs contenant tokens, numeros complets ou payloads sensibles inutiles.
-
-## API publique du module
-
-Fonctions d'envoi et de lecture de statut, a definir apres choix fournisseur.
-
-## Tests attendus
-
-- Tests de mapping statut.
-- Tests erreurs fournisseur.
-- Tests de masquage des donnees sensibles.
+| Export | Role |
+|---|---|
+| `NotificationProvider` | Port |
+| `FakeNotificationProvider` | Fake contractuel |
+| `ProductionWhatsAppProvider` / `createProductionProviderFromEnv` | Production non configuree par defaut |
+| `redactText` / `redactForLog` / `redactPhone` | Minimisation logs |
 
 ## Procedure d'extension
 
-1. Valider le fournisseur et sa documentation officielle.
-2. Definir contrat d'envoi et statut.
-3. Ajouter mocks de tests.
+1. Valider le fournisseur et sa doc officielle (Context7 / SDK).
+2. Implementer `NotificationProvider` reel derriere feature flag.
+3. Garder le fake pour les tests worker L3.
 4. Documenter limites, retries et donnees loguees.

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resetMetrics } from "../metrics.js";
 
 const dbMocks = vi.hoisted(() => ({
   partyRepository: {
@@ -23,6 +24,7 @@ const { closeDueRoundDeadlines } = await import("../jobs/roundDeadline.js");
 
 beforeEach(() => {
   vi.clearAllMocks();
+  resetMetrics();
   dbMocks.partyRepository.updatePartyStatus.mockResolvedValue({});
   dbMocks.participationRepository.updateParticipationStatus.mockResolvedValue({});
   dbMocks.roundRepository.claimDueRoundDeadline.mockResolvedValue(true);
@@ -36,7 +38,7 @@ beforeEach(() => {
 });
 
 describe("closeDueRoundDeadlines", () => {
-  it("AC-10-06 closes active due rounds to verification without publishing scores", async () => {
+  it("closes active due rounds to verification without publishing scores or starting party", async () => {
     const now = new Date("2026-01-01T00:02:00.000Z");
     dbMocks.roundRepository.listDueRoundDeadlines.mockResolvedValueOnce([
       {
@@ -49,11 +51,17 @@ describe("closeDueRoundDeadlines", () => {
 
     expect(result).toMatchObject({ closed: 1, skipped: 0, failed: 0 });
     expect(dbMocks.roundRepository.claimDueRoundDeadline).toHaveBeenCalledWith("round-1", now);
-    expect(dbMocks.roundRepository.updateRoundLifecycle).toHaveBeenCalledWith("round-1", { status: "VERIFICATION" });
-    expect(dbMocks.partyRepository.updatePartyStatus).toHaveBeenCalledWith("party-1", "ROUND_VERIFICATION");
-    expect(dbMocks.roundRepository.markRoundParticipantsWaitingReview).toHaveBeenCalledWith("round-1");
-    expect(dbMocks.participationRepository.updateParticipationStatus).toHaveBeenCalledWith("participation-1", "WAITING_REVIEW");
-    expect(dbMocks.participationRepository.updateParticipationStatus).toHaveBeenCalledWith("participation-2", "WAITING_REVIEW");
+    expect(dbMocks.roundRepository.updateRoundLifecycle).toHaveBeenCalledWith("round-1", {
+      status: "VERIFICATION",
+    });
+    expect(dbMocks.partyRepository.updatePartyStatus).toHaveBeenCalledWith(
+      "party-1",
+      "ROUND_VERIFICATION",
+    );
+    expect(dbMocks.partyRepository.updatePartyStatus).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "ACTIVE",
+    );
   });
 
   it("skips rounds that are no longer active", async () => {
