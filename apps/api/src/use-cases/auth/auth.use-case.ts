@@ -1,8 +1,16 @@
-import { userRepository, authRepository } from "@session-jeu/db";
+import {
+  authRepository,
+  notificationRepository,
+  participationRepository,
+  realtimeRepository,
+  userRepository,
+} from "@session-jeu/db";
+import { AUTH_ERRORS } from "@session-jeu/shared";
 import { hashPassword, verifyPassword } from "../../auth/password.js";
 import { createOpaqueToken, hashOpaqueToken } from "../../auth/session.js";
 
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
+const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000;
 
 export interface RegisterInput {
   email: string;
@@ -103,6 +111,91 @@ export async function loginUser(input: LoginInput): Promise<AuthResult> {
 
 export async function logoutUser(userId: string): Promise<void> {
   await authRepository.revokeUserSessions(userId);
+}
+
+/**
+ * Always succeeds from the caller's perspective (no account enumeration).
+ * When a matching active user exists, stores a hashed single-use token and
+ * enqueues a delivery job whose payload carries the opaque token for the worker.
+ * The plain token is never returned on the public RPC surface.
+ */
+export async function requestPasswordReset(input: {
+  email: string;
+}): Promise<{ issued: boolean }> {
+  const user = await userRepository.findUserByEmail(input.email);
+  if (!user || !user.isActive || !user.passwordHash) {
+    return { issued: false };
+  }
+
+  const plainToken = createOpaqueToken();
+  const tokenHash = hashOpaqueToken(plainToken);
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+
+  await authRepository.createPasswordResetToken({
+    userId: user.id,
+    token: tokenHash,
+    expiresAt,
+  });
+
+  // Delivery payload holds the opaque token for the notification worker only.
+  // Audit logs must never include this value.
+  await notificationRepository.createNotificationJob({
+    userId: user.id,
+    type: "PASSWORD_RESET",
+    status: "PENDING",
+    payload: {
+      kind: "PASSWORD_RESET",
+      expiresAt: expiresAt.toISOString(),
+      token: plainToken,
+    },
+  });
+
+  return { issued: true };
+}
+
+export async function resetPassword(input: {
+  token: string;
+  newPassword: string;
+}): Promise<{ userId: string }> {
+  if (input.newPassword.length < 8) {
+    throw new UseCaseError(
+      AUTH_ERRORS.WEAK_PASSWORD.code,
+      AUTH_ERRORS.WEAK_PASSWORD.message,
+      AUTH_ERRORS.WEAK_PASSWORD.status,
+    );
+  }
+
+  const tokenHash = hashOpaqueToken(input.token);
+  const resetToken = await authRepository.findPasswordResetToken(tokenHash);
+  if (!resetToken || resetToken.consumedAt || resetToken.expiresAt <= new Date()) {
+    throw new UseCaseError(
+      AUTH_ERRORS.INVALID_PASSWORD_RESET_TOKEN.code,
+      AUTH_ERRORS.INVALID_PASSWORD_RESET_TOKEN.message,
+      AUTH_ERRORS.INVALID_PASSWORD_RESET_TOKEN.status,
+    );
+  }
+
+  const passwordHash = hashPassword(input.newPassword);
+  await userRepository.updateUser(resetToken.userId, { passwordHash });
+  await authRepository.consumePasswordResetToken(resetToken.id);
+
+  // Increment sessionVersion + delete auth sessions (public auth repository API).
+  await authRepository.revokeUserSessions(resetToken.userId);
+
+  // Expire live connection tokens so existing live access is refused.
+  await revokeLiveConnectionsForUser(resetToken.userId);
+
+  return { userId: resetToken.userId };
+}
+
+async function revokeLiveConnectionsForUser(userId: string): Promise<void> {
+  const participations = await participationRepository.listParticipationsByUser(userId);
+  for (const participation of participations) {
+    const connection = await realtimeRepository.findByParticipation(participation.id);
+    if (connection) {
+      await realtimeRepository.deleteConnection(connection.id);
+    }
+  }
 }
 
 function formatUser(user: { id: string; email: string; name: string | null; avatarUrl: string | null; sessionVersion: number; createdAt: Date; roleAssignments?: { role: string }[] }): UserResult {

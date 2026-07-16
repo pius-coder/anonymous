@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { registerSchema, loginSchema } from "../validation.js";
+import {
+  registerSchema,
+  loginSchema,
+  passwordResetRequestSchema,
+  passwordResetSchema,
+} from "../validation.js";
 
 describe("registerSchema", () => {
   it("accepts valid registration data", () => {
@@ -68,5 +73,47 @@ describe("loginSchema", () => {
     if (result.success) {
       expect(result.data.email).toBe("test@example.com");
     }
+  });
+});
+
+describe("passwordResetRequestSchema (L1)", () => {
+  it("accepts and normalizes email", () => {
+    const result = passwordResetRequestSchema.safeParse({
+      email: "Player@Example.COM",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.email).toBe("player@example.com");
+    }
+  });
+
+  it("rejects invalid email", () => {
+    expect(passwordResetRequestSchema.safeParse({ email: "nope" }).success).toBe(false);
+  });
+});
+
+describe("passwordResetSchema (L1)", () => {
+  it("accepts opaque token and strong password", () => {
+    const result = passwordResetSchema.safeParse({
+      token: "opaque-single-use-token",
+      newPassword: "Str0ng-Passphrase!",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects weak password", () => {
+    const result = passwordResetSchema.safeParse({
+      token: "opaque-token",
+      newPassword: "short",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects empty token", () => {
+    const result = passwordResetSchema.safeParse({
+      token: "",
+      newPassword: "longenough",
+    });
+    expect(result.success).toBe(false);
   });
 });
