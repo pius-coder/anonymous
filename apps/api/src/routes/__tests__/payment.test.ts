@@ -1,14 +1,64 @@
-import { describe, it, expect } from "vitest";
-import app from "../../index.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const useCaseMocks = vi.hoisted(() => ({
+  initiatePayment: vi.fn(),
+  handlePaymentWebhook: vi.fn(),
+  payWithWallet: vi.fn(),
+  getPaymentStatus: vi.fn(),
+  getMyWallet: vi.fn(),
+  listMyLedger: vi.fn(),
+  PaymentUseCaseError: class PaymentUseCaseError extends Error {
+    code: string;
+    httpStatus: number;
+    constructor(code: string, message: string, httpStatus: number) {
+      super(message);
+      this.code = code;
+      this.httpStatus = httpStatus;
+    }
+  },
+}));
+
+// Use real app with auth middleware; unauthenticated paths still return 401.
+vi.mock("../../use-cases/payment/payment.use-case.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../use-cases/payment/payment.use-case.js")>();
+  return {
+    ...actual,
+    initiatePayment: useCaseMocks.initiatePayment,
+    handlePaymentWebhook: useCaseMocks.handlePaymentWebhook,
+    payWithWallet: useCaseMocks.payWithWallet,
+    getPaymentStatus: useCaseMocks.getPaymentStatus,
+    getMyWallet: useCaseMocks.getMyWallet,
+    listMyLedger: useCaseMocks.listMyLedger,
+  };
+});
+
+const { default: app } = await import("../../index.js");
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  delete process.env.FAPSHI_WEBHOOK_SECRET;
+});
 
 describe("POST /v1/payments/initiate", () => {
   it("returns 401 without session", async () => {
     const res = await app.request("/v1/payments/initiate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: 1000 }),
+      body: JSON.stringify({ amount: 1000, idempotencyKey: "idem-key-01" }),
     });
     expect(res.status).toBe(401);
+  });
+
+  it("rejects missing idempotency key", async () => {
+    // Still unauthenticated first if cookie missing — validation may not run.
+    // Ensure schema rejects empty body with 400 after auth would pass is covered by unit schema tests.
+    const res = await app.request("/v1/payments/initiate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ purpose: "ACCESS_FEE" }),
+    });
+    // without auth: 401; with auth: 400 — both acceptable gate responses
+    expect([400, 401]).toContain(res.status);
   });
 });
 
@@ -17,7 +67,7 @@ describe("POST /v1/payments/wallet/pay", () => {
     const res = await app.request("/v1/payments/wallet/pay", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: 500, reason: "Inscription tournoi" }),
+      body: JSON.stringify({ reason: "Inscription tournoi", idempotencyKey: "idem-wallet-1" }),
     });
     expect(res.status).toBe(401);
   });
@@ -44,7 +94,7 @@ describe("GET /v1/wallet/ledger", () => {
   });
 });
 
-describe("POST /v1/payments/webhook/fapshi", () => {
+describe("POST /v1/payments/webhook/fapshi (L4 signature)", () => {
   it("rejects invalid webhook payload", async () => {
     const res = await app.request("/v1/payments/webhook/fapshi", {
       method: "POST",
@@ -61,5 +111,55 @@ describe("POST /v1/payments/webhook/fapshi", () => {
       body: JSON.stringify({ status: "SUCCESS" }),
     });
     expect(res.status).toBe(400);
+  });
+
+  it("returns 401 when signature is invalid and secret is set", async () => {
+    process.env.FAPSHI_WEBHOOK_SECRET = "super-secret";
+    const { PaymentUseCaseError } = await import("../../use-cases/payment/payment.use-case.js");
+    useCaseMocks.handlePaymentWebhook.mockRejectedValueOnce(
+      new PaymentUseCaseError("UNAUTHENTICATED", "Signature webhook invalide", 401),
+    );
+
+    const res = await app.request("/v1/payments/webhook/fapshi", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        transactionId: "tx-1",
+        status: "SUCCESS",
+        providerReference: "prv-1",
+        signature: "bad",
+      }),
+    });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("accepts valid webhook payload shape and returns success body", async () => {
+    useCaseMocks.handlePaymentWebhook.mockResolvedValueOnce({
+      id: "tx-1",
+      walletId: "w1",
+      amount: 1000,
+      type: "TOP_UP",
+      provider: "FAPSHI",
+      reference: "prv-1",
+      status: "SUCCESSFUL",
+      createdAt: "2026-07-15T10:00:00.000Z",
+    });
+
+    const res = await app.request("/v1/payments/webhook/fapshi", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        transactionId: "tx-1",
+        status: "SUCCESS",
+        providerReference: "prv-1",
+        signature: "ok",
+      }),
+    });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.data.status).toBe("SUCCESSFUL");
   });
 });

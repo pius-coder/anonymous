@@ -50,6 +50,7 @@ export function publishScore(
   participationId: string,
   score: number,
   publishedBy: string,
+  rank = 0,
 ): Promise<PublishedScore> {
   return prisma.publishedScore.create({
     data: {
@@ -57,10 +58,90 @@ export function publishScore(
       roundId,
       participationId,
       score,
-      rank: 0,
+      rank,
       publishedBy,
     },
   });
+}
+
+export type PublishRoundScoreRow = {
+  provisionalScoreId: string;
+  participationId: string;
+  score: number;
+  rank: number;
+};
+
+export type PublishRoundScoresResult = {
+  alreadyPublished: boolean;
+  published: PublishedScore[];
+};
+
+/**
+ * Atomically freeze a published projection for a round.
+ * Idempotent when published rows already exist for the round.
+ * Concurrent callers get a deterministic outcome via unique constraints + re-read.
+ */
+export async function publishRoundScores(input: {
+  roundId: string;
+  publishedBy: string;
+  rows: PublishRoundScoreRow[];
+  provisionalStatus?: string;
+}): Promise<PublishRoundScoresResult> {
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        const existing = await tx.publishedScore.findMany({
+          where: { roundId: input.roundId },
+          orderBy: { rank: "asc" },
+        });
+        if (existing.length > 0) {
+          return { alreadyPublished: true, published: existing };
+        }
+
+        const published: PublishedScore[] = [];
+        for (const row of input.rows) {
+          const created = await tx.publishedScore.create({
+            data: {
+              provisionalScoreId: row.provisionalScoreId,
+              roundId: input.roundId,
+              participationId: row.participationId,
+              score: row.score,
+              rank: row.rank,
+              publishedBy: input.publishedBy,
+            },
+          });
+          published.push(created);
+
+          await tx.provisionalScore.update({
+            where: { id: row.provisionalScoreId },
+            data: {
+              status: input.provisionalStatus ?? "PUBLISHED",
+              reviewedBy: input.publishedBy,
+              reviewedAt: new Date(),
+              rank: row.rank,
+            },
+          });
+        }
+
+        return { alreadyPublished: false, published };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      (error.code === "P2002" || error.code === "P2034")
+    ) {
+      const published = await prisma.publishedScore.findMany({
+        where: { roundId: input.roundId },
+        orderBy: { rank: "asc" },
+      });
+      if (published.length > 0) {
+        return { alreadyPublished: true, published };
+      }
+    }
+    throw error;
+  }
 }
 
 export function findPublishedScoreByRound(roundId: string, participationId: string): Promise<PublishedScore | null> {
@@ -95,6 +176,8 @@ export function listScoreReviewsByProvisional(provisionalScoreId: string): Promi
 
 export type CreateScoreReviewAndUpdateProvisionalData = CreateScoreReviewData & {
   provisionalStatus?: string;
+  /** Optimistic concurrency token (ProvisionalScore.updatedAt). */
+  expectedUpdatedAt?: Date;
 };
 
 /**
@@ -110,6 +193,17 @@ export async function createScoreReviewAndUpdateProvisional(
     });
     if (!provisional) {
       throw new Error("PROVISIONAL_SCORE_NOT_FOUND");
+    }
+
+    if (provisional.status === "PUBLISHED") {
+      throw new Error("PROVISIONAL_SCORE_ALREADY_PUBLISHED");
+    }
+
+    if (
+      data.expectedUpdatedAt &&
+      provisional.updatedAt.getTime() !== data.expectedUpdatedAt.getTime()
+    ) {
+      throw new Error("PROVISIONAL_SCORE_VERSION_CONFLICT");
     }
 
     const review = await tx.scoreReview.create({

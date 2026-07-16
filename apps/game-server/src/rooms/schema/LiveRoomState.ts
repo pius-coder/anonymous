@@ -27,4 +27,10 @@ export class LiveRoomState extends Schema {
   @type("number") currentRoundNumber = 0;
   @type("string") currentRoundId = "";
   @type("number") roundDeadlineAt = 0;
+
+  /**
+   * In-memory accepted action nonces (participationId::nonce).
+   * Not synchronized to clients — server-only anti-replay.
+   */
+  acceptedActionNonces = new Set<string>();
 }

@@ -1,19 +1,13 @@
-import { Server, RedisPresence } from "colyseus";
 import { config } from "./config.js";
+import { createGameServer } from "./create-server.js";
 import { GameRoom } from "./rooms/GameRoom.js";
 
-let gameServer: Server | undefined;
+let gameServer: ReturnType<typeof createGameServer> | undefined;
 
 if (process.env.NODE_ENV !== "test") {
-  gameServer = new Server({
-    presence: config.presence === "redis"
-      ? new RedisPresence(config.redisUrl)
-      : undefined,
-  });
-
-  gameServer.define("game_room", GameRoom).filterBy(["partyId"]);
+  gameServer = createGameServer();
   gameServer.listen(config.port);
   console.log(`Game server listening on port ${config.port}`);
 }
 
-export { gameServer, GameRoom };
+export { gameServer, GameRoom, createGameServer };

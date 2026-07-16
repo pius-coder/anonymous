@@ -230,9 +230,104 @@ describe.skipIf(!runL3)("L3 repositories / constraints / transactions / claim", 
       partA.id,
       7,
       userA.id,
+      1,
     );
     expect(published.provisionalScoreId).toBe(provisional.id);
+    expect(published.rank).toBe(1);
     const listed = await scoreRepository.listPublishedScoresByRound(round.id);
     expect(listed).toHaveLength(1);
+  });
+
+  it("L3 concurrent correction: version conflict is deterministic", async () => {
+    const { userA, userB, partA, round } = await createGraph();
+    const provisional = await scoreRepository.createProvisionalScore({
+      roundId: round.id,
+      participationId: partA.id,
+      score: 20,
+      status: "PROVISIONAL",
+    });
+
+    const first = await scoreRepository.createScoreReviewAndUpdateProvisional({
+      provisionalScoreId: provisional.id,
+      reviewedBy: userA.id,
+      action: "CORRECT",
+      reason: "Admin A correction",
+      previousScore: 20,
+      newScore: 21,
+      provisionalStatus: "VERIFIED",
+      expectedUpdatedAt: provisional.updatedAt,
+    });
+    expect(Number(first.provisional.score)).toBe(21);
+
+    await expect(
+      scoreRepository.createScoreReviewAndUpdateProvisional({
+        provisionalScoreId: provisional.id,
+        reviewedBy: userB.id,
+        action: "CORRECT",
+        reason: "Admin B stale correction",
+        previousScore: 20,
+        newScore: 22,
+        provisionalStatus: "VERIFIED",
+        expectedUpdatedAt: provisional.updatedAt,
+      }),
+    ).rejects.toThrow("PROVISIONAL_SCORE_VERSION_CONFLICT");
+
+    const current = await scoreRepository.findProvisionalScore(provisional.id);
+    expect(Number(current?.score)).toBe(21);
+  });
+
+  it("L3 concurrent publication: second admin gets idempotent published projection", async () => {
+    const { userA, userB, partA, partB, round } = await createGraph();
+    const provA = await scoreRepository.createProvisionalScore({
+      roundId: round.id,
+      participationId: partA.id,
+      score: 30,
+      status: "VERIFIED",
+    });
+    const provB = await scoreRepository.createProvisionalScore({
+      roundId: round.id,
+      participationId: partB.id,
+      score: 10,
+      status: "VERIFIED",
+    });
+
+    const rows = [
+      {
+        provisionalScoreId: provA.id,
+        participationId: partA.id,
+        score: 30,
+        rank: 1,
+      },
+      {
+        provisionalScoreId: provB.id,
+        participationId: partB.id,
+        score: 10,
+        rank: 2,
+      },
+    ];
+
+    const [r1, r2] = await Promise.all([
+      scoreRepository.publishRoundScores({
+        roundId: round.id,
+        publishedBy: userA.id,
+        rows,
+      }),
+      scoreRepository.publishRoundScores({
+        roundId: round.id,
+        publishedBy: userB.id,
+        rows,
+      }),
+    ]);
+
+    const winners = [r1, r2].filter((r) => !r.alreadyPublished);
+    const idempotent = [r1, r2].filter((r) => r.alreadyPublished);
+    expect(winners.length + idempotent.length).toBe(2);
+    expect(winners.length).toBeLessThanOrEqual(1);
+
+    const listed = await scoreRepository.listPublishedScoresByRound(round.id);
+    expect(listed).toHaveLength(2);
+    expect(new Set(listed.map((p) => p.provisionalScoreId)).size).toBe(2);
+    // Deterministic ranks frozen in projection
+    expect(listed.map((p) => p.rank).sort()).toEqual([1, 2]);
   });
 });

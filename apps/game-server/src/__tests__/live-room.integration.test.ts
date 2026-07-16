@@ -17,6 +17,23 @@ const dbMocks = vi.hoisted(() => ({
     markConnectedByParticipation: vi.fn(),
     markDisconnectedByParticipation: vi.fn(),
   },
+  partyRepository: {
+    findPartyById: vi.fn(),
+    updatePartyStatus: vi.fn(),
+  },
+  roundRepository: {
+    listRoundsByParty: vi.fn().mockResolvedValue([]),
+    findRoundDeadlineByRoundId: vi.fn().mockResolvedValue(null),
+    findPlayerActionByNonce: vi.fn().mockResolvedValue(null),
+    createPlayerAction: vi.fn().mockResolvedValue({ id: "action" }),
+    claimDueRoundDeadline: vi.fn(),
+    updateRoundLifecycle: vi.fn(),
+    listRoundParticipants: vi.fn().mockResolvedValue([]),
+    markRoundParticipantsWaitingReview: vi.fn(),
+  },
+  participationRepository: {
+    updateParticipationStatus: vi.fn(),
+  },
 }));
 
 vi.mock("@session-jeu/db", () => dbMocks);
