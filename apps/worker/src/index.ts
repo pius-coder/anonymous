@@ -47,6 +47,8 @@ const shouldBoot =
   process.env.NODE_ENV !== "test" && process.env.WORKER_AUTOSTART !== "0";
 
 if (shouldBoot) {
+  const { assertBootEnv } = await import("@session-jeu/config");
+  assertBootEnv("worker");
   const { createWorkerRunner } = await import("./runner.js");
   const runner = createWorkerRunner();
   await runner.start();

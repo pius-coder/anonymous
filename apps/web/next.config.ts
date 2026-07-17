@@ -1,7 +1,17 @@
 import type { NextConfig } from "next";
 import { networkInterfaces } from "node:os";
 
-const apiUrl = process.env.API_URL ?? "http://localhost:3001";
+function resolveApiUrl(): string {
+  if (process.env.API_URL) return process.env.API_URL;
+  // Deployment env only — never treat NODE_ENV=production (next build) as APP_ENV=production.
+  const appEnv = (process.env.APP_ENV || "local").toLowerCase();
+  if (appEnv === "production" || appEnv === "staging" || appEnv === "prod") {
+    throw new Error("API_URL is required in staging/production (no localhost default)");
+  }
+  return "http://localhost:3001";
+}
+
+const apiUrl = resolveApiUrl();
 
 function getLanOrigins() {
   try {

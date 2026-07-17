@@ -157,11 +157,28 @@ avant toute implementation.
 
 ## Decisions ouvertes
 
-- Priorite de premiere reconstruction des familles de mini-jeux.
-- Regles detaillees a conserver depuis l'ancien catalogue ou a revalider.
-- Format exact du manifeste de mini-jeu dans les futurs contrats Protobuf.
-- Niveau de supervision lecture seule autorise par famille.
-- Regles anti-triche minimales par famille.
+- Format exact du manifeste de mini-jeu dans les futurs contrats Protobuf (`P-SEQ-02`).
+- Parametres numeriques fins restent config versionnee dans chaque rulebook (pas de reouverture de cle).
+
+## Baseline ratifiee du premier lancement production (P-SEQ-01)
+
+Decision `DEC-P-SEQ-01-RATIFY` (2026-07-17) : les six cles candidates sont **ratifiees** sans
+remplacement. Freeze avant contrats : aucun changement de cle implicite apres cette decision.
+Rulebooks signes : `docs/01-product/rulebooks/`. Matrice fairness :
+`docs/01-product/rulebooks/fairness-matrix.md`. ADR :
+`docs/03-architecture/decisions/0003-six-minigame-rulebook-freeze.md`.
+
+| Famille | Cle canonique | Titre affiche | Rulebook | Statut |
+|---|---|---|---|---|
+| Solo | `memory-sequence` | Sequence memoire | [rulebooks/memory-sequence.md](./rulebooks/memory-sequence.md) | `APPROVED` v1.0.0 |
+| Duel | `pure-reaction-duel` | Course au signal | [rulebooks/pure-reaction-duel.md](./rulebooks/pure-reaction-duel.md) | `APPROVED` v1.0.0 |
+| Alliance | `trust-bridge` | Le pont fragile | [rulebooks/trust-bridge.md](./rulebooks/trust-bridge.md) | `APPROVED` v1.0.0 |
+| Equipe | `team-relay` | Relais de mini-defis | [rulebooks/team-relay.md](./rulebooks/team-relay.md) | `APPROVED` v1.0.0 |
+| Survie | `danger-sweep` | Le rayon balayeur | [rulebooks/danger-sweep.md](./rulebooks/danger-sweep.md) | `APPROVED` v1.0.0 |
+| Role cache | `silent-vote` | Le saboteur | [rulebooks/silent-vote.md](./rulebooks/silent-vote.md) | `APPROVED` v1.0.0 |
+
+`silent-vote` conserve la cle runtime pour stabilite wire ; le produit est **Le saboteur** avec roles
+caches reels. Le vote majoritaire legacy n'est **pas** la regle finale.
 
 ## Niveaux d'implementation constates dans HEAD
 

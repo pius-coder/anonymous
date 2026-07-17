@@ -1,5 +1,5 @@
-import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { expect, test, type BrowserContext } from "@playwright/test";
 
 const host = process.env.TEST_HOST || "127.0.0.1";
@@ -20,11 +20,12 @@ async function login(context: BrowserContext, email: string) {
 }
 
 test.describe("L5 preparation flow", () => {
-  test.beforeAll(() => {
-    execFileSync("pnpm", ["--filter", "@session-jeu/db", "db:seed"], {
-      cwd: monorepoRoot,
-      env: process.env,
-      stdio: "pipe",
+  test.beforeAll(async () => {
+    const mod = await import(pathToFileURL(resolve(monorepoRoot, "scripts/lib/seed-lock.mjs")).href);
+    mod.runSeedIsolated({
+      ...process.env,
+      MONOREPO_ROOT: monorepoRoot,
+      APP_ENV: process.env.APP_ENV || "test",
     });
   });
 

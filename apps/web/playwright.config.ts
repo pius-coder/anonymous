@@ -36,12 +36,20 @@ const serviceEnv = {
   REDIS_URL: process.env.REDIS_URL || "",
 };
 
+const workerCount = process.env.PLAYWRIGHT_WORKERS
+  ? Number(process.env.PLAYWRIGHT_WORKERS)
+  : process.env.CI
+    ? 2
+    : undefined;
+
 export default defineConfig({
   testDir: "./e2e",
+  globalSetup: "./e2e/global-setup.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Parallel workers OK: seed-lock serializes db:seed (P-SEQ-00).
+  workers: Number.isFinite(workerCount as number) ? workerCount : undefined,
   timeout: 60_000,
   reporter: process.env.CI
     ? [["github"], ["html", { open: "never" }], ["junit", { outputFile: "test-results/e2e-junit.xml" }]]

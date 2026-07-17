@@ -3,8 +3,10 @@
 ## Mission autonome
 
 Apres SEQ-03 et avec A-REALTIME/A-SCORING merges, implementer le framework mini-jeu puis un seul pilote
-`memory-sequence` defini par le catalogue. Ne pas extrapoler les regles depuis le titre : valider la
-fiche produit et le workflow mini-jeu avant code.
+`memory-sequence` defini par le **rulebook signe**
+`docs/01-product/rulebooks/memory-sequence.md` (`APPROVED` v1.0.0, `DEC-P-SEQ-01-RATIFY`).
+Ne pas extrapoler les regles depuis le titre ni le legacy : le rulebook et
+`docs/01-product/rulebooks/fairness-matrix.md` sont la source de verite gameplay.
 
 ## Ownership
 
@@ -17,8 +19,9 @@ autres mini-jeux. Si l'extension publique manque, demander son ajout au propriet
 
 ## Demarrage obligatoire
 
-Lire AGENTS, catalogue exact, `minigame-integration.md`, sprints 14/15, contrats, anti-cheat et legacy du
-jeu concerne. Context7 : Phaser, Colyseus et moteur/test utilise.
+Lire AGENTS, rulebook `memory-sequence`, fairness-matrix, catalogue, `minigame-integration.md`,
+sprints 14/15, contrats, anti-cheat et preuves legacy (erreurs seulement). Context7 : Colyseus et
+moteur/test utilise.
 
 ## AC
 
