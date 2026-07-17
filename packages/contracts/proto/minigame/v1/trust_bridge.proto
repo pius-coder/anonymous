@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package sessionjeu.minigame.v1;
+
+import "common/v1/shared.proto";
+
+// Alliance: Le pont fragile — paired trust choices.
+// Hidden partner choices stay private until reveal phase.
+
+message TrustBridgeConfig {
+  string schema_version = 1;
+  int32 pair_count = 2;
+  int32 decision_timeout_ms = 3;
+  bool allow_odd_player_bye = 4;
+  string scoring_mode = 5;
+}
+
+message TrustBridgePlayerCommand {
+  string schema_version = 1;
+  // choose | lock | abort
+  string action = 2;
+  // Opaque choice token from server catalog (e.g. hold/release) — not free text secrets.
+  string choice_id = 3;
+  int64 client_timestamp_ms = 4;
+}
+
+message TrustBridgePublicState {
+  string schema_version = 1;
+  string phase = 2;
+  int32 remaining_ms = 3;
+  int32 pairs_locked = 4;
+  int32 pairs_total = 5;
+  // Pair seats without revealing choices.
+  repeated string pair_labels = 6;
+}
+
+// Own choice only — partner choice NEVER here until reveal.
+message TrustBridgePrivateState {
+  string schema_version = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  string partner_player_id = 3;
+  string own_choice_id = 4;
+  bool own_locked = 5;
+  bool partner_locked = 6;
+  // Populated only after reveal phase.
+  string revealed_partner_choice_id = 7;
+}
+
+message TrustBridgeServerEvent {
+  string schema_version = 1;
+  string event_type = 2;
+  sessionjeu.common.v1.Audience audience = 3;
+  TrustBridgePublicState public_state = 4;
+  int64 server_timestamp_ms = 5;
+}
+
+message TrustBridgeScoreEvidence {
+  string schema_version = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  double raw_score = 3;
+  string evidence_hash = 4;
+  string own_choice_id = 5;
+  string partner_choice_id = 6;
+  string pair_outcome = 7;
+  int64 computed_at_ms = 8;
+}

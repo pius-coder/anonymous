@@ -3,7 +3,7 @@
 ## Objectif
 
 Source de vérité des contrats réseau Protobuf. Définit messages, enums et services échangés entre
-les couches transport et application. Baseline figée par SEQ-01.
+les couches transport et application. Baseline production figée par P-SEQ-02 (`v0.2.0-production`).
 
 ## Périmètre
 
@@ -59,7 +59,15 @@ Build : `pnpm generate && tsc` → `dist/`.
 - Conventions UNSPECIFIED=0, proto3, package.
 - Inventaire services/méthodes aligné sur la matrice freeze.
 
-## Freeze
+## Freeze production (P-SEQ-02)
+
+- 12 services / 65 méthodes RPC
+- Six jeux typés (`memory-sequence`, `pure-reaction-duel`, `trust-bridge`, `team-relay`,
+  `danger-sweep`, `silent-vote`)
+- Payload gameplay opaque : max 4096 octets + `schema_id` + `schema_version`
+- Fapshi : `FapshiWireStatus` ≠ `PaymentInternalStatus` ; webhook REST → ingest Connect
+- Hash descripteurs : `docs/descriptor-hash.txt`
 
 Les lots métier ne modifient pas ce package. Toute évolution passe par le workflow
-`docs/05-workflows/protobuf-change.md` et le propriétaire contrats.
+`docs/05-workflows/protobuf-change.md` (ou retour explicite à la fiche P-SEQ-02), nouveau hash,
+breaking/golden et revalidation des lots descendants.

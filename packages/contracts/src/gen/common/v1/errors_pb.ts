@@ -4,13 +4,37 @@
 
 import type { GenEnum, GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { enumDesc, fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { CorrelationId } from "./shared_pb.js";
+import { file_common_v1_shared } from "./shared_pb.js";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file common/v1/errors.proto.
  */
 export const file_common_v1_errors: GenFile = /*@__PURE__*/
-  fileDesc("ChZjb21tb24vdjEvZXJyb3JzLnByb3RvEhRzZXNzaW9uamV1LmNvbW1vbi52MSKTAQoLRXJyb3JEZXRhaWwSLQoEY29kZRgBIAEoDjIfLnNlc3Npb25qZXUuY29tbW9uLnYxLkVycm9yQ29kZRIPCgdtZXNzYWdlGAIgASgJEg4KBmRvbWFpbhgDIAEoCRI0Cgp2aW9sYXRpb25zGAQgAygLMiAuc2Vzc2lvbmpldS5jb21tb24udjEuRXJyb3JGaWVsZCIwCgpFcnJvckZpZWxkEg0KBWZpZWxkGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJKtEHCglFcnJvckNvZGUSGgoWRVJST1JfQ09ERV9VTlNQRUNJRklFRBAAEhcKE0VSUk9SX0NPREVfSU5URVJOQUwQARIYChRFUlJPUl9DT0RFX05PVF9GT1VORBACEh0KGUVSUk9SX0NPREVfQUxSRUFEWV9FWElTVFMQAxIfChtFUlJPUl9DT0RFX0lOVkFMSURfQVJHVU1FTlQQBBIeChpFUlJPUl9DT0RFX1VOQVVUSEVOVElDQVRFRBAFEiAKHEVSUk9SX0NPREVfUEVSTUlTU0lPTl9ERU5JRUQQBhIiCh5FUlJPUl9DT0RFX0ZBSUxFRF9QUkVDT05ESVRJT04QBxIbChdFUlJPUl9DT0RFX1JBVEVfTElNSVRFRBAIEhcKE0VSUk9SX0NPREVfQ09ORkxJQ1QQCRIgChxFUlJPUl9DT0RFX0RFQURMSU5FX0VYQ0VFREVEEAoSGAoURVJST1JfQ09ERV9DQU5DRUxMRUQQCxIbChdFUlJPUl9DT0RFX09VVF9PRl9SQU5HRRAMEhoKFkVSUk9SX0NPREVfVU5BVkFJTEFCTEUQDRIWChJFUlJPUl9DT0RFX0FCT1JURUQQDhIeChpFUlJPUl9DT0RFX1NFU1NJT05fRVhQSVJFRBAPEh4KGkVSUk9SX0NPREVfU0VTU0lPTl9SRVZPS0VEEBASHAoYRVJST1JfQ09ERV9XRUFLX1BBU1NXT1JEEBESIgoeRVJST1JfQ09ERV9JTlZBTElEX0NSRURFTlRJQUxTEBISIgoeRVJST1JfQ09ERV9JTlZBTElEX1JFU0VUX1RPS0VOEBMSIAocRVJST1JfQ09ERV9SRUNPTk5FQ1RfRVhQSVJFRBAUEiEKHUVSUk9SX0NPREVfU0NPUkVfTk9UX1ZFUklGSUVEEBUSJAogRVJST1JfQ09ERV9QVUJMSUNBVElPTl9GT1JCSURERU4QFhIkCiBFUlJPUl9DT0RFX0FVRElUX1JFQVNPTl9SRVFVSVJFRBAXEh8KG0VSUk9SX0NPREVfV0FJVkVSX0ZPUkJJRERFThAYEh4KGkVSUk9SX0NPREVfREVMSVZFUllfRkFJTEVEEBkSIwofRVJST1JfQ09ERV9QUk9WSURFUl9VTkFWQUlMQUJMRRAaEicKI0VSUk9SX0NPREVfSU5WQUxJRF9NSU5JR0FNRV9DT01NQU5EEBsSHgoaRVJST1JfQ09ERV9EVVBMSUNBVEVfTk9OQ0UQHBImCiJFUlJPUl9DT0RFX1BSSVZBVEVfU1RBVEVfRk9SQklEREVOEB1iBnByb3RvMw");
+  fileDesc("ChZjb21tb24vdjEvZXJyb3JzLnByb3RvEhRzZXNzaW9uamV1LmNvbW1vbi52MSIwCgpFcnJvckZpZWxkEg0KBWZpZWxkGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJIpMBCgtFcnJvckRldGFpbBItCgRjb2RlGAEgASgOMh8uc2Vzc2lvbmpldS5jb21tb24udjEuRXJyb3JDb2RlEg8KB21lc3NhZ2UYAiABKAkSDgoGZG9tYWluGAMgASgJEjQKCnZpb2xhdGlvbnMYBCADKAsyIC5zZXNzaW9uamV1LmNvbW1vbi52MS5FcnJvckZpZWxkIqkBCg1FcnJvckVudmVsb3BlEjEKBmRldGFpbBgBIAEoCzIhLnNlc3Npb25qZXUuY29tbW9uLnYxLkVycm9yRGV0YWlsEjsKDmNvcnJlbGF0aW9uX2lkGAIgASgLMiMuc2Vzc2lvbmpldS5jb21tb24udjEuQ29ycmVsYXRpb25JZBIRCglyZXRyeWFibGUYAyABKAgSFQoNcHVibGljX3JlYXNvbhgEIAEoCSq1CgoJRXJyb3JDb2RlEhoKFkVSUk9SX0NPREVfVU5TUEVDSUZJRUQQABIXChNFUlJPUl9DT0RFX0lOVEVSTkFMEAESGAoURVJST1JfQ09ERV9OT1RfRk9VTkQQAhIdChlFUlJPUl9DT0RFX0FMUkVBRFlfRVhJU1RTEAMSHwobRVJST1JfQ09ERV9JTlZBTElEX0FSR1VNRU5UEAQSHgoaRVJST1JfQ09ERV9VTkFVVEhFTlRJQ0FURUQQBRIgChxFUlJPUl9DT0RFX1BFUk1JU1NJT05fREVOSUVEEAYSIgoeRVJST1JfQ09ERV9GQUlMRURfUFJFQ09ORElUSU9OEAcSGwoXRVJST1JfQ09ERV9SQVRFX0xJTUlURUQQCBIXChNFUlJPUl9DT0RFX0NPTkZMSUNUEAkSIAocRVJST1JfQ09ERV9ERUFETElORV9FWENFRURFRBAKEhgKFEVSUk9SX0NPREVfQ0FOQ0VMTEVEEAsSGwoXRVJST1JfQ09ERV9PVVRfT0ZfUkFOR0UQDBIaChZFUlJPUl9DT0RFX1VOQVZBSUxBQkxFEA0SFgoSRVJST1JfQ09ERV9BQk9SVEVEEA4SHgoaRVJST1JfQ09ERV9TRVNTSU9OX0VYUElSRUQQDxIeChpFUlJPUl9DT0RFX1NFU1NJT05fUkVWT0tFRBAQEhwKGEVSUk9SX0NPREVfV0VBS19QQVNTV09SRBAREiIKHkVSUk9SX0NPREVfSU5WQUxJRF9DUkVERU5USUFMUxASEiIKHkVSUk9SX0NPREVfSU5WQUxJRF9SRVNFVF9UT0tFThATEiAKHEVSUk9SX0NPREVfUkVDT05ORUNUX0VYUElSRUQQFBIhCh1FUlJPUl9DT0RFX1NDT1JFX05PVF9WRVJJRklFRBAVEiQKIEVSUk9SX0NPREVfUFVCTElDQVRJT05fRk9SQklEREVOEBYSJAogRVJST1JfQ09ERV9BVURJVF9SRUFTT05fUkVRVUlSRUQQFxIfChtFUlJPUl9DT0RFX1dBSVZFUl9GT1JCSURERU4QGBIeChpFUlJPUl9DT0RFX0RFTElWRVJZX0ZBSUxFRBAZEiMKH0VSUk9SX0NPREVfUFJPVklERVJfVU5BVkFJTEFCTEUQGhInCiNFUlJPUl9DT0RFX0lOVkFMSURfTUlOSUdBTUVfQ09NTUFORBAbEh4KGkVSUk9SX0NPREVfRFVQTElDQVRFX05PTkNFEBwSJgoiRVJST1JfQ09ERV9QUklWQVRFX1NUQVRFX0ZPUkJJRERFThAdEiMKH0VSUk9SX0NPREVfSURFTVBPVEVOQ1lfQ09ORkxJQ1QQHhIgChxFUlJPUl9DT0RFX1BBWUxPQURfVE9PX0xBUkdFEB8SIQodRVJST1JfQ09ERV9TQ0hFTUFfVU5TVVBQT1JURUQQIBIlCiFFUlJPUl9DT0RFX1BBWU1FTlRfTk9UX1JFQ09OQ0lMRUQQIRIgChxFUlJPUl9DT0RFX1dFQkhPT0tfRFVQTElDQVRFECISHwobRVJST1JfQ09ERV9FWFBPUlRfTk9UX1JFQURZECMSIgoeRVJST1JfQ09ERV9SRVRFTlRJT05fRk9SQklEREVOECQSHwobRVJST1JfQ09ERV9SRUFESU5FU1NfRkFJTEVEECUSIQodRVJST1JfQ09ERV9HQU1FX1BIQVNFX0lOVkFMSUQQJhImCiJFUlJPUl9DT0RFX0dBTUVfRkFJUk5FU1NfVklPTEFUSU9OECdiBnByb3RvMw", [file_common_v1_shared]);
+
+/**
+ * @generated from message sessionjeu.common.v1.ErrorField
+ */
+export type ErrorField = Message<"sessionjeu.common.v1.ErrorField"> & {
+  /**
+   * @generated from field: string field = 1;
+   */
+  field: string;
+
+  /**
+   * @generated from field: string description = 2;
+   */
+  description: string;
+};
+
+/**
+ * Describes the message sessionjeu.common.v1.ErrorField.
+ * Use `create(ErrorFieldSchema)` to create a new message.
+ */
+export const ErrorFieldSchema: GenMessage<ErrorField> = /*@__PURE__*/
+  messageDesc(file_common_v1_errors, 0);
 
 /**
  * @generated from message sessionjeu.common.v1.ErrorDetail
@@ -42,29 +66,43 @@ export type ErrorDetail = Message<"sessionjeu.common.v1.ErrorDetail"> & {
  * Use `create(ErrorDetailSchema)` to create a new message.
  */
 export const ErrorDetailSchema: GenMessage<ErrorDetail> = /*@__PURE__*/
-  messageDesc(file_common_v1_errors, 0);
+  messageDesc(file_common_v1_errors, 1);
 
 /**
- * @generated from message sessionjeu.common.v1.ErrorField
+ * Stable public error envelope for Connect and REST adapters.
+ *
+ * @generated from message sessionjeu.common.v1.ErrorEnvelope
  */
-export type ErrorField = Message<"sessionjeu.common.v1.ErrorField"> & {
+export type ErrorEnvelope = Message<"sessionjeu.common.v1.ErrorEnvelope"> & {
   /**
-   * @generated from field: string field = 1;
+   * @generated from field: sessionjeu.common.v1.ErrorDetail detail = 1;
    */
-  field: string;
+  detail?: ErrorDetail | undefined;
 
   /**
-   * @generated from field: string description = 2;
+   * @generated from field: sessionjeu.common.v1.CorrelationId correlation_id = 2;
    */
-  description: string;
+  correlationId?: CorrelationId | undefined;
+
+  /**
+   * @generated from field: bool retryable = 3;
+   */
+  retryable: boolean;
+
+  /**
+   * Public machine-readable reason; never secrets or stack traces.
+   *
+   * @generated from field: string public_reason = 4;
+   */
+  publicReason: string;
 };
 
 /**
- * Describes the message sessionjeu.common.v1.ErrorField.
- * Use `create(ErrorFieldSchema)` to create a new message.
+ * Describes the message sessionjeu.common.v1.ErrorEnvelope.
+ * Use `create(ErrorEnvelopeSchema)` to create a new message.
  */
-export const ErrorFieldSchema: GenMessage<ErrorField> = /*@__PURE__*/
-  messageDesc(file_common_v1_errors, 1);
+export const ErrorEnvelopeSchema: GenMessage<ErrorEnvelope> = /*@__PURE__*/
+  messageDesc(file_common_v1_errors, 2);
 
 /**
  * Public stable error codes. Additive only; never renumber.
@@ -232,6 +270,58 @@ export enum ErrorCode {
    * @generated from enum value: ERROR_CODE_PRIVATE_STATE_FORBIDDEN = 29;
    */
   PRIVATE_STATE_FORBIDDEN = 29,
+
+  /**
+   * Production freeze P-SEQ-02 (additive)
+   *
+   * @generated from enum value: ERROR_CODE_IDEMPOTENCY_CONFLICT = 30;
+   */
+  IDEMPOTENCY_CONFLICT = 30,
+
+  /**
+   * @generated from enum value: ERROR_CODE_PAYLOAD_TOO_LARGE = 31;
+   */
+  PAYLOAD_TOO_LARGE = 31,
+
+  /**
+   * @generated from enum value: ERROR_CODE_SCHEMA_UNSUPPORTED = 32;
+   */
+  SCHEMA_UNSUPPORTED = 32,
+
+  /**
+   * @generated from enum value: ERROR_CODE_PAYMENT_NOT_RECONCILED = 33;
+   */
+  PAYMENT_NOT_RECONCILED = 33,
+
+  /**
+   * @generated from enum value: ERROR_CODE_WEBHOOK_DUPLICATE = 34;
+   */
+  WEBHOOK_DUPLICATE = 34,
+
+  /**
+   * @generated from enum value: ERROR_CODE_EXPORT_NOT_READY = 35;
+   */
+  EXPORT_NOT_READY = 35,
+
+  /**
+   * @generated from enum value: ERROR_CODE_RETENTION_FORBIDDEN = 36;
+   */
+  RETENTION_FORBIDDEN = 36,
+
+  /**
+   * @generated from enum value: ERROR_CODE_READINESS_FAILED = 37;
+   */
+  READINESS_FAILED = 37,
+
+  /**
+   * @generated from enum value: ERROR_CODE_GAME_PHASE_INVALID = 38;
+   */
+  GAME_PHASE_INVALID = 38,
+
+  /**
+   * @generated from enum value: ERROR_CODE_GAME_FAIRNESS_VIOLATION = 39;
+   */
+  GAME_FAIRNESS_VIOLATION = 39,
 }
 
 /**

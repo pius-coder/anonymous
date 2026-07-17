@@ -1,7 +1,8 @@
-# Exceptions REST (Hono JSON) — registre SEQ-01
+# Exceptions REST (Hono JSON) — registre P-SEQ-02
 
-**Date d'ouverture du registre :** 2026-07-16
-**Propriétaire :** `packages/contracts` (SEQ-01)
+**Date d'ouverture du registre :** 2026-07-16  
+**Dernière mise à jour production :** 2026-07-17 (P-SEQ-02)  
+**Propriétaire :** `packages/contracts`  
 **Règle générale :** cible = ConnectRPC pour commands/queries ; REST seulement si listé ici.
 
 Chaque exception est **motivée**, **datée**, liée à un **contrat `.proto`**, et porte une **condition de retrait**.
@@ -74,8 +75,9 @@ Chaque exception est **motivée**, **datée**, liée à un **contrat `.proto`**,
 | Routes | `POST /v1/payments/webhook/fapshi` |
 | Date | 2026-07-16 |
 | Motif | **Contrainte externe** : le provider impose HTTP JSON webhook, pas Connect |
-| Contrat proto | Message paiement / événement provider mappé vers `PaymentTransaction` (adaptateur) |
-| Audience | Système (provider) |
+| Contrat proto | REST body → adaptateur → `ProviderWebhookEvent` + `IngestProviderWebhookEvent` (Connect interne/system). Statuts wire `FapshiWireStatus` mappés vers `PaymentInternalStatus`. |
+| Audience | Système (provider HTTP) puis système interne Connect |
+| Secrets | Headers credentials provider **jamais** mappés en champs client/proto publics |
 | Condition de retrait | Aucune tant que le provider n'offre pas un protocole alternatif ; **exception durable** documentée |
 | Retrait prévu | N/A (revoir si changement provider) |
 

@@ -95,8 +95,15 @@ message SubmitPlayerCommandPayload {
   string round_id = 2;
   sessionjeu.common.v1.PlayerId player_id = 3;
   string action_type = 4;
+  // DEPRECATED bare bytes: only with schema_id + schema_version; max 4096.
   bytes payload = 5;
   string action_nonce = 6;
+  string schema_id = 7;
+  string schema_version = 8;
+  int32 payload_max_bytes = 9;
+  // Preferred: typed envelope from minigame domain (serialized via application layer
+  // as schema-bound message; opaque only via TypedBytesEnvelope rules).
+  sessionjeu.common.v1.TypedBytesEnvelope typed_payload = 10;
 }
 
 message SubmitPlayerCommandResponse {
@@ -152,7 +159,12 @@ message PlayerFinishedRoundCommand {
   string round_id = 2;
   sessionjeu.common.v1.PlayerId player_id = 3;
   string action_nonce = 4;
+  // DEPRECATED bare bytes: only with schema_id + schema_version; max 4096.
   bytes payload = 5;
+  string schema_id = 6;
+  string schema_version = 7;
+  int32 payload_max_bytes = 8;
+  sessionjeu.common.v1.TypedBytesEnvelope typed_payload = 9;
 }
 
 message PlayerFinishedRoundResponse {

@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package sessionjeu.minigame.v1;
+
+import "common/v1/shared.proto";
+
+// Duel: Course au signal — first valid reaction after server signal.
+// Never trust client clickedAtMs as fairness truth; server timestamps only.
+
+message PureReactionDuelConfig {
+  string schema_version = 1;
+  int32 max_rounds = 2;
+  int32 min_delay_ms = 3;
+  int32 max_delay_ms = 4;
+  int32 reaction_timeout_ms = 5;
+  bool false_start_eliminates = 6;
+}
+
+message PureReactionDuelPlayerCommand {
+  string schema_version = 1;
+  // react | ready | abort
+  string action = 2;
+  // Client claim only — server ignores for ranking, may log for telemetry.
+  int64 client_clicked_at_ms = 3;
+  int64 client_timestamp_ms = 4;
+}
+
+message PureReactionDuelPublicState {
+  string schema_version = 1;
+  string phase = 2;
+  int32 duel_round = 3;
+  int32 max_rounds = 4;
+  // Opponent ids only; no reaction times until published.
+  repeated string participant_ids = 5;
+  bool signal_armed = 6;
+  // True after server signal; false during wait (no leak of remaining delay).
+  bool signal_active = 7;
+  string last_round_result_public = 8;
+}
+
+// Private: own false-start flags / arm state — never opponent times.
+message PureReactionDuelPrivateState {
+  string schema_version = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  bool false_start = 3;
+  bool can_react = 4;
+  int32 own_wins = 5;
+}
+
+message PureReactionDuelServerEvent {
+  string schema_version = 1;
+  string event_type = 2;
+  sessionjeu.common.v1.Audience audience = 3;
+  PureReactionDuelPublicState public_state = 4;
+  int64 server_timestamp_ms = 5;
+  // Server-only signal time for evidence; omit on observer/player if not yet closed.
+  int64 server_signal_at_ms = 6;
+}
+
+message PureReactionDuelScoreEvidence {
+  string schema_version = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  double raw_score = 3;
+  string evidence_hash = 4;
+  int64 server_signal_at_ms = 5;
+  int64 server_react_at_ms = 6;
+  int32 reaction_ms = 7;
+  bool false_start = 8;
+  int64 computed_at_ms = 9;
+}

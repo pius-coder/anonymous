@@ -14,10 +14,16 @@ export const GLOBAL_FORBIDDEN_FIELDS = [
   "internal_token",
   "secret",
   "api_key",
+  "apiuser",
+  "apikey",
   "provider_secret",
   "raw_provider_payload",
   "cached_answer",
   "correct_answer",
+  "cached_choice",
+  "hidden_role",
+  "other_roles",
+  "full_answer_sequence",
 ] as const;
 
 /** Provisional scoring is admin/system review only (sprint 13 AC-13-01, AC-13-06). */
@@ -31,6 +37,10 @@ export const PLAYER_FORBIDDEN_FIELDS = [
   "private_payload",
   "MiniGamePrivateState",
   "list_provisional_scores",
+  "partner_choice_id",
+  "role_id",
+  "own_role_id",
+  "server_signal_at_ms",
 ] as const;
 
 export const OBSERVER_FORBIDDEN_FIELDS = [
@@ -42,6 +52,8 @@ export const OBSERVER_FORBIDDEN_FIELDS = [
   "payment_provider_external_id",
   "risk_signal_detail",
   "redacted_detail",
+  "own_choice_id",
+  "private_hint",
 ] as const;
 
 /** Support is read-only on competition commands (sprint 18). */
@@ -51,6 +63,10 @@ export const SUPPORT_FORBIDDEN_FIELDS = [
   "session_token",
   "correct_answer",
   "cached_answer",
+  "cached_choice",
+  "own_role_id",
+  "other_roles",
+  "full_answer_sequence",
 ] as const;
 
 export const AUDIENCE_FORBIDDEN: Record<AudienceRole, readonly string[]> = {

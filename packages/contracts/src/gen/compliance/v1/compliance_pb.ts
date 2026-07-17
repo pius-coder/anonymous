@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file compliance/v1/compliance.proto.
  */
 export const file_compliance_v1_compliance: GenFile = /*@__PURE__*/
-  fileDesc("Ch5jb21wbGlhbmNlL3YxL2NvbXBsaWFuY2UucHJvdG8SGHNlc3Npb25qZXUuY29tcGxpYW5jZS52MSKCAgoOQ29tcGxpYW5jZUdhdGUSDwoHZ2F0ZV9pZBgBIAEoCRIvCghwYXJ0eV9pZBgCIAEoCzIdLnNlc3Npb25qZXUuY29tbW9uLnYxLlBhcnR5SWQSEQoJZ2F0ZV90eXBlGAMgASgJEj4KBnN0YXR1cxgEIAEoDjIuLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5Db21wbGlhbmNlR2F0ZVN0YXR1cxIPCgdzdW1tYXJ5GAUgASgJEjMKCmNyZWF0ZWRfYXQYBiABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXASFQoNZXZpZGVuY2VfcmVmcxgHIAMoCSK5AQoYTGlzdENvbXBsaWFuY2VHYXRlc1F1ZXJ5Ei8KCHBhcnR5X2lkGAEgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBJFCg1zdGF0dXNfZmlsdGVyGAIgASgOMi4uc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLkNvbXBsaWFuY2VHYXRlU3RhdHVzEhEKCXBhZ2Vfc2l6ZRgDIAEoBRISCgpwYWdlX3Rva2VuGAQgASgJIm8KG0xpc3RDb21wbGlhbmNlR2F0ZXNSZXNwb25zZRI3CgVnYXRlcxgBIAMoCzIoLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5Db21wbGlhbmNlR2F0ZRIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAkizwEKG0RlY2lkZUNvbXBsaWFuY2VHYXRlQ29tbWFuZBI7Cg5jb3JyZWxhdGlvbl9pZBgBIAEoCzIjLnNlc3Npb25qZXUuY29tbW9uLnYxLkNvcnJlbGF0aW9uSWQSDwoHZ2F0ZV9pZBgCIAEoCRI+CghkZWNpc2lvbhgDIAEoDjIsLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5Db21wbGlhbmNlRGVjaXNpb24SDgoGcmVhc29uGAQgASgJEhIKCmRlY2lkZWRfYnkYBSABKAkibwocRGVjaWRlQ29tcGxpYW5jZUdhdGVSZXNwb25zZRIPCgdnYXRlX2lkGAEgASgJEj4KBnN0YXR1cxgCIAEoDjIuLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5Db21wbGlhbmNlR2F0ZVN0YXR1cyK8AQoTT3BlbkluY2lkZW50Q29tbWFuZBI7Cg5jb3JyZWxhdGlvbl9pZBgBIAEoCzIjLnNlc3Npb25qZXUuY29tbW9uLnYxLkNvcnJlbGF0aW9uSWQSLwoIcGFydHlfaWQYAiABKAsyHS5zZXNzaW9uamV1LmNvbW1vbi52MS5QYXJ0eUlkEg8KB3N1YmplY3QYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSEQoJb3BlbmVkX2J5GAUgASgJImUKFE9wZW5JbmNpZGVudFJlc3BvbnNlEhMKC2luY2lkZW50X2lkGAEgASgJEjgKBnN0YXR1cxgCIAEoDjIoLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5JbmNpZGVudFN0YXR1cyLiAQoISW5jaWRlbnQSEwoLaW5jaWRlbnRfaWQYASABKAkSLwoIcGFydHlfaWQYAiABKAsyHS5zZXNzaW9uamV1LmNvbW1vbi52MS5QYXJ0eUlkEg8KB3N1YmplY3QYAyABKAkSOAoGc3RhdHVzGAQgASgOMiguc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLkluY2lkZW50U3RhdHVzEjIKCW9wZW5lZF9hdBgFIAEoCzIfLnNlc3Npb25qZXUuY29tbW9uLnYxLlRpbWVzdGFtcBIRCglvcGVuZWRfYnkYBiABKAki+wEKCkF1ZGl0RXZlbnQSEAoIZXZlbnRfaWQYASABKAkSEAoIYWN0b3JfaWQYAiABKAkSDgoGYWN0aW9uGAMgASgJEhMKC2VudGl0eV90eXBlGAQgASgJEhEKCWVudGl0eV9pZBgFIAEoCRIOCgZyZWFzb24YBiABKAkSDgoGcmVzdWx0GAcgASgJEjsKDmNvcnJlbGF0aW9uX2lkGAggASgLMiMuc2Vzc2lvbmpldS5jb21tb24udjEuQ29ycmVsYXRpb25JZBI0CgtvY2N1cnJlZF9hdBgJIAEoCzIfLnNlc3Npb25qZXUuY29tbW9uLnYxLlRpbWVzdGFtcCKWAQoUTGlzdEF1ZGl0RXZlbnRzUXVlcnkSEwoLZW50aXR5X3R5cGUYASABKAkSEQoJZW50aXR5X2lkGAIgASgJEi8KCHBhcnR5X2lkGAMgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBIRCglwYWdlX3NpemUYBCABKAUSEgoKcGFnZV90b2tlbhgFIAEoCSJoChdMaXN0QXVkaXRFdmVudHNSZXNwb25zZRI0CgZldmVudHMYASADKAsyJC5zZXNzaW9uamV1LmNvbXBsaWFuY2UudjEuQXVkaXRFdmVudBIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAki/QEKG1JlY29yZEFudGlDaGVhdEV2ZW50Q29tbWFuZBI7Cg5jb3JyZWxhdGlvbl9pZBgBIAEoCzIjLnNlc3Npb25qZXUuY29tbW9uLnYxLkNvcnJlbGF0aW9uSWQSLwoIcGFydHlfaWQYAiABKAsyHS5zZXNzaW9uamV1LmNvbW1vbi52MS5QYXJ0eUlkEjEKCXBsYXllcl9pZBgDIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEhMKC3NpZ25hbF90eXBlGAQgASgJEg8KB3N1bW1hcnkYBSABKAkSFwoPcmVkYWN0ZWRfZGV0YWlsGAYgASgJIjAKHFJlY29yZEFudGlDaGVhdEV2ZW50UmVzcG9uc2USEAoIZXZlbnRfaWQYASABKAki3wEKClJpc2tTaWduYWwSEQoJc2lnbmFsX2lkGAEgASgJEi8KCHBhcnR5X2lkGAIgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBIxCglwbGF5ZXJfaWQYAyABKAsyHi5zZXNzaW9uamV1LmNvbW1vbi52MS5QbGF5ZXJJZBITCgtzaWduYWxfdHlwZRgEIAEoCRIPCgdzdW1tYXJ5GAUgASgJEjQKC2RldGVjdGVkX2F0GAYgASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wIm4KFExpc3RSaXNrU2lnbmFsc1F1ZXJ5Ei8KCHBhcnR5X2lkGAEgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBIRCglwYWdlX3NpemUYAiABKAUSEgoKcGFnZV90b2tlbhgDIAEoCSJpChdMaXN0Umlza1NpZ25hbHNSZXNwb25zZRI1CgdzaWduYWxzGAEgAygLMiQuc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLlJpc2tTaWduYWwSFwoPbmV4dF9wYWdlX3Rva2VuGAIgASgJKssBChRDb21wbGlhbmNlR2F0ZVN0YXR1cxImCiJDT01QTElBTkNFX0dBVEVfU1RBVFVTX1VOU1BFQ0lGSUVEEAASHwobQ09NUExJQU5DRV9HQVRFX1NUQVRVU19PUEVOEAESIgoeQ09NUExJQU5DRV9HQVRFX1NUQVRVU19CTE9DS0VEEAISIwofQ09NUExJQU5DRV9HQVRFX1NUQVRVU19BUFBST1ZFRBADEiEKHUNPTVBMSUFOQ0VfR0FURV9TVEFUVVNfV0FJVkVEEAQqqAEKDkluY2lkZW50U3RhdHVzEh8KG0lOQ0lERU5UX1NUQVRVU19VTlNQRUNJRklFRBAAEhgKFElOQ0lERU5UX1NUQVRVU19PUEVOEAESIQodSU5DSURFTlRfU1RBVFVTX0lOVkVTVElHQVRJTkcQAhIcChhJTkNJREVOVF9TVEFUVVNfUkVTT0xWRUQQAxIaChZJTkNJREVOVF9TVEFUVVNfQ0xPU0VEEAQqmQEKEkNvbXBsaWFuY2VEZWNpc2lvbhIjCh9DT01QTElBTkNFX0RFQ0lTSU9OX1VOU1BFQ0lGSUVEEAASHwobQ09NUExJQU5DRV9ERUNJU0lPTl9BUFBST1ZFEAESHQoZQ09NUExJQU5DRV9ERUNJU0lPTl9XQUlWRRACEh4KGkNPTVBMSUFOQ0VfREVDSVNJT05fUkVKRUNUEAMygQYKEUNvbXBsaWFuY2VTZXJ2aWNlEoABChNMaXN0Q29tcGxpYW5jZUdhdGVzEjIuc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLkxpc3RDb21wbGlhbmNlR2F0ZXNRdWVyeRo1LnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5MaXN0Q29tcGxpYW5jZUdhdGVzUmVzcG9uc2UShQEKFERlY2lkZUNvbXBsaWFuY2VHYXRlEjUuc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLkRlY2lkZUNvbXBsaWFuY2VHYXRlQ29tbWFuZBo2LnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5EZWNpZGVDb21wbGlhbmNlR2F0ZVJlc3BvbnNlEm0KDE9wZW5JbmNpZGVudBItLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5PcGVuSW5jaWRlbnRDb21tYW5kGi4uc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLk9wZW5JbmNpZGVudFJlc3BvbnNlEnQKD0xpc3RBdWRpdEV2ZW50cxIuLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5MaXN0QXVkaXRFdmVudHNRdWVyeRoxLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5MaXN0QXVkaXRFdmVudHNSZXNwb25zZRKFAQoUUmVjb3JkQW50aUNoZWF0RXZlbnQSNS5zZXNzaW9uamV1LmNvbXBsaWFuY2UudjEuUmVjb3JkQW50aUNoZWF0RXZlbnRDb21tYW5kGjYuc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLlJlY29yZEFudGlDaGVhdEV2ZW50UmVzcG9uc2USdAoPTGlzdFJpc2tTaWduYWxzEi4uc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLkxpc3RSaXNrU2lnbmFsc1F1ZXJ5GjEuc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLkxpc3RSaXNrU2lnbmFsc1Jlc3BvbnNlYgZwcm90bzM", [file_common_v1_shared]);
+  fileDesc("Ch5jb21wbGlhbmNlL3YxL2NvbXBsaWFuY2UucHJvdG8SGHNlc3Npb25qZXUuY29tcGxpYW5jZS52MSKCAgoOQ29tcGxpYW5jZUdhdGUSDwoHZ2F0ZV9pZBgBIAEoCRIvCghwYXJ0eV9pZBgCIAEoCzIdLnNlc3Npb25qZXUuY29tbW9uLnYxLlBhcnR5SWQSEQoJZ2F0ZV90eXBlGAMgASgJEj4KBnN0YXR1cxgEIAEoDjIuLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5Db21wbGlhbmNlR2F0ZVN0YXR1cxIPCgdzdW1tYXJ5GAUgASgJEjMKCmNyZWF0ZWRfYXQYBiABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXASFQoNZXZpZGVuY2VfcmVmcxgHIAMoCSK5AQoYTGlzdENvbXBsaWFuY2VHYXRlc1F1ZXJ5Ei8KCHBhcnR5X2lkGAEgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBJFCg1zdGF0dXNfZmlsdGVyGAIgASgOMi4uc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLkNvbXBsaWFuY2VHYXRlU3RhdHVzEhEKCXBhZ2Vfc2l6ZRgDIAEoBRISCgpwYWdlX3Rva2VuGAQgASgJIm8KG0xpc3RDb21wbGlhbmNlR2F0ZXNSZXNwb25zZRI3CgVnYXRlcxgBIAMoCzIoLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5Db21wbGlhbmNlR2F0ZRIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAkizwEKG0RlY2lkZUNvbXBsaWFuY2VHYXRlQ29tbWFuZBI7Cg5jb3JyZWxhdGlvbl9pZBgBIAEoCzIjLnNlc3Npb25qZXUuY29tbW9uLnYxLkNvcnJlbGF0aW9uSWQSDwoHZ2F0ZV9pZBgCIAEoCRI+CghkZWNpc2lvbhgDIAEoDjIsLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5Db21wbGlhbmNlRGVjaXNpb24SDgoGcmVhc29uGAQgASgJEhIKCmRlY2lkZWRfYnkYBSABKAkibwocRGVjaWRlQ29tcGxpYW5jZUdhdGVSZXNwb25zZRIPCgdnYXRlX2lkGAEgASgJEj4KBnN0YXR1cxgCIAEoDjIuLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5Db21wbGlhbmNlR2F0ZVN0YXR1cyK8AQoTT3BlbkluY2lkZW50Q29tbWFuZBI7Cg5jb3JyZWxhdGlvbl9pZBgBIAEoCzIjLnNlc3Npb25qZXUuY29tbW9uLnYxLkNvcnJlbGF0aW9uSWQSLwoIcGFydHlfaWQYAiABKAsyHS5zZXNzaW9uamV1LmNvbW1vbi52MS5QYXJ0eUlkEg8KB3N1YmplY3QYAyABKAkSEwoLZGVzY3JpcHRpb24YBCABKAkSEQoJb3BlbmVkX2J5GAUgASgJImUKFE9wZW5JbmNpZGVudFJlc3BvbnNlEhMKC2luY2lkZW50X2lkGAEgASgJEjgKBnN0YXR1cxgCIAEoDjIoLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5JbmNpZGVudFN0YXR1cyLiAQoISW5jaWRlbnQSEwoLaW5jaWRlbnRfaWQYASABKAkSLwoIcGFydHlfaWQYAiABKAsyHS5zZXNzaW9uamV1LmNvbW1vbi52MS5QYXJ0eUlkEg8KB3N1YmplY3QYAyABKAkSOAoGc3RhdHVzGAQgASgOMiguc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLkluY2lkZW50U3RhdHVzEjIKCW9wZW5lZF9hdBgFIAEoCzIfLnNlc3Npb25qZXUuY29tbW9uLnYxLlRpbWVzdGFtcBIRCglvcGVuZWRfYnkYBiABKAki+wEKCkF1ZGl0RXZlbnQSEAoIZXZlbnRfaWQYASABKAkSEAoIYWN0b3JfaWQYAiABKAkSDgoGYWN0aW9uGAMgASgJEhMKC2VudGl0eV90eXBlGAQgASgJEhEKCWVudGl0eV9pZBgFIAEoCRIOCgZyZWFzb24YBiABKAkSDgoGcmVzdWx0GAcgASgJEjsKDmNvcnJlbGF0aW9uX2lkGAggASgLMiMuc2Vzc2lvbmpldS5jb21tb24udjEuQ29ycmVsYXRpb25JZBI0CgtvY2N1cnJlZF9hdBgJIAEoCzIfLnNlc3Npb25qZXUuY29tbW9uLnYxLlRpbWVzdGFtcCKWAQoUTGlzdEF1ZGl0RXZlbnRzUXVlcnkSEwoLZW50aXR5X3R5cGUYASABKAkSEQoJZW50aXR5X2lkGAIgASgJEi8KCHBhcnR5X2lkGAMgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBIRCglwYWdlX3NpemUYBCABKAUSEgoKcGFnZV90b2tlbhgFIAEoCSJoChdMaXN0QXVkaXRFdmVudHNSZXNwb25zZRI0CgZldmVudHMYASADKAsyJC5zZXNzaW9uamV1LmNvbXBsaWFuY2UudjEuQXVkaXRFdmVudBIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAki/QEKG1JlY29yZEFudGlDaGVhdEV2ZW50Q29tbWFuZBI7Cg5jb3JyZWxhdGlvbl9pZBgBIAEoCzIjLnNlc3Npb25qZXUuY29tbW9uLnYxLkNvcnJlbGF0aW9uSWQSLwoIcGFydHlfaWQYAiABKAsyHS5zZXNzaW9uamV1LmNvbW1vbi52MS5QYXJ0eUlkEjEKCXBsYXllcl9pZBgDIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEhMKC3NpZ25hbF90eXBlGAQgASgJEg8KB3N1bW1hcnkYBSABKAkSFwoPcmVkYWN0ZWRfZGV0YWlsGAYgASgJIjAKHFJlY29yZEFudGlDaGVhdEV2ZW50UmVzcG9uc2USEAoIZXZlbnRfaWQYASABKAki3wEKClJpc2tTaWduYWwSEQoJc2lnbmFsX2lkGAEgASgJEi8KCHBhcnR5X2lkGAIgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBIxCglwbGF5ZXJfaWQYAyABKAsyHi5zZXNzaW9uamV1LmNvbW1vbi52MS5QbGF5ZXJJZBITCgtzaWduYWxfdHlwZRgEIAEoCRIPCgdzdW1tYXJ5GAUgASgJEjQKC2RldGVjdGVkX2F0GAYgASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wIm4KFExpc3RSaXNrU2lnbmFsc1F1ZXJ5Ei8KCHBhcnR5X2lkGAEgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBIRCglwYWdlX3NpemUYAiABKAUSEgoKcGFnZV90b2tlbhgDIAEoCSJpChdMaXN0Umlza1NpZ25hbHNSZXNwb25zZRI1CgdzaWduYWxzGAEgAygLMiQuc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLlJpc2tTaWduYWwSFwoPbmV4dF9wYWdlX3Rva2VuGAIgASgJItEBChhSZXF1ZXN0RGF0YUV4cG9ydENvbW1hbmQSOwoOY29ycmVsYXRpb25faWQYASABKAsyIy5zZXNzaW9uamV1LmNvbW1vbi52MS5Db3JyZWxhdGlvbklkEjkKEXN1YmplY3RfcGxheWVyX2lkGAIgASgLMh4uc2Vzc2lvbmpldS5jb21tb24udjEuUGxheWVySWQSFAoMcmVxdWVzdGVkX2J5GAMgASgJEg4KBnJlYXNvbhgEIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBSABKAkiagoZUmVxdWVzdERhdGFFeHBvcnRSZXNwb25zZRIRCglleHBvcnRfaWQYASABKAkSOgoGc3RhdHVzGAIgASgOMiouc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLkRhdGFFeHBvcnRTdGF0dXMioQIKEERhdGFFeHBvcnRSZWNvcmQSEQoJZXhwb3J0X2lkGAEgASgJEjkKEXN1YmplY3RfcGxheWVyX2lkGAIgASgLMh4uc2Vzc2lvbmpldS5jb21tb24udjEuUGxheWVySWQSOgoGc3RhdHVzGAMgASgOMiouc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLkRhdGFFeHBvcnRTdGF0dXMSNQoMcmVxdWVzdGVkX2F0GAQgASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wEhcKD2Rvd25sb2FkX3JlZl9pZBgFIAEoCRIzCgpleHBpcmVzX2F0GAYgASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wIikKF0dldFJldGVudGlvblBvbGljeVF1ZXJ5Eg4KBmRvbWFpbhgBIAEoCSKZAQoTUmV0ZW50aW9uUG9saWN5UnVsZRIOCgZkb21haW4YASABKAkSEwoLZW50aXR5X3R5cGUYAiABKAkSEwoLcmV0YWluX2RheXMYAyABKAUSOQoGYWN0aW9uGAQgASgOMikuc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLlJldGVudGlvbkFjdGlvbhINCgVub3RlcxgFIAEoCSJaChpHZXRSZXRlbnRpb25Qb2xpY3lSZXNwb25zZRI8CgVydWxlcxgBIAMoCzItLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5SZXRlbnRpb25Qb2xpY3lSdWxlIqwCCgtTdXBwb3J0Q2FzZRIPCgdjYXNlX2lkGAEgASgJEi8KCHBhcnR5X2lkGAIgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZBIxCglwbGF5ZXJfaWQYAyABKAsyHi5zZXNzaW9uamV1LmNvbW1vbi52MS5QbGF5ZXJJZBIPCgdzdWJqZWN0GAQgASgJEjsKBnN0YXR1cxgFIAEoDjIrLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5TdXBwb3J0Q2FzZVN0YXR1cxIyCglvcGVuZWRfYXQYBiABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXASEQoJb3BlbmVkX2J5GAcgASgJEhMKC2luY2lkZW50X2lkGAggASgJIrMBChVMaXN0U3VwcG9ydENhc2VzUXVlcnkSLwoIcGFydHlfaWQYASABKAsyHS5zZXNzaW9uamV1LmNvbW1vbi52MS5QYXJ0eUlkEkIKDXN0YXR1c19maWx0ZXIYAiABKA4yKy5zZXNzaW9uamV1LmNvbXBsaWFuY2UudjEuU3VwcG9ydENhc2VTdGF0dXMSEQoJcGFnZV9zaXplGAMgASgFEhIKCnBhZ2VfdG9rZW4YBCABKAkiaQoYTGlzdFN1cHBvcnRDYXNlc1Jlc3BvbnNlEjQKBWNhc2VzGAEgAygLMiUuc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLlN1cHBvcnRDYXNlEhcKD25leHRfcGFnZV90b2tlbhgCIAEoCSrLAQoUQ29tcGxpYW5jZUdhdGVTdGF0dXMSJgoiQ09NUExJQU5DRV9HQVRFX1NUQVRVU19VTlNQRUNJRklFRBAAEh8KG0NPTVBMSUFOQ0VfR0FURV9TVEFUVVNfT1BFThABEiIKHkNPTVBMSUFOQ0VfR0FURV9TVEFUVVNfQkxPQ0tFRBACEiMKH0NPTVBMSUFOQ0VfR0FURV9TVEFUVVNfQVBQUk9WRUQQAxIhCh1DT01QTElBTkNFX0dBVEVfU1RBVFVTX1dBSVZFRBAEKqgBCg5JbmNpZGVudFN0YXR1cxIfChtJTkNJREVOVF9TVEFUVVNfVU5TUEVDSUZJRUQQABIYChRJTkNJREVOVF9TVEFUVVNfT1BFThABEiEKHUlOQ0lERU5UX1NUQVRVU19JTlZFU1RJR0FUSU5HEAISHAoYSU5DSURFTlRfU1RBVFVTX1JFU09MVkVEEAMSGgoWSU5DSURFTlRfU1RBVFVTX0NMT1NFRBAEKpkBChJDb21wbGlhbmNlRGVjaXNpb24SIwofQ09NUExJQU5DRV9ERUNJU0lPTl9VTlNQRUNJRklFRBAAEh8KG0NPTVBMSUFOQ0VfREVDSVNJT05fQVBQUk9WRRABEh0KGUNPTVBMSUFOQ0VfREVDSVNJT05fV0FJVkUQAhIeChpDT01QTElBTkNFX0RFQ0lTSU9OX1JFSkVDVBADKtgBChBEYXRhRXhwb3J0U3RhdHVzEiIKHkRBVEFfRVhQT1JUX1NUQVRVU19VTlNQRUNJRklFRBAAEiAKHERBVEFfRVhQT1JUX1NUQVRVU19SRVFVRVNURUQQARIhCh1EQVRBX0VYUE9SVF9TVEFUVVNfUFJPQ0VTU0lORxACEhwKGERBVEFfRVhQT1JUX1NUQVRVU19SRUFEWRADEh0KGURBVEFfRVhQT1JUX1NUQVRVU19GQUlMRUQQBBIeChpEQVRBX0VYUE9SVF9TVEFUVVNfRVhQSVJFRBAFKqwBCg9SZXRlbnRpb25BY3Rpb24SIAocUkVURU5USU9OX0FDVElPTl9VTlNQRUNJRklFRBAAEhkKFVJFVEVOVElPTl9BQ1RJT05fS0VFUBABEh4KGlJFVEVOVElPTl9BQ1RJT05fQU5PTllNSVpFEAISGwoXUkVURU5USU9OX0FDVElPTl9ERUxFVEUQAxIfChtSRVRFTlRJT05fQUNUSU9OX0xFR0FMX0hPTEQQBCq5AQoRU3VwcG9ydENhc2VTdGF0dXMSIwofU1VQUE9SVF9DQVNFX1NUQVRVU19VTlNQRUNJRklFRBAAEhwKGFNVUFBPUlRfQ0FTRV9TVEFUVVNfT1BFThABEh8KG1NVUFBPUlRfQ0FTRV9TVEFUVVNfUEVORElORxACEiAKHFNVUFBPUlRfQ0FTRV9TVEFUVVNfUkVTT0xWRUQQAxIeChpTVVBQT1JUX0NBU0VfU1RBVFVTX0NMT1NFRBAEMvcIChFDb21wbGlhbmNlU2VydmljZRKAAQoTTGlzdENvbXBsaWFuY2VHYXRlcxIyLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5MaXN0Q29tcGxpYW5jZUdhdGVzUXVlcnkaNS5zZXNzaW9uamV1LmNvbXBsaWFuY2UudjEuTGlzdENvbXBsaWFuY2VHYXRlc1Jlc3BvbnNlEoUBChREZWNpZGVDb21wbGlhbmNlR2F0ZRI1LnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5EZWNpZGVDb21wbGlhbmNlR2F0ZUNvbW1hbmQaNi5zZXNzaW9uamV1LmNvbXBsaWFuY2UudjEuRGVjaWRlQ29tcGxpYW5jZUdhdGVSZXNwb25zZRJtCgxPcGVuSW5jaWRlbnQSLS5zZXNzaW9uamV1LmNvbXBsaWFuY2UudjEuT3BlbkluY2lkZW50Q29tbWFuZBouLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5PcGVuSW5jaWRlbnRSZXNwb25zZRJ0Cg9MaXN0QXVkaXRFdmVudHMSLi5zZXNzaW9uamV1LmNvbXBsaWFuY2UudjEuTGlzdEF1ZGl0RXZlbnRzUXVlcnkaMS5zZXNzaW9uamV1LmNvbXBsaWFuY2UudjEuTGlzdEF1ZGl0RXZlbnRzUmVzcG9uc2UShQEKFFJlY29yZEFudGlDaGVhdEV2ZW50EjUuc2Vzc2lvbmpldS5jb21wbGlhbmNlLnYxLlJlY29yZEFudGlDaGVhdEV2ZW50Q29tbWFuZBo2LnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5SZWNvcmRBbnRpQ2hlYXRFdmVudFJlc3BvbnNlEnQKD0xpc3RSaXNrU2lnbmFscxIuLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5MaXN0Umlza1NpZ25hbHNRdWVyeRoxLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5MaXN0Umlza1NpZ25hbHNSZXNwb25zZRJ8ChFSZXF1ZXN0RGF0YUV4cG9ydBIyLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5SZXF1ZXN0RGF0YUV4cG9ydENvbW1hbmQaMy5zZXNzaW9uamV1LmNvbXBsaWFuY2UudjEuUmVxdWVzdERhdGFFeHBvcnRSZXNwb25zZRJ9ChJHZXRSZXRlbnRpb25Qb2xpY3kSMS5zZXNzaW9uamV1LmNvbXBsaWFuY2UudjEuR2V0UmV0ZW50aW9uUG9saWN5UXVlcnkaNC5zZXNzaW9uamV1LmNvbXBsaWFuY2UudjEuR2V0UmV0ZW50aW9uUG9saWN5UmVzcG9uc2USdwoQTGlzdFN1cHBvcnRDYXNlcxIvLnNlc3Npb25qZXUuY29tcGxpYW5jZS52MS5MaXN0U3VwcG9ydENhc2VzUXVlcnkaMi5zZXNzaW9uamV1LmNvbXBsaWFuY2UudjEuTGlzdFN1cHBvcnRDYXNlc1Jlc3BvbnNlYgZwcm90bzM", [file_common_v1_shared]);
 
 /**
  * @generated from message sessionjeu.compliance.v1.ComplianceGate
@@ -548,6 +548,288 @@ export const ListRiskSignalsResponseSchema: GenMessage<ListRiskSignalsResponse> 
   messageDesc(file_compliance_v1_compliance, 15);
 
 /**
+ * @generated from message sessionjeu.compliance.v1.RequestDataExportCommand
+ */
+export type RequestDataExportCommand = Message<"sessionjeu.compliance.v1.RequestDataExportCommand"> & {
+  /**
+   * @generated from field: sessionjeu.common.v1.CorrelationId correlation_id = 1;
+   */
+  correlationId?: CorrelationId | undefined;
+
+  /**
+   * @generated from field: sessionjeu.common.v1.PlayerId subject_player_id = 2;
+   */
+  subjectPlayerId?: PlayerId | undefined;
+
+  /**
+   * @generated from field: string requested_by = 3;
+   */
+  requestedBy: string;
+
+  /**
+   * @generated from field: string reason = 4;
+   */
+  reason: string;
+
+  /**
+   * @generated from field: string idempotency_key = 5;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message sessionjeu.compliance.v1.RequestDataExportCommand.
+ * Use `create(RequestDataExportCommandSchema)` to create a new message.
+ */
+export const RequestDataExportCommandSchema: GenMessage<RequestDataExportCommand> = /*@__PURE__*/
+  messageDesc(file_compliance_v1_compliance, 16);
+
+/**
+ * @generated from message sessionjeu.compliance.v1.RequestDataExportResponse
+ */
+export type RequestDataExportResponse = Message<"sessionjeu.compliance.v1.RequestDataExportResponse"> & {
+  /**
+   * @generated from field: string export_id = 1;
+   */
+  exportId: string;
+
+  /**
+   * @generated from field: sessionjeu.compliance.v1.DataExportStatus status = 2;
+   */
+  status: DataExportStatus;
+};
+
+/**
+ * Describes the message sessionjeu.compliance.v1.RequestDataExportResponse.
+ * Use `create(RequestDataExportResponseSchema)` to create a new message.
+ */
+export const RequestDataExportResponseSchema: GenMessage<RequestDataExportResponse> = /*@__PURE__*/
+  messageDesc(file_compliance_v1_compliance, 17);
+
+/**
+ * @generated from message sessionjeu.compliance.v1.DataExportRecord
+ */
+export type DataExportRecord = Message<"sessionjeu.compliance.v1.DataExportRecord"> & {
+  /**
+   * @generated from field: string export_id = 1;
+   */
+  exportId: string;
+
+  /**
+   * @generated from field: sessionjeu.common.v1.PlayerId subject_player_id = 2;
+   */
+  subjectPlayerId?: PlayerId | undefined;
+
+  /**
+   * @generated from field: sessionjeu.compliance.v1.DataExportStatus status = 3;
+   */
+  status: DataExportStatus;
+
+  /**
+   * @generated from field: sessionjeu.common.v1.Timestamp requested_at = 4;
+   */
+  requestedAt?: Timestamp | undefined;
+
+  /**
+   * Download reference token id only — not a raw secret blob.
+   *
+   * @generated from field: string download_ref_id = 5;
+   */
+  downloadRefId: string;
+
+  /**
+   * @generated from field: sessionjeu.common.v1.Timestamp expires_at = 6;
+   */
+  expiresAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message sessionjeu.compliance.v1.DataExportRecord.
+ * Use `create(DataExportRecordSchema)` to create a new message.
+ */
+export const DataExportRecordSchema: GenMessage<DataExportRecord> = /*@__PURE__*/
+  messageDesc(file_compliance_v1_compliance, 18);
+
+/**
+ * @generated from message sessionjeu.compliance.v1.GetRetentionPolicyQuery
+ */
+export type GetRetentionPolicyQuery = Message<"sessionjeu.compliance.v1.GetRetentionPolicyQuery"> & {
+  /**
+   * @generated from field: string domain = 1;
+   */
+  domain: string;
+};
+
+/**
+ * Describes the message sessionjeu.compliance.v1.GetRetentionPolicyQuery.
+ * Use `create(GetRetentionPolicyQuerySchema)` to create a new message.
+ */
+export const GetRetentionPolicyQuerySchema: GenMessage<GetRetentionPolicyQuery> = /*@__PURE__*/
+  messageDesc(file_compliance_v1_compliance, 19);
+
+/**
+ * @generated from message sessionjeu.compliance.v1.RetentionPolicyRule
+ */
+export type RetentionPolicyRule = Message<"sessionjeu.compliance.v1.RetentionPolicyRule"> & {
+  /**
+   * @generated from field: string domain = 1;
+   */
+  domain: string;
+
+  /**
+   * @generated from field: string entity_type = 2;
+   */
+  entityType: string;
+
+  /**
+   * @generated from field: int32 retain_days = 3;
+   */
+  retainDays: number;
+
+  /**
+   * @generated from field: sessionjeu.compliance.v1.RetentionAction action = 4;
+   */
+  action: RetentionAction;
+
+  /**
+   * @generated from field: string notes = 5;
+   */
+  notes: string;
+};
+
+/**
+ * Describes the message sessionjeu.compliance.v1.RetentionPolicyRule.
+ * Use `create(RetentionPolicyRuleSchema)` to create a new message.
+ */
+export const RetentionPolicyRuleSchema: GenMessage<RetentionPolicyRule> = /*@__PURE__*/
+  messageDesc(file_compliance_v1_compliance, 20);
+
+/**
+ * @generated from message sessionjeu.compliance.v1.GetRetentionPolicyResponse
+ */
+export type GetRetentionPolicyResponse = Message<"sessionjeu.compliance.v1.GetRetentionPolicyResponse"> & {
+  /**
+   * @generated from field: repeated sessionjeu.compliance.v1.RetentionPolicyRule rules = 1;
+   */
+  rules: RetentionPolicyRule[];
+};
+
+/**
+ * Describes the message sessionjeu.compliance.v1.GetRetentionPolicyResponse.
+ * Use `create(GetRetentionPolicyResponseSchema)` to create a new message.
+ */
+export const GetRetentionPolicyResponseSchema: GenMessage<GetRetentionPolicyResponse> = /*@__PURE__*/
+  messageDesc(file_compliance_v1_compliance, 21);
+
+/**
+ * @generated from message sessionjeu.compliance.v1.SupportCase
+ */
+export type SupportCase = Message<"sessionjeu.compliance.v1.SupportCase"> & {
+  /**
+   * @generated from field: string case_id = 1;
+   */
+  caseId: string;
+
+  /**
+   * @generated from field: sessionjeu.common.v1.PartyId party_id = 2;
+   */
+  partyId?: PartyId | undefined;
+
+  /**
+   * @generated from field: sessionjeu.common.v1.PlayerId player_id = 3;
+   */
+  playerId?: PlayerId | undefined;
+
+  /**
+   * @generated from field: string subject = 4;
+   */
+  subject: string;
+
+  /**
+   * @generated from field: sessionjeu.compliance.v1.SupportCaseStatus status = 5;
+   */
+  status: SupportCaseStatus;
+
+  /**
+   * @generated from field: sessionjeu.common.v1.Timestamp opened_at = 6;
+   */
+  openedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: string opened_by = 7;
+   */
+  openedBy: string;
+
+  /**
+   * Linked incident id if any — no competitive command authority.
+   *
+   * @generated from field: string incident_id = 8;
+   */
+  incidentId: string;
+};
+
+/**
+ * Describes the message sessionjeu.compliance.v1.SupportCase.
+ * Use `create(SupportCaseSchema)` to create a new message.
+ */
+export const SupportCaseSchema: GenMessage<SupportCase> = /*@__PURE__*/
+  messageDesc(file_compliance_v1_compliance, 22);
+
+/**
+ * @generated from message sessionjeu.compliance.v1.ListSupportCasesQuery
+ */
+export type ListSupportCasesQuery = Message<"sessionjeu.compliance.v1.ListSupportCasesQuery"> & {
+  /**
+   * @generated from field: sessionjeu.common.v1.PartyId party_id = 1;
+   */
+  partyId?: PartyId | undefined;
+
+  /**
+   * @generated from field: sessionjeu.compliance.v1.SupportCaseStatus status_filter = 2;
+   */
+  statusFilter: SupportCaseStatus;
+
+  /**
+   * @generated from field: int32 page_size = 3;
+   */
+  pageSize: number;
+
+  /**
+   * @generated from field: string page_token = 4;
+   */
+  pageToken: string;
+};
+
+/**
+ * Describes the message sessionjeu.compliance.v1.ListSupportCasesQuery.
+ * Use `create(ListSupportCasesQuerySchema)` to create a new message.
+ */
+export const ListSupportCasesQuerySchema: GenMessage<ListSupportCasesQuery> = /*@__PURE__*/
+  messageDesc(file_compliance_v1_compliance, 23);
+
+/**
+ * @generated from message sessionjeu.compliance.v1.ListSupportCasesResponse
+ */
+export type ListSupportCasesResponse = Message<"sessionjeu.compliance.v1.ListSupportCasesResponse"> & {
+  /**
+   * @generated from field: repeated sessionjeu.compliance.v1.SupportCase cases = 1;
+   */
+  cases: SupportCase[];
+
+  /**
+   * @generated from field: string next_page_token = 2;
+   */
+  nextPageToken: string;
+};
+
+/**
+ * Describes the message sessionjeu.compliance.v1.ListSupportCasesResponse.
+ * Use `create(ListSupportCasesResponseSchema)` to create a new message.
+ */
+export const ListSupportCasesResponseSchema: GenMessage<ListSupportCasesResponse> = /*@__PURE__*/
+  messageDesc(file_compliance_v1_compliance, 24);
+
+/**
  * @generated from enum sessionjeu.compliance.v1.ComplianceGateStatus
  */
 export enum ComplianceGateStatus {
@@ -651,6 +933,119 @@ export const ComplianceDecisionSchema: GenEnum<ComplianceDecision> = /*@__PURE__
   enumDesc(file_compliance_v1_compliance, 2);
 
 /**
+ * @generated from enum sessionjeu.compliance.v1.DataExportStatus
+ */
+export enum DataExportStatus {
+  /**
+   * @generated from enum value: DATA_EXPORT_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: DATA_EXPORT_STATUS_REQUESTED = 1;
+   */
+  REQUESTED = 1,
+
+  /**
+   * @generated from enum value: DATA_EXPORT_STATUS_PROCESSING = 2;
+   */
+  PROCESSING = 2,
+
+  /**
+   * @generated from enum value: DATA_EXPORT_STATUS_READY = 3;
+   */
+  READY = 3,
+
+  /**
+   * @generated from enum value: DATA_EXPORT_STATUS_FAILED = 4;
+   */
+  FAILED = 4,
+
+  /**
+   * @generated from enum value: DATA_EXPORT_STATUS_EXPIRED = 5;
+   */
+  EXPIRED = 5,
+}
+
+/**
+ * Describes the enum sessionjeu.compliance.v1.DataExportStatus.
+ */
+export const DataExportStatusSchema: GenEnum<DataExportStatus> = /*@__PURE__*/
+  enumDesc(file_compliance_v1_compliance, 3);
+
+/**
+ * @generated from enum sessionjeu.compliance.v1.RetentionAction
+ */
+export enum RetentionAction {
+  /**
+   * @generated from enum value: RETENTION_ACTION_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: RETENTION_ACTION_KEEP = 1;
+   */
+  KEEP = 1,
+
+  /**
+   * @generated from enum value: RETENTION_ACTION_ANONYMIZE = 2;
+   */
+  ANONYMIZE = 2,
+
+  /**
+   * @generated from enum value: RETENTION_ACTION_DELETE = 3;
+   */
+  DELETE = 3,
+
+  /**
+   * @generated from enum value: RETENTION_ACTION_LEGAL_HOLD = 4;
+   */
+  LEGAL_HOLD = 4,
+}
+
+/**
+ * Describes the enum sessionjeu.compliance.v1.RetentionAction.
+ */
+export const RetentionActionSchema: GenEnum<RetentionAction> = /*@__PURE__*/
+  enumDesc(file_compliance_v1_compliance, 4);
+
+/**
+ * @generated from enum sessionjeu.compliance.v1.SupportCaseStatus
+ */
+export enum SupportCaseStatus {
+  /**
+   * @generated from enum value: SUPPORT_CASE_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: SUPPORT_CASE_STATUS_OPEN = 1;
+   */
+  OPEN = 1,
+
+  /**
+   * @generated from enum value: SUPPORT_CASE_STATUS_PENDING = 2;
+   */
+  PENDING = 2,
+
+  /**
+   * @generated from enum value: SUPPORT_CASE_STATUS_RESOLVED = 3;
+   */
+  RESOLVED = 3,
+
+  /**
+   * @generated from enum value: SUPPORT_CASE_STATUS_CLOSED = 4;
+   */
+  CLOSED = 4,
+}
+
+/**
+ * Describes the enum sessionjeu.compliance.v1.SupportCaseStatus.
+ */
+export const SupportCaseStatusSchema: GenEnum<SupportCaseStatus> = /*@__PURE__*/
+  enumDesc(file_compliance_v1_compliance, 5);
+
+/**
  * @generated from service sessionjeu.compliance.v1.ComplianceService
  */
 export const ComplianceService: GenService<{
@@ -702,5 +1097,30 @@ export const ComplianceService: GenService<{
     input: typeof ListRiskSignalsQuerySchema;
     output: typeof ListRiskSignalsResponseSchema;
   },
+  /**
+   * @generated from rpc sessionjeu.compliance.v1.ComplianceService.RequestDataExport
+   */
+  requestDataExport: {
+    methodKind: "unary";
+    input: typeof RequestDataExportCommandSchema;
+    output: typeof RequestDataExportResponseSchema;
+  },
+  /**
+   * @generated from rpc sessionjeu.compliance.v1.ComplianceService.GetRetentionPolicy
+   */
+  getRetentionPolicy: {
+    methodKind: "unary";
+    input: typeof GetRetentionPolicyQuerySchema;
+    output: typeof GetRetentionPolicyResponseSchema;
+  },
+  /**
+   * @generated from rpc sessionjeu.compliance.v1.ComplianceService.ListSupportCases
+   */
+  listSupportCases: {
+    methodKind: "unary";
+    input: typeof ListSupportCasesQuerySchema;
+    output: typeof ListSupportCasesResponseSchema;
+  },
 }> = /*@__PURE__*/
   serviceDesc(file_compliance_v1_compliance, 0);
+

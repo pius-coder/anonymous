@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file common/v1/shared.proto.
  */
 export const file_common_v1_shared: GenFile = /*@__PURE__*/
-  fileDesc("ChZjb21tb24vdjEvc2hhcmVkLnByb3RvEhRzZXNzaW9uamV1LmNvbW1vbi52MSIHCgVFbXB0eSIVCgRVVUlEEg0KBXZhbHVlGAEgASgJIisKCVRpbWVzdGFtcBIPCgdzZWNvbmRzGAEgASgDEg0KBW5hbm9zGAIgASgFIjcKBU1vbmV5EhAKCGN1cnJlbmN5GAEgASgJEg0KBXVuaXRzGAIgASgDEg0KBW5hbm9zGAMgASgFIhkKCFBsYXllcklkEg0KBXZhbHVlGAEgASgJIhgKB1BhcnR5SWQSDQoFdmFsdWUYASABKAkiGAoHUm91bmRJZBINCgV2YWx1ZRgBIAEoCSIeCg1Db3JyZWxhdGlvbklkEg0KBXZhbHVlGAEgASgJIi0KClBhZ2luYXRpb24SDAoEcGFnZRgBIAEoBRIRCglwYWdlX3NpemUYAiABKAUqggEKCEF1ZGllbmNlEhgKFEFVRElFTkNFX1VOU1BFQ0lGSUVEEAASEwoPQVVESUVOQ0VfUExBWUVSEAESEgoOQVVESUVOQ0VfQURNSU4QAhIeChpBVURJRU5DRV9SRUFET05MWV9PQlNFUlZFUhADEhMKD0FVRElFTkNFX1NZU1RFTRAEYgZwcm90bzM");
+  fileDesc("ChZjb21tb24vdjEvc2hhcmVkLnByb3RvEhRzZXNzaW9uamV1LmNvbW1vbi52MSIHCgVFbXB0eSIVCgRVVUlEEg0KBXZhbHVlGAEgASgJIisKCVRpbWVzdGFtcBIPCgdzZWNvbmRzGAEgASgDEg0KBW5hbm9zGAIgASgFIjcKBU1vbmV5EhAKCGN1cnJlbmN5GAEgASgJEg0KBXVuaXRzGAIgASgDEg0KBW5hbm9zGAMgASgFIhkKCFBsYXllcklkEg0KBXZhbHVlGAEgASgJIhgKB1BhcnR5SWQSDQoFdmFsdWUYASABKAkiGAoHUm91bmRJZBINCgV2YWx1ZRgBIAEoCSIeCg1Db3JyZWxhdGlvbklkEg0KBXZhbHVlGAEgASgJIi0KClBhZ2luYXRpb24SDAoEcGFnZRgBIAEoBRIRCglwYWdlX3NpemUYAiABKAUiNAoLUGFnZVJlcXVlc3QSEQoJcGFnZV9zaXplGAEgASgFEhIKCnBhZ2VfdG9rZW4YAiABKAkiOwoMUGFnZVJlc3BvbnNlEhcKD25leHRfcGFnZV90b2tlbhgBIAEoCRISCgp0b3RhbF9zaXplGAIgASgFIh8KDklkZW1wb3RlbmN5S2V5Eg0KBXZhbHVlGAEgASgJIlcKD0NvbnRyYWN0VmVyc2lvbhIZChFjb250cmFjdHNfdmVyc2lvbhgBIAEoCRIRCglzY2hlbWFfaWQYAiABKAkSFgoOc2NoZW1hX3ZlcnNpb24YAyABKAkiYAoSVHlwZWRCeXRlc0VudmVsb3BlEhEKCXNjaGVtYV9pZBgBIAEoCRIWCg5zY2hlbWFfdmVyc2lvbhgCIAEoCRIRCgltYXhfYnl0ZXMYAyABKAUSDAoEZGF0YRgEIAEoDCqCAQoIQXVkaWVuY2USGAoUQVVESUVOQ0VfVU5TUEVDSUZJRUQQABITCg9BVURJRU5DRV9QTEFZRVIQARISCg5BVURJRU5DRV9BRE1JThACEh4KGkFVRElFTkNFX1JFQURPTkxZX09CU0VSVkVSEAMSEwoPQVVESUVOQ0VfU1lTVEVNEARiBnByb3RvMw");
 
 /**
  * @generated from message sessionjeu.common.v1.Empty
@@ -160,6 +160,8 @@ export const CorrelationIdSchema: GenMessage<CorrelationId> = /*@__PURE__*/
   messageDesc(file_common_v1_shared, 7);
 
 /**
+ * Legacy page number pagination (still accepted; prefer PageRequest).
+ *
  * @generated from message sessionjeu.common.v1.Pagination
  */
 export type Pagination = Message<"sessionjeu.common.v1.Pagination"> & {
@@ -180,6 +182,145 @@ export type Pagination = Message<"sessionjeu.common.v1.Pagination"> & {
  */
 export const PaginationSchema: GenMessage<Pagination> = /*@__PURE__*/
   messageDesc(file_common_v1_shared, 8);
+
+/**
+ * Cursor pagination — preferred for list RPCs.
+ *
+ * @generated from message sessionjeu.common.v1.PageRequest
+ */
+export type PageRequest = Message<"sessionjeu.common.v1.PageRequest"> & {
+  /**
+   * @generated from field: int32 page_size = 1;
+   */
+  pageSize: number;
+
+  /**
+   * @generated from field: string page_token = 2;
+   */
+  pageToken: string;
+};
+
+/**
+ * Describes the message sessionjeu.common.v1.PageRequest.
+ * Use `create(PageRequestSchema)` to create a new message.
+ */
+export const PageRequestSchema: GenMessage<PageRequest> = /*@__PURE__*/
+  messageDesc(file_common_v1_shared, 9);
+
+/**
+ * @generated from message sessionjeu.common.v1.PageResponse
+ */
+export type PageResponse = Message<"sessionjeu.common.v1.PageResponse"> & {
+  /**
+   * @generated from field: string next_page_token = 1;
+   */
+  nextPageToken: string;
+
+  /**
+   * Optional total; omit (0) when expensive or unknown.
+   *
+   * @generated from field: int32 total_size = 2;
+   */
+  totalSize: number;
+};
+
+/**
+ * Describes the message sessionjeu.common.v1.PageResponse.
+ * Use `create(PageResponseSchema)` to create a new message.
+ */
+export const PageResponseSchema: GenMessage<PageResponse> = /*@__PURE__*/
+  messageDesc(file_common_v1_shared, 10);
+
+/**
+ * Explicit idempotency key for mutating commands.
+ *
+ * @generated from message sessionjeu.common.v1.IdempotencyKey
+ */
+export type IdempotencyKey = Message<"sessionjeu.common.v1.IdempotencyKey"> & {
+  /**
+   * @generated from field: string value = 1;
+   */
+  value: string;
+};
+
+/**
+ * Describes the message sessionjeu.common.v1.IdempotencyKey.
+ * Use `create(IdempotencyKeySchema)` to create a new message.
+ */
+export const IdempotencyKeySchema: GenMessage<IdempotencyKey> = /*@__PURE__*/
+  messageDesc(file_common_v1_shared, 11);
+
+/**
+ * Contract / schema versioning for envelopes and opaque payloads.
+ *
+ * @generated from message sessionjeu.common.v1.ContractVersion
+ */
+export type ContractVersion = Message<"sessionjeu.common.v1.ContractVersion"> & {
+  /**
+   * Semantic version of the contracts package freeze (e.g. "v0.2.0-production").
+   *
+   * @generated from field: string contracts_version = 1;
+   */
+  contractsVersion: string;
+
+  /**
+   * Domain schema id (e.g. "minigame.memory_sequence.command.v1").
+   *
+   * @generated from field: string schema_id = 2;
+   */
+  schemaId: string;
+
+  /**
+   * Schema revision (semver within that schema_id).
+   *
+   * @generated from field: string schema_version = 3;
+   */
+  schemaVersion: string;
+};
+
+/**
+ * Describes the message sessionjeu.common.v1.ContractVersion.
+ * Use `create(ContractVersionSchema)` to create a new message.
+ */
+export const ContractVersionSchema: GenMessage<ContractVersion> = /*@__PURE__*/
+  messageDesc(file_common_v1_shared, 12);
+
+/**
+ * Bounded opaque bytes — ONLY allowed when schema_id + schema_version are set.
+ * Default max for gameplay envelopes: 4096 bytes unless a message documents otherwise.
+ *
+ * @generated from message sessionjeu.common.v1.TypedBytesEnvelope
+ */
+export type TypedBytesEnvelope = Message<"sessionjeu.common.v1.TypedBytesEnvelope"> & {
+  /**
+   * @generated from field: string schema_id = 1;
+   */
+  schemaId: string;
+
+  /**
+   * @generated from field: string schema_version = 2;
+   */
+  schemaVersion: string;
+
+  /**
+   * Contract-enforced upper bound in bytes for `data` (must be > 0 and <= domain max).
+   *
+   * @generated from field: int32 max_bytes = 3;
+   */
+  maxBytes: number;
+
+  /**
+   * @generated from field: bytes data = 4;
+   */
+  data: Uint8Array;
+};
+
+/**
+ * Describes the message sessionjeu.common.v1.TypedBytesEnvelope.
+ * Use `create(TypedBytesEnvelopeSchema)` to create a new message.
+ */
+export const TypedBytesEnvelopeSchema: GenMessage<TypedBytesEnvelope> = /*@__PURE__*/
+  messageDesc(file_common_v1_shared, 13);
 
 /**
  * @generated from enum sessionjeu.common.v1.Audience

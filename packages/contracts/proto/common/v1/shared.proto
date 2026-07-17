@@ -35,9 +35,47 @@ message CorrelationId {
   string value = 1;
 }
 
+// Legacy page number pagination (still accepted; prefer PageRequest).
 message Pagination {
   int32 page = 1;
   int32 page_size = 2;
+}
+
+// Cursor pagination — preferred for list RPCs.
+message PageRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+message PageResponse {
+  string next_page_token = 1;
+  // Optional total; omit (0) when expensive or unknown.
+  int32 total_size = 2;
+}
+
+// Explicit idempotency key for mutating commands.
+message IdempotencyKey {
+  string value = 1;
+}
+
+// Contract / schema versioning for envelopes and opaque payloads.
+message ContractVersion {
+  // Semantic version of the contracts package freeze (e.g. "v0.2.0-production").
+  string contracts_version = 1;
+  // Domain schema id (e.g. "minigame.memory_sequence.command.v1").
+  string schema_id = 2;
+  // Schema revision (semver within that schema_id).
+  string schema_version = 3;
+}
+
+// Bounded opaque bytes — ONLY allowed when schema_id + schema_version are set.
+// Default max for gameplay envelopes: 4096 bytes unless a message documents otherwise.
+message TypedBytesEnvelope {
+  string schema_id = 1;
+  string schema_version = 2;
+  // Contract-enforced upper bound in bytes for `data` (must be > 0 and <= domain max).
+  int32 max_bytes = 3;
+  bytes data = 4;
 }
 
 enum Audience {

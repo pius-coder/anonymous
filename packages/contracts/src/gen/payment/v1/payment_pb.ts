@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file payment/v1/payment.proto.
  */
 export const file_payment_v1_payment: GenFile = /*@__PURE__*/
-  fileDesc("ChhwYXltZW50L3YxL3BheW1lbnQucHJvdG8SFXNlc3Npb25qZXUucGF5bWVudC52MSLmAgoSUGF5bWVudFRyYW5zYWN0aW9uEgoKAmlkGAEgASgJEjEKCXBsYXllcl9pZBgCIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEisKBmFtb3VudBgDIAEoCzIbLnNlc3Npb25qZXUuY29tbW9uLnYxLk1vbmV5EjQKBnN0YXR1cxgEIAEoDjIkLnNlc3Npb25qZXUucGF5bWVudC52MS5QYXltZW50U3RhdHVzEhAKCHByb3ZpZGVyGAUgASgJEhwKFHByb3ZpZGVyX2V4dGVybmFsX2lkGAYgASgJEhQKDGNoZWNrb3V0X3VybBgHIAEoCRIzCgpjcmVhdGVkX2F0GAggASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wEjMKCnVwZGF0ZWRfYXQYCSABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXAikwEKC1dhbGxldEVudHJ5EhEKCXdhbGxldF9pZBgBIAEoCRIxCglwbGF5ZXJfaWQYAiABKAsyHi5zZXNzaW9uamV1LmNvbW1vbi52MS5QbGF5ZXJJZBIsCgdiYWxhbmNlGAMgASgLMhsuc2Vzc2lvbmpldS5jb21tb24udjEuTW9uZXkSEAoIY3VycmVuY3kYBCABKAki3AIKC0xlZGdlckVudHJ5EgoKAmlkGAEgASgJEhEKCXdhbGxldF9pZBgCIAEoCRIrCgZhbW91bnQYAyABKAsyGy5zZXNzaW9uamV1LmNvbW1vbi52MS5Nb25leRIyCg1iYWxhbmNlX2FmdGVyGAQgASgLMhsuc2Vzc2lvbmpldS5jb21tb24udjEuTW9uZXkSOQoJZGlyZWN0aW9uGAUgASgOMiYuc2Vzc2lvbmpldS5wYXltZW50LnYxLkxlZGdlckRpcmVjdGlvbhIvCgR0eXBlGAYgASgOMiEuc2Vzc2lvbmpldS5wYXltZW50LnYxLkxlZGdlclR5cGUSEwoLZGVzY3JpcHRpb24YByABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAggASgJEjMKCmNyZWF0ZWRfYXQYCSABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXAixgEKFVByb2Nlc3NQYXltZW50Q29tbWFuZBI7Cg5jb3JyZWxhdGlvbl9pZBgBIAEoCzIjLnNlc3Npb25qZXUuY29tbW9uLnYxLkNvcnJlbGF0aW9uSWQSMQoJcGxheWVyX2lkGAIgASgLMh4uc2Vzc2lvbmpldS5jb21tb24udjEuUGxheWVySWQSKwoGYW1vdW50GAMgASgLMhsuc2Vzc2lvbmpldS5jb21tb24udjEuTW9uZXkSEAoIcHJvdmlkZXIYBCABKAkiQgoWUHJvY2Vzc1BheW1lbnRSZXNwb25zZRISCgpwYXltZW50X2lkGAEgASgJEhQKDGNoZWNrb3V0X3VybBgCIAEoCSLVAQoXSW5pdGlhdGVUcmFuc2ZlckNvbW1hbmQSOwoOY29ycmVsYXRpb25faWQYASABKAsyIy5zZXNzaW9uamV1LmNvbW1vbi52MS5Db3JyZWxhdGlvbklkEjEKCXBsYXllcl9pZBgCIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEisKBmFtb3VudBgDIAEoCzIbLnNlc3Npb25qZXUuY29tbW9uLnYxLk1vbmV5Eh0KFWRlc3RpbmF0aW9uX3JlZmVyZW5jZRgEIAEoCSIvChhJbml0aWF0ZVRyYW5zZmVyUmVzcG9uc2USEwoLdHJhbnNmZXJfaWQYASABKAkiywEKFVBheW1lbnRDb21wbGV0ZWRFdmVudBISCgpwYXltZW50X2lkGAEgASgJEjEKCXBsYXllcl9pZBgCIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEjQKBnN0YXR1cxgDIAEoDjIkLnNlc3Npb25qZXUucGF5bWVudC52MS5QYXltZW50U3RhdHVzEjUKDGNvbXBsZXRlZF9hdBgEIAEoCzIfLnNlc3Npb25qZXUuY29tbW9uLnYxLlRpbWVzdGFtcCJDCg5HZXRXYWxsZXRRdWVyeRIxCglwbGF5ZXJfaWQYASABKAsyHi5zZXNzaW9uamV1LmNvbW1vbi52MS5QbGF5ZXJJZCKDAQoRR2V0V2FsbGV0UmVzcG9uc2USMgoGd2FsbGV0GAEgASgLMiIuc2Vzc2lvbmpldS5wYXltZW50LnYxLldhbGxldEVudHJ5EjoKDnJlY2VudF9lbnRyaWVzGAIgAygLMiIuc2Vzc2lvbmpldS5wYXltZW50LnYxLkxlZGdlckVudHJ5InIKFkdldFBheW1lbnRIaXN0b3J5UXVlcnkSMQoJcGxheWVyX2lkGAEgASgLMh4uc2Vzc2lvbmpldS5jb21tb24udjEuUGxheWVySWQSEQoJcGFnZV9zaXplGAIgASgFEhIKCnBhZ2VfdG9rZW4YAyABKAkicQoZR2V0UGF5bWVudEhpc3RvcnlSZXNwb25zZRI7CghwYXltZW50cxgBIAMoCzIpLnNlc3Npb25qZXUucGF5bWVudC52MS5QYXltZW50VHJhbnNhY3Rpb24SFwoPbmV4dF9wYWdlX3Rva2VuGAIgASgJKr4BCg1QYXltZW50U3RhdHVzEh4KGlBBWU1FTlRfU1RBVFVTX1VOU1BFQ0lGSUVEEAASGgoWUEFZTUVOVF9TVEFUVVNfUEVORElORxABEh0KGVBBWU1FTlRfU1RBVFVTX1NVQ0NFU1NGVUwQAhIZChVQQVlNRU5UX1NUQVRVU19GQUlMRUQQAxIaChZQQVlNRU5UX1NUQVRVU19FWFBJUkVEEAQSGwoXUEFZTUVOVF9TVEFUVVNfUkVGVU5ERUQQBSpsCg9MZWRnZXJEaXJlY3Rpb24SIAocTEVER0VSX0RJUkVDVElPTl9VTlNQRUNJRklFRBAAEhsKF0xFREdFUl9ESVJFQ1RJT05fQ1JFRElUEAESGgoWTEVER0VSX0RJUkVDVElPTl9ERUJJVBACKqYBCgpMZWRnZXJUeXBlEhsKF0xFREdFUl9UWVBFX1VOU1BFQ0lGSUVEEAASGQoVTEVER0VSX1RZUEVfRU5UUllfRkVFEAESFQoRTEVER0VSX1RZUEVfUFJJWkUQAhIWChJMRURHRVJfVFlQRV9SRUZVTkQQAxIVChFMRURHRVJfVFlQRV9CT05VUxAEEhoKFkxFREdFUl9UWVBFX0FESlVTVE1FTlQQBTLIAwoOUGF5bWVudFNlcnZpY2USbQoOUHJvY2Vzc1BheW1lbnQSLC5zZXNzaW9uamV1LnBheW1lbnQudjEuUHJvY2Vzc1BheW1lbnRDb21tYW5kGi0uc2Vzc2lvbmpldS5wYXltZW50LnYxLlByb2Nlc3NQYXltZW50UmVzcG9uc2UScwoQSW5pdGlhdGVUcmFuc2ZlchIuLnNlc3Npb25qZXUucGF5bWVudC52MS5Jbml0aWF0ZVRyYW5zZmVyQ29tbWFuZBovLnNlc3Npb25qZXUucGF5bWVudC52MS5Jbml0aWF0ZVRyYW5zZmVyUmVzcG9uc2USXAoJR2V0V2FsbGV0EiUuc2Vzc2lvbmpldS5wYXltZW50LnYxLkdldFdhbGxldFF1ZXJ5Giguc2Vzc2lvbmpldS5wYXltZW50LnYxLkdldFdhbGxldFJlc3BvbnNlEnQKEUdldFBheW1lbnRIaXN0b3J5Ei0uc2Vzc2lvbmpldS5wYXltZW50LnYxLkdldFBheW1lbnRIaXN0b3J5UXVlcnkaMC5zZXNzaW9uamV1LnBheW1lbnQudjEuR2V0UGF5bWVudEhpc3RvcnlSZXNwb25zZWIGcHJvdG8z", [file_common_v1_shared]);
+  fileDesc("ChhwYXltZW50L3YxL3BheW1lbnQucHJvdG8SFXNlc3Npb25qZXUucGF5bWVudC52MSLQBAoSUGF5bWVudFRyYW5zYWN0aW9uEgoKAmlkGAEgASgJEjEKCXBsYXllcl9pZBgCIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEisKBmFtb3VudBgDIAEoCzIbLnNlc3Npb25qZXUuY29tbW9uLnYxLk1vbmV5EjQKBnN0YXR1cxgEIAEoDjIkLnNlc3Npb25qZXUucGF5bWVudC52MS5QYXltZW50U3RhdHVzEhAKCHByb3ZpZGVyGAUgASgJEhwKFHByb3ZpZGVyX2V4dGVybmFsX2lkGAYgASgJEhQKDGNoZWNrb3V0X3VybBgHIAEoCRIzCgpjcmVhdGVkX2F0GAggASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wEjMKCnVwZGF0ZWRfYXQYCSABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXASRQoPaW50ZXJuYWxfc3RhdHVzGAogASgOMiwuc2Vzc2lvbmpldS5wYXltZW50LnYxLlBheW1lbnRJbnRlcm5hbFN0YXR1cxJBChBsYXN0X3dpcmVfc3RhdHVzGAsgASgOMicuc2Vzc2lvbmpldS5wYXltZW50LnYxLkZhcHNoaVdpcmVTdGF0dXMSEAoIcGFydHlfaWQYDCABKAkSGAoQcGFydGljaXBhdGlvbl9pZBgNIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYDiABKAkSGQoRcHJvdmlkZXJfdHJhbnNfaWQYDyABKAkikwEKC1dhbGxldEVudHJ5EhEKCXdhbGxldF9pZBgBIAEoCRIxCglwbGF5ZXJfaWQYAiABKAsyHi5zZXNzaW9uamV1LmNvbW1vbi52MS5QbGF5ZXJJZBIsCgdiYWxhbmNlGAMgASgLMhsuc2Vzc2lvbmpldS5jb21tb24udjEuTW9uZXkSEAoIY3VycmVuY3kYBCABKAki3AIKC0xlZGdlckVudHJ5EgoKAmlkGAEgASgJEhEKCXdhbGxldF9pZBgCIAEoCRIrCgZhbW91bnQYAyABKAsyGy5zZXNzaW9uamV1LmNvbW1vbi52MS5Nb25leRIyCg1iYWxhbmNlX2FmdGVyGAQgASgLMhsuc2Vzc2lvbmpldS5jb21tb24udjEuTW9uZXkSOQoJZGlyZWN0aW9uGAUgASgOMiYuc2Vzc2lvbmpldS5wYXltZW50LnYxLkxlZGdlckRpcmVjdGlvbhIvCgR0eXBlGAYgASgOMiEuc2Vzc2lvbmpldS5wYXltZW50LnYxLkxlZGdlclR5cGUSEwoLZGVzY3JpcHRpb24YByABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAggASgJEjMKCmNyZWF0ZWRfYXQYCSABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXAi7AIKFFByb3ZpZGVyV2ViaG9va0V2ZW50EhAKCGluYm94X2lkGAEgASgJEhAKCHByb3ZpZGVyGAIgASgJEhkKEXByb3ZpZGVyX3RyYW5zX2lkGAMgASgJEjwKC3dpcmVfc3RhdHVzGAQgASgOMicuc2Vzc2lvbmpldS5wYXltZW50LnYxLkZhcHNoaVdpcmVTdGF0dXMSGQoRZXh0ZXJuYWxfZXZlbnRfaWQYBSABKAkSKwoGYW1vdW50GAYgASgLMhsuc2Vzc2lvbmpldS5jb21tb24udjEuTW9uZXkSGAoQcmVkYWN0ZWRfc3VtbWFyeRgHIAEoCRI0CgtyZWNlaXZlZF9hdBgIIAEoCzIfLnNlc3Npb25qZXUuY29tbW9uLnYxLlRpbWVzdGFtcBI/CgxpbmJveF9zdGF0dXMYCSABKA4yKS5zZXNzaW9uamV1LnBheW1lbnQudjEuV2ViaG9va0luYm94U3RhdHVzItMCChhQcm92aWRlcldlYmhvb2tJbmJveEl0ZW0SEAoIaW5ib3hfaWQYASABKAkSEAoIcHJvdmlkZXIYAiABKAkSGQoRcHJvdmlkZXJfdHJhbnNfaWQYAyABKAkSPAoLd2lyZV9zdGF0dXMYBCABKA4yJy5zZXNzaW9uamV1LnBheW1lbnQudjEuRmFwc2hpV2lyZVN0YXR1cxI5CgZzdGF0dXMYBSABKA4yKS5zZXNzaW9uamV1LnBheW1lbnQudjEuV2ViaG9va0luYm94U3RhdHVzEhIKCnBheW1lbnRfaWQYBiABKAkSNAoLcmVjZWl2ZWRfYXQYByABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXASNQoMcHJvY2Vzc2VkX2F0GAggASgLMh8uc2Vzc2lvbmpldS5jb21tb24udjEuVGltZXN0YW1wIosCChVQcm9jZXNzUGF5bWVudENvbW1hbmQSOwoOY29ycmVsYXRpb25faWQYASABKAsyIy5zZXNzaW9uamV1LmNvbW1vbi52MS5Db3JyZWxhdGlvbklkEjEKCXBsYXllcl9pZBgCIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkEisKBmFtb3VudBgDIAEoCzIbLnNlc3Npb25qZXUuY29tbW9uLnYxLk1vbmV5EhAKCHByb3ZpZGVyGAQgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCRIQCghwYXJ0eV9pZBgGIAEoCRIYChBwYXJ0aWNpcGF0aW9uX2lkGAcgASgJIqQBChZQcm9jZXNzUGF5bWVudFJlc3BvbnNlEhIKCnBheW1lbnRfaWQYASABKAkSFAoMY2hlY2tvdXRfdXJsGAIgASgJEkUKD2ludGVybmFsX3N0YXR1cxgDIAEoDjIsLnNlc3Npb25qZXUucGF5bWVudC52MS5QYXltZW50SW50ZXJuYWxTdGF0dXMSGQoRcHJvdmlkZXJfdHJhbnNfaWQYBCABKAki7gEKF0luaXRpYXRlVHJhbnNmZXJDb21tYW5kEjsKDmNvcnJlbGF0aW9uX2lkGAEgASgLMiMuc2Vzc2lvbmpldS5jb21tb24udjEuQ29ycmVsYXRpb25JZBIxCglwbGF5ZXJfaWQYAiABKAsyHi5zZXNzaW9uamV1LmNvbW1vbi52MS5QbGF5ZXJJZBIrCgZhbW91bnQYAyABKAsyGy5zZXNzaW9uamV1LmNvbW1vbi52MS5Nb25leRIdChVkZXN0aW5hdGlvbl9yZWZlcmVuY2UYBCABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAUgASgJInYKGEluaXRpYXRlVHJhbnNmZXJSZXNwb25zZRITCgt0cmFuc2Zlcl9pZBgBIAEoCRJFCg9pbnRlcm5hbF9zdGF0dXMYAiABKA4yLC5zZXNzaW9uamV1LnBheW1lbnQudjEuUGF5bWVudEludGVybmFsU3RhdHVzItACChVQYXltZW50Q29tcGxldGVkRXZlbnQSEgoKcGF5bWVudF9pZBgBIAEoCRIxCglwbGF5ZXJfaWQYAiABKAsyHi5zZXNzaW9uamV1LmNvbW1vbi52MS5QbGF5ZXJJZBI0CgZzdGF0dXMYAyABKA4yJC5zZXNzaW9uamV1LnBheW1lbnQudjEuUGF5bWVudFN0YXR1cxI1Cgxjb21wbGV0ZWRfYXQYBCABKAsyHy5zZXNzaW9uamV1LmNvbW1vbi52MS5UaW1lc3RhbXASRQoPaW50ZXJuYWxfc3RhdHVzGAUgASgOMiwuc2Vzc2lvbmpldS5wYXltZW50LnYxLlBheW1lbnRJbnRlcm5hbFN0YXR1cxI8Cgt3aXJlX3N0YXR1cxgGIAEoDjInLnNlc3Npb25qZXUucGF5bWVudC52MS5GYXBzaGlXaXJlU3RhdHVzIkMKDkdldFdhbGxldFF1ZXJ5EjEKCXBsYXllcl9pZBgBIAEoCzIeLnNlc3Npb25qZXUuY29tbW9uLnYxLlBsYXllcklkIoMBChFHZXRXYWxsZXRSZXNwb25zZRIyCgZ3YWxsZXQYASABKAsyIi5zZXNzaW9uamV1LnBheW1lbnQudjEuV2FsbGV0RW50cnkSOgoOcmVjZW50X2VudHJpZXMYAiADKAsyIi5zZXNzaW9uamV1LnBheW1lbnQudjEuTGVkZ2VyRW50cnkicgoWR2V0UGF5bWVudEhpc3RvcnlRdWVyeRIxCglwbGF5ZXJfaWQYASABKAsyHi5zZXNzaW9uamV1LmNvbW1vbi52MS5QbGF5ZXJJZBIRCglwYWdlX3NpemUYAiABKAUSEgoKcGFnZV90b2tlbhgDIAEoCSJxChlHZXRQYXltZW50SGlzdG9yeVJlc3BvbnNlEjsKCHBheW1lbnRzGAEgAygLMikuc2Vzc2lvbmpldS5wYXltZW50LnYxLlBheW1lbnRUcmFuc2FjdGlvbhIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAkiRgoVR2V0UGF5bWVudFN0YXR1c1F1ZXJ5EhIKCnBheW1lbnRfaWQYASABKAkSGQoRcHJvdmlkZXJfdHJhbnNfaWQYAiABKAkiogEKGEdldFBheW1lbnRTdGF0dXNSZXNwb25zZRI6CgdwYXltZW50GAEgASgLMikuc2Vzc2lvbmpldS5wYXltZW50LnYxLlBheW1lbnRUcmFuc2FjdGlvbhJKChVyZWNvbmNpbGlhdGlvbl9zdGF0dXMYAiABKA4yKy5zZXNzaW9uamV1LnBheW1lbnQudjEuUmVjb25jaWxpYXRpb25TdGF0dXMitQEKIUluZ2VzdFByb3ZpZGVyV2ViaG9va0V2ZW50Q29tbWFuZBI7Cg5jb3JyZWxhdGlvbl9pZBgBIAEoCzIjLnNlc3Npb25qZXUuY29tbW9uLnYxLkNvcnJlbGF0aW9uSWQSOgoFZXZlbnQYAiABKAsyKy5zZXNzaW9uamV1LnBheW1lbnQudjEuUHJvdmlkZXJXZWJob29rRXZlbnQSFwoPaWRlbXBvdGVuY3lfa2V5GAMgASgJIpgBCiJJbmdlc3RQcm92aWRlcldlYmhvb2tFdmVudFJlc3BvbnNlEhAKCGluYm94X2lkGAEgASgJEjkKBnN0YXR1cxgCIAEoDjIpLnNlc3Npb25qZXUucGF5bWVudC52MS5XZWJob29rSW5ib3hTdGF0dXMSEgoKcGF5bWVudF9pZBgDIAEoCRIRCglkdXBsaWNhdGUYBCABKAginwEKF1JlY29uY2lsZVBheW1lbnRDb21tYW5kEjsKDmNvcnJlbGF0aW9uX2lkGAEgASgLMiMuc2Vzc2lvbmpldS5jb21tb24udjEuQ29ycmVsYXRpb25JZBISCgpwYXltZW50X2lkGAIgASgJEh0KFWZldGNoX3Byb3ZpZGVyX3N0YXR1cxgDIAEoCBIUCgxyZXF1ZXN0ZWRfYnkYBCABKAki/wEKGFJlY29uY2lsZVBheW1lbnRSZXNwb25zZRISCgpwYXltZW50X2lkGAEgASgJEkUKD2ludGVybmFsX3N0YXR1cxgCIAEoDjIsLnNlc3Npb25qZXUucGF5bWVudC52MS5QYXltZW50SW50ZXJuYWxTdGF0dXMSPAoLd2lyZV9zdGF0dXMYAyABKA4yJy5zZXNzaW9uamV1LnBheW1lbnQudjEuRmFwc2hpV2lyZVN0YXR1cxJKChVyZWNvbmNpbGlhdGlvbl9zdGF0dXMYBCABKA4yKy5zZXNzaW9uamV1LnBheW1lbnQudjEuUmVjb25jaWxpYXRpb25TdGF0dXMikgEKFUxpc3RXZWJob29rSW5ib3hRdWVyeRIQCghwcm92aWRlchgBIAEoCRJACg1zdGF0dXNfZmlsdGVyGAIgASgOMikuc2Vzc2lvbmpldS5wYXltZW50LnYxLldlYmhvb2tJbmJveFN0YXR1cxIRCglwYWdlX3NpemUYAyABKAUSEgoKcGFnZV90b2tlbhgEIAEoCSJzChhMaXN0V2ViaG9va0luYm94UmVzcG9uc2USPgoFaXRlbXMYASADKAsyLy5zZXNzaW9uamV1LnBheW1lbnQudjEuUHJvdmlkZXJXZWJob29rSW5ib3hJdGVtEhcKD25leHRfcGFnZV90b2tlbhgCIAEoCSr7AwoVUGF5bWVudEludGVybmFsU3RhdHVzEicKI1BBWU1FTlRfSU5URVJOQUxfU1RBVFVTX1VOU1BFQ0lGSUVEEAASIwofUEFZTUVOVF9JTlRFUk5BTF9TVEFUVVNfQ1JFQVRFRBABEi0KKVBBWU1FTlRfSU5URVJOQUxfU1RBVFVTX0FXQUlUSU5HX1BST1ZJREVSEAISLAooUEFZTUVOVF9JTlRFUk5BTF9TVEFUVVNfUFJPVklERVJfUEVORElORxADEiUKIVBBWU1FTlRfSU5URVJOQUxfU1RBVFVTX1NVQ0NFRURFRBAEEiIKHlBBWU1FTlRfSU5URVJOQUxfU1RBVFVTX0ZBSUxFRBAFEiMKH1BBWU1FTlRfSU5URVJOQUxfU1RBVFVTX0VYUElSRUQQBhInCiNQQVlNRU5UX0lOVEVSTkFMX1NUQVRVU19SRUNPTkNJTElORxAHEiYKIlBBWU1FTlRfSU5URVJOQUxfU1RBVFVTX1JFQ09OQ0lMRUQQCBIoCiRQQVlNRU5UX0lOVEVSTkFMX1NUQVRVU19DT01QRU5TQVRJTkcQCRInCiNQQVlNRU5UX0lOVEVSTkFMX1NUQVRVU19DT01QRU5TQVRFRBAKEiMKH1BBWU1FTlRfSU5URVJOQUxfU1RBVFVTX1BFTkRJTkcQCyrYAQoQRmFwc2hpV2lyZVN0YXR1cxIiCh5GQVBTSElfV0lSRV9TVEFUVVNfVU5TUEVDSUZJRUQQABIeChpGQVBTSElfV0lSRV9TVEFUVVNfQ1JFQVRFRBABEh4KGkZBUFNISV9XSVJFX1NUQVRVU19QRU5ESU5HEAISIQodRkFQU0hJX1dJUkVfU1RBVFVTX1NVQ0NFU1NGVUwQAxIdChlGQVBTSElfV0lSRV9TVEFUVVNfRkFJTEVEEAQSHgoaRkFQU0hJX1dJUkVfU1RBVFVTX0VYUElSRUQQBSq+AQoNUGF5bWVudFN0YXR1cxIeChpQQVlNRU5UX1NUQVRVU19VTlNQRUNJRklFRBAAEhoKFlBBWU1FTlRfU1RBVFVTX1BFTkRJTkcQARIdChlQQVlNRU5UX1NUQVRVU19TVUNDRVNTRlVMEAISGQoVUEFZTUVOVF9TVEFUVVNfRkFJTEVEEAMSGgoWUEFZTUVOVF9TVEFUVVNfRVhQSVJFRBAEEhsKF1BBWU1FTlRfU1RBVFVTX1JFRlVOREVEEAUqbAoPTGVkZ2VyRGlyZWN0aW9uEiAKHExFREdFUl9ESVJFQ1RJT05fVU5TUEVDSUZJRUQQABIbChdMRURHRVJfRElSRUNUSU9OX0NSRURJVBABEhoKFkxFREdFUl9ESVJFQ1RJT05fREVCSVQQAirEAQoKTGVkZ2VyVHlwZRIbChdMRURHRVJfVFlQRV9VTlNQRUNJRklFRBAAEhkKFUxFREdFUl9UWVBFX0VOVFJZX0ZFRRABEhUKEUxFREdFUl9UWVBFX1BSSVpFEAISFgoSTEVER0VSX1RZUEVfUkVGVU5EEAMSFQoRTEVER0VSX1RZUEVfQk9OVVMQBBIaChZMRURHRVJfVFlQRV9BREpVU1RNRU5UEAUSHAoYTEVER0VSX1RZUEVfQ09NUEVOU0FUSU9OEAYq6QEKEldlYmhvb2tJbmJveFN0YXR1cxIkCiBXRUJIT09LX0lOQk9YX1NUQVRVU19VTlNQRUNJRklFRBAAEiEKHVdFQkhPT0tfSU5CT1hfU1RBVFVTX1JFQ0VJVkVEEAESIQodV0VCSE9PS19JTkJPWF9TVEFUVVNfVkVSSUZJRUQQAhIgChxXRUJIT09LX0lOQk9YX1NUQVRVU19BUFBMSUVEEAMSIgoeV0VCSE9PS19JTkJPWF9TVEFUVVNfRFVQTElDQVRFEAQSIQodV0VCSE9PS19JTkJPWF9TVEFUVVNfUkVKRUNURUQQBSrLAQoUUmVjb25jaWxpYXRpb25TdGF0dXMSJQohUkVDT05DSUxJQVRJT05fU1RBVFVTX1VOU1BFQ0lGSUVEEAASIQodUkVDT05DSUxJQVRJT05fU1RBVFVTX1BFTkRJTkcQARIhCh1SRUNPTkNJTElBVElPTl9TVEFUVVNfTUFUQ0hFRBACEiIKHlJFQ09OQ0lMSUFUSU9OX1NUQVRVU19NSVNNQVRDSBADEiIKHlJFQ09OQ0lMSUFUSU9OX1NUQVRVU19SRVNPTFZFRBAEMrcHCg5QYXltZW50U2VydmljZRJtCg5Qcm9jZXNzUGF5bWVudBIsLnNlc3Npb25qZXUucGF5bWVudC52MS5Qcm9jZXNzUGF5bWVudENvbW1hbmQaLS5zZXNzaW9uamV1LnBheW1lbnQudjEuUHJvY2Vzc1BheW1lbnRSZXNwb25zZRJzChBJbml0aWF0ZVRyYW5zZmVyEi4uc2Vzc2lvbmpldS5wYXltZW50LnYxLkluaXRpYXRlVHJhbnNmZXJDb21tYW5kGi8uc2Vzc2lvbmpldS5wYXltZW50LnYxLkluaXRpYXRlVHJhbnNmZXJSZXNwb25zZRJcCglHZXRXYWxsZXQSJS5zZXNzaW9uamV1LnBheW1lbnQudjEuR2V0V2FsbGV0UXVlcnkaKC5zZXNzaW9uamV1LnBheW1lbnQudjEuR2V0V2FsbGV0UmVzcG9uc2USdAoRR2V0UGF5bWVudEhpc3RvcnkSLS5zZXNzaW9uamV1LnBheW1lbnQudjEuR2V0UGF5bWVudEhpc3RvcnlRdWVyeRowLnNlc3Npb25qZXUucGF5bWVudC52MS5HZXRQYXltZW50SGlzdG9yeVJlc3BvbnNlEnEKEEdldFBheW1lbnRTdGF0dXMSLC5zZXNzaW9uamV1LnBheW1lbnQudjEuR2V0UGF5bWVudFN0YXR1c1F1ZXJ5Gi8uc2Vzc2lvbmpldS5wYXltZW50LnYxLkdldFBheW1lbnRTdGF0dXNSZXNwb25zZRKRAQoaSW5nZXN0UHJvdmlkZXJXZWJob29rRXZlbnQSOC5zZXNzaW9uamV1LnBheW1lbnQudjEuSW5nZXN0UHJvdmlkZXJXZWJob29rRXZlbnRDb21tYW5kGjkuc2Vzc2lvbmpldS5wYXltZW50LnYxLkluZ2VzdFByb3ZpZGVyV2ViaG9va0V2ZW50UmVzcG9uc2UScwoQUmVjb25jaWxlUGF5bWVudBIuLnNlc3Npb25qZXUucGF5bWVudC52MS5SZWNvbmNpbGVQYXltZW50Q29tbWFuZBovLnNlc3Npb25qZXUucGF5bWVudC52MS5SZWNvbmNpbGVQYXltZW50UmVzcG9uc2UScQoQTGlzdFdlYmhvb2tJbmJveBIsLnNlc3Npb25qZXUucGF5bWVudC52MS5MaXN0V2ViaG9va0luYm94UXVlcnkaLy5zZXNzaW9uamV1LnBheW1lbnQudjEuTGlzdFdlYmhvb2tJbmJveFJlc3BvbnNlYgZwcm90bzM", [file_common_v1_shared]);
 
 /**
  * @generated from message sessionjeu.payment.v1.PaymentTransaction
@@ -62,6 +62,40 @@ export type PaymentTransaction = Message<"sessionjeu.payment.v1.PaymentTransacti
    * @generated from field: sessionjeu.common.v1.Timestamp updated_at = 9;
    */
   updatedAt?: Timestamp | undefined;
+
+  /**
+   * Production fields (additive).
+   *
+   * @generated from field: sessionjeu.payment.v1.PaymentInternalStatus internal_status = 10;
+   */
+  internalStatus: PaymentInternalStatus;
+
+  /**
+   * @generated from field: sessionjeu.payment.v1.FapshiWireStatus last_wire_status = 11;
+   */
+  lastWireStatus: FapshiWireStatus;
+
+  /**
+   * @generated from field: string party_id = 12;
+   */
+  partyId: string;
+
+  /**
+   * @generated from field: string participation_id = 13;
+   */
+  participationId: string;
+
+  /**
+   * @generated from field: string idempotency_key = 14;
+   */
+  idempotencyKey: string;
+
+  /**
+   * Provider transaction id (e.g. Fapshi transId) — public-safe reference, not a secret.
+   *
+   * @generated from field: string provider_trans_id = 15;
+   */
+  providerTransId: string;
 };
 
 /**
@@ -161,6 +195,120 @@ export const LedgerEntrySchema: GenMessage<LedgerEntry> = /*@__PURE__*/
   messageDesc(file_payment_v1_payment, 2);
 
 /**
+ * Normalized provider webhook event after REST adapter mapping.
+ * Adapter must never forward provider secrets/headers into this message.
+ *
+ * @generated from message sessionjeu.payment.v1.ProviderWebhookEvent
+ */
+export type ProviderWebhookEvent = Message<"sessionjeu.payment.v1.ProviderWebhookEvent"> & {
+  /**
+   * @generated from field: string inbox_id = 1;
+   */
+  inboxId: string;
+
+  /**
+   * @generated from field: string provider = 2;
+   */
+  provider: string;
+
+  /**
+   * @generated from field: string provider_trans_id = 3;
+   */
+  providerTransId: string;
+
+  /**
+   * @generated from field: sessionjeu.payment.v1.FapshiWireStatus wire_status = 4;
+   */
+  wireStatus: FapshiWireStatus;
+
+  /**
+   * @generated from field: string external_event_id = 5;
+   */
+  externalEventId: string;
+
+  /**
+   * @generated from field: sessionjeu.common.v1.Money amount = 6;
+   */
+  amount?: Money | undefined;
+
+  /**
+   * Redacted summary only — never raw signed body with secrets.
+   *
+   * @generated from field: string redacted_summary = 7;
+   */
+  redactedSummary: string;
+
+  /**
+   * @generated from field: sessionjeu.common.v1.Timestamp received_at = 8;
+   */
+  receivedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: sessionjeu.payment.v1.WebhookInboxStatus inbox_status = 9;
+   */
+  inboxStatus: WebhookInboxStatus;
+};
+
+/**
+ * Describes the message sessionjeu.payment.v1.ProviderWebhookEvent.
+ * Use `create(ProviderWebhookEventSchema)` to create a new message.
+ */
+export const ProviderWebhookEventSchema: GenMessage<ProviderWebhookEvent> = /*@__PURE__*/
+  messageDesc(file_payment_v1_payment, 3);
+
+/**
+ * @generated from message sessionjeu.payment.v1.ProviderWebhookInboxItem
+ */
+export type ProviderWebhookInboxItem = Message<"sessionjeu.payment.v1.ProviderWebhookInboxItem"> & {
+  /**
+   * @generated from field: string inbox_id = 1;
+   */
+  inboxId: string;
+
+  /**
+   * @generated from field: string provider = 2;
+   */
+  provider: string;
+
+  /**
+   * @generated from field: string provider_trans_id = 3;
+   */
+  providerTransId: string;
+
+  /**
+   * @generated from field: sessionjeu.payment.v1.FapshiWireStatus wire_status = 4;
+   */
+  wireStatus: FapshiWireStatus;
+
+  /**
+   * @generated from field: sessionjeu.payment.v1.WebhookInboxStatus status = 5;
+   */
+  status: WebhookInboxStatus;
+
+  /**
+   * @generated from field: string payment_id = 6;
+   */
+  paymentId: string;
+
+  /**
+   * @generated from field: sessionjeu.common.v1.Timestamp received_at = 7;
+   */
+  receivedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: sessionjeu.common.v1.Timestamp processed_at = 8;
+   */
+  processedAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message sessionjeu.payment.v1.ProviderWebhookInboxItem.
+ * Use `create(ProviderWebhookInboxItemSchema)` to create a new message.
+ */
+export const ProviderWebhookInboxItemSchema: GenMessage<ProviderWebhookInboxItem> = /*@__PURE__*/
+  messageDesc(file_payment_v1_payment, 4);
+
+/**
  * @generated from message sessionjeu.payment.v1.ProcessPaymentCommand
  */
 export type ProcessPaymentCommand = Message<"sessionjeu.payment.v1.ProcessPaymentCommand"> & {
@@ -183,6 +331,21 @@ export type ProcessPaymentCommand = Message<"sessionjeu.payment.v1.ProcessPaymen
    * @generated from field: string provider = 4;
    */
   provider: string;
+
+  /**
+   * @generated from field: string idempotency_key = 5;
+   */
+  idempotencyKey: string;
+
+  /**
+   * @generated from field: string party_id = 6;
+   */
+  partyId: string;
+
+  /**
+   * @generated from field: string participation_id = 7;
+   */
+  participationId: string;
 };
 
 /**
@@ -190,7 +353,7 @@ export type ProcessPaymentCommand = Message<"sessionjeu.payment.v1.ProcessPaymen
  * Use `create(ProcessPaymentCommandSchema)` to create a new message.
  */
 export const ProcessPaymentCommandSchema: GenMessage<ProcessPaymentCommand> = /*@__PURE__*/
-  messageDesc(file_payment_v1_payment, 3);
+  messageDesc(file_payment_v1_payment, 5);
 
 /**
  * @generated from message sessionjeu.payment.v1.ProcessPaymentResponse
@@ -205,6 +368,16 @@ export type ProcessPaymentResponse = Message<"sessionjeu.payment.v1.ProcessPayme
    * @generated from field: string checkout_url = 2;
    */
   checkoutUrl: string;
+
+  /**
+   * @generated from field: sessionjeu.payment.v1.PaymentInternalStatus internal_status = 3;
+   */
+  internalStatus: PaymentInternalStatus;
+
+  /**
+   * @generated from field: string provider_trans_id = 4;
+   */
+  providerTransId: string;
 };
 
 /**
@@ -212,7 +385,7 @@ export type ProcessPaymentResponse = Message<"sessionjeu.payment.v1.ProcessPayme
  * Use `create(ProcessPaymentResponseSchema)` to create a new message.
  */
 export const ProcessPaymentResponseSchema: GenMessage<ProcessPaymentResponse> = /*@__PURE__*/
-  messageDesc(file_payment_v1_payment, 4);
+  messageDesc(file_payment_v1_payment, 6);
 
 /**
  * @generated from message sessionjeu.payment.v1.InitiateTransferCommand
@@ -237,6 +410,11 @@ export type InitiateTransferCommand = Message<"sessionjeu.payment.v1.InitiateTra
    * @generated from field: string destination_reference = 4;
    */
   destinationReference: string;
+
+  /**
+   * @generated from field: string idempotency_key = 5;
+   */
+  idempotencyKey: string;
 };
 
 /**
@@ -244,7 +422,7 @@ export type InitiateTransferCommand = Message<"sessionjeu.payment.v1.InitiateTra
  * Use `create(InitiateTransferCommandSchema)` to create a new message.
  */
 export const InitiateTransferCommandSchema: GenMessage<InitiateTransferCommand> = /*@__PURE__*/
-  messageDesc(file_payment_v1_payment, 5);
+  messageDesc(file_payment_v1_payment, 7);
 
 /**
  * @generated from message sessionjeu.payment.v1.InitiateTransferResponse
@@ -254,6 +432,11 @@ export type InitiateTransferResponse = Message<"sessionjeu.payment.v1.InitiateTr
    * @generated from field: string transfer_id = 1;
    */
   transferId: string;
+
+  /**
+   * @generated from field: sessionjeu.payment.v1.PaymentInternalStatus internal_status = 2;
+   */
+  internalStatus: PaymentInternalStatus;
 };
 
 /**
@@ -261,7 +444,7 @@ export type InitiateTransferResponse = Message<"sessionjeu.payment.v1.InitiateTr
  * Use `create(InitiateTransferResponseSchema)` to create a new message.
  */
 export const InitiateTransferResponseSchema: GenMessage<InitiateTransferResponse> = /*@__PURE__*/
-  messageDesc(file_payment_v1_payment, 6);
+  messageDesc(file_payment_v1_payment, 8);
 
 /**
  * @generated from message sessionjeu.payment.v1.PaymentCompletedEvent
@@ -286,6 +469,16 @@ export type PaymentCompletedEvent = Message<"sessionjeu.payment.v1.PaymentComple
    * @generated from field: sessionjeu.common.v1.Timestamp completed_at = 4;
    */
   completedAt?: Timestamp | undefined;
+
+  /**
+   * @generated from field: sessionjeu.payment.v1.PaymentInternalStatus internal_status = 5;
+   */
+  internalStatus: PaymentInternalStatus;
+
+  /**
+   * @generated from field: sessionjeu.payment.v1.FapshiWireStatus wire_status = 6;
+   */
+  wireStatus: FapshiWireStatus;
 };
 
 /**
@@ -293,7 +486,7 @@ export type PaymentCompletedEvent = Message<"sessionjeu.payment.v1.PaymentComple
  * Use `create(PaymentCompletedEventSchema)` to create a new message.
  */
 export const PaymentCompletedEventSchema: GenMessage<PaymentCompletedEvent> = /*@__PURE__*/
-  messageDesc(file_payment_v1_payment, 7);
+  messageDesc(file_payment_v1_payment, 9);
 
 /**
  * @generated from message sessionjeu.payment.v1.GetWalletQuery
@@ -310,7 +503,7 @@ export type GetWalletQuery = Message<"sessionjeu.payment.v1.GetWalletQuery"> & {
  * Use `create(GetWalletQuerySchema)` to create a new message.
  */
 export const GetWalletQuerySchema: GenMessage<GetWalletQuery> = /*@__PURE__*/
-  messageDesc(file_payment_v1_payment, 8);
+  messageDesc(file_payment_v1_payment, 10);
 
 /**
  * @generated from message sessionjeu.payment.v1.GetWalletResponse
@@ -332,7 +525,7 @@ export type GetWalletResponse = Message<"sessionjeu.payment.v1.GetWalletResponse
  * Use `create(GetWalletResponseSchema)` to create a new message.
  */
 export const GetWalletResponseSchema: GenMessage<GetWalletResponse> = /*@__PURE__*/
-  messageDesc(file_payment_v1_payment, 9);
+  messageDesc(file_payment_v1_payment, 11);
 
 /**
  * @generated from message sessionjeu.payment.v1.GetPaymentHistoryQuery
@@ -359,7 +552,7 @@ export type GetPaymentHistoryQuery = Message<"sessionjeu.payment.v1.GetPaymentHi
  * Use `create(GetPaymentHistoryQuerySchema)` to create a new message.
  */
 export const GetPaymentHistoryQuerySchema: GenMessage<GetPaymentHistoryQuery> = /*@__PURE__*/
-  messageDesc(file_payment_v1_payment, 10);
+  messageDesc(file_payment_v1_payment, 12);
 
 /**
  * @generated from message sessionjeu.payment.v1.GetPaymentHistoryResponse
@@ -381,9 +574,358 @@ export type GetPaymentHistoryResponse = Message<"sessionjeu.payment.v1.GetPaymen
  * Use `create(GetPaymentHistoryResponseSchema)` to create a new message.
  */
 export const GetPaymentHistoryResponseSchema: GenMessage<GetPaymentHistoryResponse> = /*@__PURE__*/
-  messageDesc(file_payment_v1_payment, 11);
+  messageDesc(file_payment_v1_payment, 13);
 
 /**
+ * @generated from message sessionjeu.payment.v1.GetPaymentStatusQuery
+ */
+export type GetPaymentStatusQuery = Message<"sessionjeu.payment.v1.GetPaymentStatusQuery"> & {
+  /**
+   * @generated from field: string payment_id = 1;
+   */
+  paymentId: string;
+
+  /**
+   * Optional provider_trans_id lookup.
+   *
+   * @generated from field: string provider_trans_id = 2;
+   */
+  providerTransId: string;
+};
+
+/**
+ * Describes the message sessionjeu.payment.v1.GetPaymentStatusQuery.
+ * Use `create(GetPaymentStatusQuerySchema)` to create a new message.
+ */
+export const GetPaymentStatusQuerySchema: GenMessage<GetPaymentStatusQuery> = /*@__PURE__*/
+  messageDesc(file_payment_v1_payment, 14);
+
+/**
+ * @generated from message sessionjeu.payment.v1.GetPaymentStatusResponse
+ */
+export type GetPaymentStatusResponse = Message<"sessionjeu.payment.v1.GetPaymentStatusResponse"> & {
+  /**
+   * @generated from field: sessionjeu.payment.v1.PaymentTransaction payment = 1;
+   */
+  payment?: PaymentTransaction | undefined;
+
+  /**
+   * @generated from field: sessionjeu.payment.v1.ReconciliationStatus reconciliation_status = 2;
+   */
+  reconciliationStatus: ReconciliationStatus;
+};
+
+/**
+ * Describes the message sessionjeu.payment.v1.GetPaymentStatusResponse.
+ * Use `create(GetPaymentStatusResponseSchema)` to create a new message.
+ */
+export const GetPaymentStatusResponseSchema: GenMessage<GetPaymentStatusResponse> = /*@__PURE__*/
+  messageDesc(file_payment_v1_payment, 15);
+
+/**
+ * System: mapped from REST EX-REST-005 adapter after signature verification outside proto.
+ *
+ * @generated from message sessionjeu.payment.v1.IngestProviderWebhookEventCommand
+ */
+export type IngestProviderWebhookEventCommand = Message<"sessionjeu.payment.v1.IngestProviderWebhookEventCommand"> & {
+  /**
+   * @generated from field: sessionjeu.common.v1.CorrelationId correlation_id = 1;
+   */
+  correlationId?: CorrelationId | undefined;
+
+  /**
+   * @generated from field: sessionjeu.payment.v1.ProviderWebhookEvent event = 2;
+   */
+  event?: ProviderWebhookEvent | undefined;
+
+  /**
+   * @generated from field: string idempotency_key = 3;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message sessionjeu.payment.v1.IngestProviderWebhookEventCommand.
+ * Use `create(IngestProviderWebhookEventCommandSchema)` to create a new message.
+ */
+export const IngestProviderWebhookEventCommandSchema: GenMessage<IngestProviderWebhookEventCommand> = /*@__PURE__*/
+  messageDesc(file_payment_v1_payment, 16);
+
+/**
+ * @generated from message sessionjeu.payment.v1.IngestProviderWebhookEventResponse
+ */
+export type IngestProviderWebhookEventResponse = Message<"sessionjeu.payment.v1.IngestProviderWebhookEventResponse"> & {
+  /**
+   * @generated from field: string inbox_id = 1;
+   */
+  inboxId: string;
+
+  /**
+   * @generated from field: sessionjeu.payment.v1.WebhookInboxStatus status = 2;
+   */
+  status: WebhookInboxStatus;
+
+  /**
+   * @generated from field: string payment_id = 3;
+   */
+  paymentId: string;
+
+  /**
+   * @generated from field: bool duplicate = 4;
+   */
+  duplicate: boolean;
+};
+
+/**
+ * Describes the message sessionjeu.payment.v1.IngestProviderWebhookEventResponse.
+ * Use `create(IngestProviderWebhookEventResponseSchema)` to create a new message.
+ */
+export const IngestProviderWebhookEventResponseSchema: GenMessage<IngestProviderWebhookEventResponse> = /*@__PURE__*/
+  messageDesc(file_payment_v1_payment, 17);
+
+/**
+ * @generated from message sessionjeu.payment.v1.ReconcilePaymentCommand
+ */
+export type ReconcilePaymentCommand = Message<"sessionjeu.payment.v1.ReconcilePaymentCommand"> & {
+  /**
+   * @generated from field: sessionjeu.common.v1.CorrelationId correlation_id = 1;
+   */
+  correlationId?: CorrelationId | undefined;
+
+  /**
+   * @generated from field: string payment_id = 2;
+   */
+  paymentId: string;
+
+  /**
+   * When true, adapter should query provider payment-status API (not modeled as secret).
+   *
+   * @generated from field: bool fetch_provider_status = 3;
+   */
+  fetchProviderStatus: boolean;
+
+  /**
+   * @generated from field: string requested_by = 4;
+   */
+  requestedBy: string;
+};
+
+/**
+ * Describes the message sessionjeu.payment.v1.ReconcilePaymentCommand.
+ * Use `create(ReconcilePaymentCommandSchema)` to create a new message.
+ */
+export const ReconcilePaymentCommandSchema: GenMessage<ReconcilePaymentCommand> = /*@__PURE__*/
+  messageDesc(file_payment_v1_payment, 18);
+
+/**
+ * @generated from message sessionjeu.payment.v1.ReconcilePaymentResponse
+ */
+export type ReconcilePaymentResponse = Message<"sessionjeu.payment.v1.ReconcilePaymentResponse"> & {
+  /**
+   * @generated from field: string payment_id = 1;
+   */
+  paymentId: string;
+
+  /**
+   * @generated from field: sessionjeu.payment.v1.PaymentInternalStatus internal_status = 2;
+   */
+  internalStatus: PaymentInternalStatus;
+
+  /**
+   * @generated from field: sessionjeu.payment.v1.FapshiWireStatus wire_status = 3;
+   */
+  wireStatus: FapshiWireStatus;
+
+  /**
+   * @generated from field: sessionjeu.payment.v1.ReconciliationStatus reconciliation_status = 4;
+   */
+  reconciliationStatus: ReconciliationStatus;
+};
+
+/**
+ * Describes the message sessionjeu.payment.v1.ReconcilePaymentResponse.
+ * Use `create(ReconcilePaymentResponseSchema)` to create a new message.
+ */
+export const ReconcilePaymentResponseSchema: GenMessage<ReconcilePaymentResponse> = /*@__PURE__*/
+  messageDesc(file_payment_v1_payment, 19);
+
+/**
+ * @generated from message sessionjeu.payment.v1.ListWebhookInboxQuery
+ */
+export type ListWebhookInboxQuery = Message<"sessionjeu.payment.v1.ListWebhookInboxQuery"> & {
+  /**
+   * @generated from field: string provider = 1;
+   */
+  provider: string;
+
+  /**
+   * @generated from field: sessionjeu.payment.v1.WebhookInboxStatus status_filter = 2;
+   */
+  statusFilter: WebhookInboxStatus;
+
+  /**
+   * @generated from field: int32 page_size = 3;
+   */
+  pageSize: number;
+
+  /**
+   * @generated from field: string page_token = 4;
+   */
+  pageToken: string;
+};
+
+/**
+ * Describes the message sessionjeu.payment.v1.ListWebhookInboxQuery.
+ * Use `create(ListWebhookInboxQuerySchema)` to create a new message.
+ */
+export const ListWebhookInboxQuerySchema: GenMessage<ListWebhookInboxQuery> = /*@__PURE__*/
+  messageDesc(file_payment_v1_payment, 20);
+
+/**
+ * @generated from message sessionjeu.payment.v1.ListWebhookInboxResponse
+ */
+export type ListWebhookInboxResponse = Message<"sessionjeu.payment.v1.ListWebhookInboxResponse"> & {
+  /**
+   * @generated from field: repeated sessionjeu.payment.v1.ProviderWebhookInboxItem items = 1;
+   */
+  items: ProviderWebhookInboxItem[];
+
+  /**
+   * @generated from field: string next_page_token = 2;
+   */
+  nextPageToken: string;
+};
+
+/**
+ * Describes the message sessionjeu.payment.v1.ListWebhookInboxResponse.
+ * Use `create(ListWebhookInboxResponseSchema)` to create a new message.
+ */
+export const ListWebhookInboxResponseSchema: GenMessage<ListWebhookInboxResponse> = /*@__PURE__*/
+  messageDesc(file_payment_v1_payment, 21);
+
+/**
+ * Internal payment lifecycle (platform). Distinct from provider wire statuses.
+ *
+ * @generated from enum sessionjeu.payment.v1.PaymentInternalStatus
+ */
+export enum PaymentInternalStatus {
+  /**
+   * @generated from enum value: PAYMENT_INTERNAL_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: PAYMENT_INTERNAL_STATUS_CREATED = 1;
+   */
+  CREATED = 1,
+
+  /**
+   * @generated from enum value: PAYMENT_INTERNAL_STATUS_AWAITING_PROVIDER = 2;
+   */
+  AWAITING_PROVIDER = 2,
+
+  /**
+   * @generated from enum value: PAYMENT_INTERNAL_STATUS_PROVIDER_PENDING = 3;
+   */
+  PROVIDER_PENDING = 3,
+
+  /**
+   * @generated from enum value: PAYMENT_INTERNAL_STATUS_SUCCEEDED = 4;
+   */
+  SUCCEEDED = 4,
+
+  /**
+   * @generated from enum value: PAYMENT_INTERNAL_STATUS_FAILED = 5;
+   */
+  FAILED = 5,
+
+  /**
+   * @generated from enum value: PAYMENT_INTERNAL_STATUS_EXPIRED = 6;
+   */
+  EXPIRED = 6,
+
+  /**
+   * @generated from enum value: PAYMENT_INTERNAL_STATUS_RECONCILING = 7;
+   */
+  RECONCILING = 7,
+
+  /**
+   * @generated from enum value: PAYMENT_INTERNAL_STATUS_RECONCILED = 8;
+   */
+  RECONCILED = 8,
+
+  /**
+   * @generated from enum value: PAYMENT_INTERNAL_STATUS_COMPENSATING = 9;
+   */
+  COMPENSATING = 9,
+
+  /**
+   * @generated from enum value: PAYMENT_INTERNAL_STATUS_COMPENSATED = 10;
+   */
+  COMPENSATED = 10,
+
+  /**
+   * Deprecated alias kept for wire compat with SEQ-01 PaymentStatus.PENDING mapping.
+   *
+   * @generated from enum value: PAYMENT_INTERNAL_STATUS_PENDING = 11;
+   */
+  PENDING = 11,
+}
+
+/**
+ * Describes the enum sessionjeu.payment.v1.PaymentInternalStatus.
+ */
+export const PaymentInternalStatusSchema: GenEnum<PaymentInternalStatus> = /*@__PURE__*/
+  enumDesc(file_payment_v1_payment, 0);
+
+/**
+ * Fapshi (and compatible) provider wire statuses — map only in adapters.
+ * Official wire values: CREATED | PENDING | SUCCESSFUL | FAILED | EXPIRED.
+ * Never put provider credential headers into these messages (client-facing fields forbidden).
+ *
+ * @generated from enum sessionjeu.payment.v1.FapshiWireStatus
+ */
+export enum FapshiWireStatus {
+  /**
+   * @generated from enum value: FAPSHI_WIRE_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: FAPSHI_WIRE_STATUS_CREATED = 1;
+   */
+  CREATED = 1,
+
+  /**
+   * @generated from enum value: FAPSHI_WIRE_STATUS_PENDING = 2;
+   */
+  PENDING = 2,
+
+  /**
+   * @generated from enum value: FAPSHI_WIRE_STATUS_SUCCESSFUL = 3;
+   */
+  SUCCESSFUL = 3,
+
+  /**
+   * @generated from enum value: FAPSHI_WIRE_STATUS_FAILED = 4;
+   */
+  FAILED = 4,
+
+  /**
+   * @generated from enum value: FAPSHI_WIRE_STATUS_EXPIRED = 5;
+   */
+  EXPIRED = 5,
+}
+
+/**
+ * Describes the enum sessionjeu.payment.v1.FapshiWireStatus.
+ */
+export const FapshiWireStatusSchema: GenEnum<FapshiWireStatus> = /*@__PURE__*/
+  enumDesc(file_payment_v1_payment, 1);
+
+/**
+ * SEQ-01 enum retained (additive renumber forbidden). Prefer PaymentInternalStatus for new code.
+ *
  * @generated from enum sessionjeu.payment.v1.PaymentStatus
  */
 export enum PaymentStatus {
@@ -422,7 +964,7 @@ export enum PaymentStatus {
  * Describes the enum sessionjeu.payment.v1.PaymentStatus.
  */
 export const PaymentStatusSchema: GenEnum<PaymentStatus> = /*@__PURE__*/
-  enumDesc(file_payment_v1_payment, 0);
+  enumDesc(file_payment_v1_payment, 2);
 
 /**
  * @generated from enum sessionjeu.payment.v1.LedgerDirection
@@ -448,7 +990,7 @@ export enum LedgerDirection {
  * Describes the enum sessionjeu.payment.v1.LedgerDirection.
  */
 export const LedgerDirectionSchema: GenEnum<LedgerDirection> = /*@__PURE__*/
-  enumDesc(file_payment_v1_payment, 1);
+  enumDesc(file_payment_v1_payment, 3);
 
 /**
  * @generated from enum sessionjeu.payment.v1.LedgerType
@@ -483,13 +1025,95 @@ export enum LedgerType {
    * @generated from enum value: LEDGER_TYPE_ADJUSTMENT = 5;
    */
   ADJUSTMENT = 5,
+
+  /**
+   * @generated from enum value: LEDGER_TYPE_COMPENSATION = 6;
+   */
+  COMPENSATION = 6,
 }
 
 /**
  * Describes the enum sessionjeu.payment.v1.LedgerType.
  */
 export const LedgerTypeSchema: GenEnum<LedgerType> = /*@__PURE__*/
-  enumDesc(file_payment_v1_payment, 2);
+  enumDesc(file_payment_v1_payment, 4);
+
+/**
+ * @generated from enum sessionjeu.payment.v1.WebhookInboxStatus
+ */
+export enum WebhookInboxStatus {
+  /**
+   * @generated from enum value: WEBHOOK_INBOX_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: WEBHOOK_INBOX_STATUS_RECEIVED = 1;
+   */
+  RECEIVED = 1,
+
+  /**
+   * @generated from enum value: WEBHOOK_INBOX_STATUS_VERIFIED = 2;
+   */
+  VERIFIED = 2,
+
+  /**
+   * @generated from enum value: WEBHOOK_INBOX_STATUS_APPLIED = 3;
+   */
+  APPLIED = 3,
+
+  /**
+   * @generated from enum value: WEBHOOK_INBOX_STATUS_DUPLICATE = 4;
+   */
+  DUPLICATE = 4,
+
+  /**
+   * @generated from enum value: WEBHOOK_INBOX_STATUS_REJECTED = 5;
+   */
+  REJECTED = 5,
+}
+
+/**
+ * Describes the enum sessionjeu.payment.v1.WebhookInboxStatus.
+ */
+export const WebhookInboxStatusSchema: GenEnum<WebhookInboxStatus> = /*@__PURE__*/
+  enumDesc(file_payment_v1_payment, 5);
+
+/**
+ * @generated from enum sessionjeu.payment.v1.ReconciliationStatus
+ */
+export enum ReconciliationStatus {
+  /**
+   * @generated from enum value: RECONCILIATION_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: RECONCILIATION_STATUS_PENDING = 1;
+   */
+  PENDING = 1,
+
+  /**
+   * @generated from enum value: RECONCILIATION_STATUS_MATCHED = 2;
+   */
+  MATCHED = 2,
+
+  /**
+   * @generated from enum value: RECONCILIATION_STATUS_MISMATCH = 3;
+   */
+  MISMATCH = 3,
+
+  /**
+   * @generated from enum value: RECONCILIATION_STATUS_RESOLVED = 4;
+   */
+  RESOLVED = 4,
+}
+
+/**
+ * Describes the enum sessionjeu.payment.v1.ReconciliationStatus.
+ */
+export const ReconciliationStatusSchema: GenEnum<ReconciliationStatus> = /*@__PURE__*/
+  enumDesc(file_payment_v1_payment, 6);
 
 /**
  * @generated from service sessionjeu.payment.v1.PaymentService
@@ -526,6 +1150,38 @@ export const PaymentService: GenService<{
     methodKind: "unary";
     input: typeof GetPaymentHistoryQuerySchema;
     output: typeof GetPaymentHistoryResponseSchema;
+  },
+  /**
+   * @generated from rpc sessionjeu.payment.v1.PaymentService.GetPaymentStatus
+   */
+  getPaymentStatus: {
+    methodKind: "unary";
+    input: typeof GetPaymentStatusQuerySchema;
+    output: typeof GetPaymentStatusResponseSchema;
+  },
+  /**
+   * @generated from rpc sessionjeu.payment.v1.PaymentService.IngestProviderWebhookEvent
+   */
+  ingestProviderWebhookEvent: {
+    methodKind: "unary";
+    input: typeof IngestProviderWebhookEventCommandSchema;
+    output: typeof IngestProviderWebhookEventResponseSchema;
+  },
+  /**
+   * @generated from rpc sessionjeu.payment.v1.PaymentService.ReconcilePayment
+   */
+  reconcilePayment: {
+    methodKind: "unary";
+    input: typeof ReconcilePaymentCommandSchema;
+    output: typeof ReconcilePaymentResponseSchema;
+  },
+  /**
+   * @generated from rpc sessionjeu.payment.v1.PaymentService.ListWebhookInbox
+   */
+  listWebhookInbox: {
+    methodKind: "unary";
+    input: typeof ListWebhookInboxQuerySchema;
+    output: typeof ListWebhookInboxResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_payment_v1_payment, 0);

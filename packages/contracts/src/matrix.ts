@@ -1,5 +1,5 @@
 /**
- * Frozen service/method inventory for SEQ-01.
+ * Frozen service/method inventory for P-SEQ-02 production freeze.
  * Counts must stay aligned with packages/contracts/docs/service-transport-matrix.md
  */
 
@@ -123,6 +123,7 @@ export const FROZEN_SERVICES: ServiceSpec[] = [
       { name: "GetGameState", transport: "connect", audience: "admin" },
       { name: "GetReadonlySnapshot", transport: "connect", audience: "observer" },
       { name: "ListParties", transport: "connect", audience: "admin" },
+      { name: "GetSystemReadiness", transport: "connect", audience: "admin" },
     ],
   },
   {
@@ -143,6 +144,10 @@ export const FROZEN_SERVICES: ServiceSpec[] = [
       { name: "InitiateTransfer", transport: "connect", audience: "finance" },
       { name: "GetWallet", transport: "connect", audience: "player" },
       { name: "GetPaymentHistory", transport: "connect", audience: "player" },
+      { name: "GetPaymentStatus", transport: "connect", audience: "player" },
+      { name: "IngestProviderWebhookEvent", transport: "connect", audience: "system" },
+      { name: "ReconcilePayment", transport: "connect", audience: "finance" },
+      { name: "ListWebhookInbox", transport: "connect", audience: "finance" },
     ],
   },
   {
@@ -155,6 +160,9 @@ export const FROZEN_SERVICES: ServiceSpec[] = [
       { name: "ListAuditEvents", transport: "connect", audience: "admin" },
       { name: "RecordAntiCheatEvent", transport: "connect", audience: "system" },
       { name: "ListRiskSignals", transport: "connect", audience: "admin" },
+      { name: "RequestDataExport", transport: "connect", audience: "support" },
+      { name: "GetRetentionPolicy", transport: "connect", audience: "admin" },
+      { name: "ListSupportCases", transport: "connect", audience: "support" },
     ],
   },
 ];
@@ -165,6 +173,23 @@ export const FROZEN_METHOD_COUNT = FROZEN_SERVICES.reduce((n, s) => n + s.method
 /** Historical gap-analysis baseline before SEQ-01 compliance + ack. */
 export const PRE_SEQ01_SERVICE_COUNT = 11;
 export const PRE_SEQ01_METHOD_COUNT = 50;
+
+/** SEQ-01 freeze baseline before P-SEQ-02 production expansions. */
+export const SEQ01_SERVICE_COUNT = 12;
+export const SEQ01_METHOD_COUNT = 57;
+
+/** Production freeze metadata. */
+export const PRODUCTION_CONTRACTS_VERSION = "v0.2.0-production";
+export const GAMEPLAY_PAYLOAD_MAX_BYTES = 4096;
+
+export const PRODUCTION_MINIGAME_KEYS = [
+  "memory-sequence",
+  "pure-reaction-duel",
+  "trust-bridge",
+  "team-relay",
+  "danger-sweep",
+  "silent-vote",
+] as const;
 
 export function getServiceMatrixSummary(): {
   services: number;

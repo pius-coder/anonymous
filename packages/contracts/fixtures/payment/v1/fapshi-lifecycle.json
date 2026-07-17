@@ -1,0 +1,59 @@
+{
+  "wire_statuses": ["CREATED", "PENDING", "SUCCESSFUL", "FAILED", "EXPIRED"],
+  "internal_statuses": [
+    "CREATED",
+    "AWAITING_PROVIDER",
+    "PROVIDER_PENDING",
+    "SUCCEEDED",
+    "FAILED",
+    "EXPIRED",
+    "RECONCILING",
+    "RECONCILED",
+    "COMPENSATING",
+    "COMPENSATED"
+  ],
+  "process_payment": {
+    "correlation_id": "corr-pay-1",
+    "player_id": "player-001",
+    "amount": { "currency": "XAF", "units": 2500, "nanos": 0 },
+    "provider": "fapshi",
+    "idempotency_key": "idem-pay-1",
+    "party_id": "party-001",
+    "participation_id": "part-001"
+  },
+  "process_payment_response": {
+    "payment_id": "pay-001",
+    "checkout_url": "https://checkout.example/link",
+    "internal_status": "AWAITING_PROVIDER",
+    "provider_trans_id": "trans-abc"
+  },
+  "webhook_ingest": {
+    "inbox_id": "inbox-001",
+    "provider": "fapshi",
+    "provider_trans_id": "trans-abc",
+    "wire_status": "SUCCESSFUL",
+    "external_event_id": "evt-001",
+    "redacted_summary": "status=SUCCESSFUL",
+    "inbox_status": "RECEIVED"
+  },
+  "reconcile": {
+    "payment_id": "pay-001",
+    "fetch_provider_status": true,
+    "result_internal_status": "RECONCILED",
+    "result_wire_status": "SUCCESSFUL"
+  },
+  "constraints": {
+    "no_provider_credentials_in_messages": true,
+    "wire_status_distinct_from_internal": true,
+    "webhook_via_rest_exception_EX_REST_005": true,
+    "connect_ingest_after_adapter_mapping": true
+  },
+  "no_leak": {
+    "player_view_excludes": ["raw_provider_payload", "api_key", "provider_secret"],
+    "negative_projection": {
+      "payment_id": "pay-001",
+      "status": "SUCCESSFUL",
+      "FORBIDDEN_IF_PRESENT": ["api_key", "apiuser", "apikey", "provider_secret", "raw_provider_payload"]
+    }
+  }
+}
