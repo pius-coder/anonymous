@@ -177,6 +177,11 @@ export type UpdateTransactionStatusData = {
   internalStatus?: PaymentInternalStatus;
   wireStatus?: FapshiWireStatus;
   settledAt?: Date | null;
+  /** Official Fapshi fields after initiate-pay / status reconcile */
+  providerExternalId?: string | null;
+  providerTransId?: string | null;
+  checkoutUrl?: string | null;
+  expiresAt?: Date | null;
 };
 
 export type CreateLedgerEntryFullData = {

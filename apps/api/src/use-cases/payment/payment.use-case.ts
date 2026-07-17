@@ -1,13 +1,25 @@
 import { paymentRepository, auditRepository } from "@session-jeu/db";
-import { PAYMENT_ERRORS } from "@session-jeu/shared";
+import {
+  FAPSHI_PROVIDER,
+  mapFapshiWireToPaymentStatus,
+  PAYMENT_ERRORS,
+} from "@session-jeu/shared";
 import {
   resolveServerAmount,
   type PaymentPurpose,
 } from "../../payments/server-amount.js";
 import {
+  generateProviderExternalId,
   initiateExternalCheckout,
-  verifyWebhookSignature,
+  verifyWebhookSecret,
 } from "../../payments/provider-adapter.js";
+import {
+  assertSettlementMatch,
+  fetchVerifiedProviderStatus,
+  parseFapshiWebhookPayload,
+  redactedWebhookSummary,
+  webhookEventId,
+} from "../../payments/fapshi-collection.js";
 
 export class PaymentUseCaseError extends Error {
   readonly code: string;
@@ -39,24 +51,64 @@ function mapAmountError(err: unknown): never {
   throw err;
 }
 
+function mapProviderError(err: unknown): never {
+  const code =
+    err instanceof Error && "code" in err && typeof (err as { code?: string }).code === "string"
+      ? (err as { code: string }).code
+      : err instanceof Error
+        ? err.message
+        : "PROVIDER_ERROR";
+
+  if (code === "PROVIDER_NOT_CONFIGURED") {
+    throw new PaymentUseCaseError(
+      PAYMENT_ERRORS.PROVIDER_NOT_CONFIGURED.code,
+      PAYMENT_ERRORS.PROVIDER_NOT_CONFIGURED.message,
+      PAYMENT_ERRORS.PROVIDER_NOT_CONFIGURED.status,
+    );
+  }
+  if (code === "COLLECTION_DISABLED") {
+    throw new PaymentUseCaseError(
+      PAYMENT_ERRORS.COLLECTION_DISABLED.code,
+      PAYMENT_ERRORS.COLLECTION_DISABLED.message,
+      PAYMENT_ERRORS.COLLECTION_DISABLED.status,
+    );
+  }
+  if (code === "PROVIDER_TIMEOUT_AMBIGUOUS") {
+    throw new PaymentUseCaseError(
+      PAYMENT_ERRORS.PROVIDER_TIMEOUT_AMBIGUOUS.code,
+      PAYMENT_ERRORS.PROVIDER_TIMEOUT_AMBIGUOUS.message,
+      PAYMENT_ERRORS.PROVIDER_TIMEOUT_AMBIGUOUS.status,
+    );
+  }
+  if (code === "CHECKOUT_LINK_REJECTED") {
+    throw new PaymentUseCaseError(
+      PAYMENT_ERRORS.CHECKOUT_LINK_REJECTED.code,
+      PAYMENT_ERRORS.CHECKOUT_LINK_REJECTED.message,
+      PAYMENT_ERRORS.CHECKOUT_LINK_REJECTED.status,
+    );
+  }
+  throw new PaymentUseCaseError(
+    PAYMENT_ERRORS.PROVIDER_ERROR.code,
+    PAYMENT_ERRORS.PROVIDER_ERROR.message,
+    PAYMENT_ERRORS.PROVIDER_ERROR.status,
+  );
+}
+
 export type InitiatePaymentInput = {
   userId: string;
-  /** ACCESS_FEE (default) uses server catalog; TOP_UP uses validated requestedAmount. */
   purpose?: PaymentPurpose;
   productCode?: string;
   currency?: string;
-  /** Required idempotency key — server never invents client intent keys. */
   idempotencyKey: string;
-  /** Only consumed for TOP_UP; ignored for ACCESS_FEE. */
   requestedAmount?: number;
-  /** When set with participationId, creates collection checkout linked to admission. */
+  email?: string;
+  /** When set with participationId, links collection checkout to admission. */
   partyId?: string;
   participationId?: string;
 };
 
 export type PaymentDetail = {
   id: string;
-  /** Nullable after production model (provider checkout may omit wallet until settled). */
   walletId: string | null;
   amount: number;
   type: string;
@@ -64,6 +116,8 @@ export type PaymentDetail = {
   reference: string | null;
   status: string;
   checkoutUrl?: string;
+  providerTransId?: string | null;
+  providerExternalId?: string | null;
   createdAt: string;
 };
 
@@ -85,14 +139,20 @@ export type LedgerEntryDetail = {
   createdAt: string;
 };
 
-export type WebhookPayload = {
-  transactionId: string;
-  status: string;
-  providerReference: string;
-  signature: string;
-  /** Optional provider event id for inbox idempotency. */
-  externalEventId?: string;
-  providerTransId?: string;
+/** Official Fapshi webhook ingest (header secret + wire body). */
+export type WebhookIngestInput = {
+  /** Value of x-wh-secret header */
+  webhookSecretHeader: string | undefined;
+  body: unknown;
+  /** When true, process payment-status + settle before returning (tests). Default async. */
+  processSync?: boolean;
+};
+
+export type WebhookIngestResult = {
+  received: boolean;
+  inboxId: string;
+  duplicate: boolean;
+  paymentId?: string;
 };
 
 type WithNumeric = { toNumber(): number };
@@ -108,6 +168,8 @@ function toPaymentDetail(
     status: string;
     createdAt: Date;
     checkoutUrl?: string | null;
+    providerTransId?: string | null;
+    providerExternalId?: string | null;
   },
   checkoutUrl?: string,
 ): PaymentDetail {
@@ -121,6 +183,8 @@ function toPaymentDetail(
     reference: t.reference,
     status: String(t.status),
     ...(resolvedCheckout ? { checkoutUrl: resolvedCheckout } : {}),
+    providerTransId: t.providerTransId ?? null,
+    providerExternalId: t.providerExternalId ?? null,
     createdAt: t.createdAt.toISOString(),
   };
 }
@@ -172,7 +236,22 @@ function requireIdempotencyKey(key: string | undefined): string {
   return key.trim();
 }
 
-/** Gains remain invisible/non-credited until explicit score publication (out of scope). */
+/** Map official/shared wire names to Prisma FapshiWireStatus (no UNKNOWN). */
+function toPrismaWireStatus(
+  status: string,
+): "CREATED" | "PENDING" | "SUCCESSFUL" | "FAILED" | "EXPIRED" | "UNSPECIFIED" {
+  switch (status) {
+    case "CREATED":
+    case "PENDING":
+    case "SUCCESSFUL":
+    case "FAILED":
+    case "EXPIRED":
+      return status;
+    default:
+      return "UNSPECIFIED";
+  }
+}
+
 export function assertPrizeCreditAllowed(_opts?: { published?: boolean }): void {
   throw new PaymentUseCaseError(
     "FAILED_PRECONDITION",
@@ -191,9 +270,8 @@ export async function getOrCreateWallet(userId: string): Promise<WalletDetail> {
 }
 
 /**
- * Initiate external payment. Amount is always server-resolved.
- * Idempotent on idempotencyKey.
- * When partyId+participationId are provided, links collection checkout to participation (PAYMENT_PENDING).
+ * Initiate external Fapshi collection. Amount server-resolved. Durable externalId before initiate-pay.
+ * Idempotent on idempotencyKey. Never invents local checkout.
  */
 export async function initiatePayment(input: InitiatePaymentInput): Promise<PaymentDetail> {
   const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
@@ -214,21 +292,18 @@ export async function initiatePayment(input: InitiatePaymentInput): Promise<Paym
 
   const existing = await paymentRepository.findTransactionByIdempotencyKey(idempotencyKey);
   if (existing) {
-    return toPaymentDetail(
-      existing,
-      existing.checkoutUrl ??
-        (existing.reference ? `/payments/checkout/${existing.id}` : undefined),
-    );
+    // Never re-call initiate-pay for the same intent (prevents second Fapshi transaction).
+    return toPaymentDetail(existing);
   }
 
   const type = purpose === "TOP_UP" ? "TOP_UP" : "ACCESS_FEE";
+  const providerExternalId = generateProviderExternalId();
   const admissionCheckout =
     purpose === "ACCESS_FEE" && !!input.partyId && !!input.participationId;
 
   let transaction;
   try {
     if (admissionCheckout) {
-      const externalId = `ext-${idempotencyKey}`.slice(0, 100);
       transaction = await paymentRepository.createCheckoutPayment({
         amount,
         currency: input.currency ?? wallet.currency,
@@ -236,7 +311,7 @@ export async function initiatePayment(input: InitiatePaymentInput): Promise<Paym
         partyId: input.partyId!,
         participationId: input.participationId!,
         walletId: wallet.id,
-        providerExternalId: externalId,
+        providerExternalId,
         idempotencyKey,
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       });
@@ -245,10 +320,14 @@ export async function initiatePayment(input: InitiatePaymentInput): Promise<Paym
         walletId: wallet.id,
         userId: input.userId,
         amount,
+        currency: input.currency ?? wallet.currency,
         type,
-        provider: "FAPSHI",
+        provider: FAPSHI_PROVIDER,
         idempotencyKey,
         status: "PENDING",
+        internalStatus: "AWAITING_PROVIDER",
+        wireStatus: "CREATED",
+        providerExternalId,
       });
     }
   } catch (err) {
@@ -257,50 +336,71 @@ export async function initiatePayment(input: InitiatePaymentInput): Promise<Paym
     throw err;
   }
 
+  // createCheckoutPayment may return existing intent already linked to provider
+  const resolvedExternalId = transaction.providerExternalId ?? providerExternalId;
+
+  // If provider already attached (race recovery), do not re-initiate.
+  if (transaction.providerTransId && transaction.checkoutUrl) {
+    return toPaymentDetail(transaction);
+  }
+
   try {
     const external = await initiateExternalCheckout({
+      paymentId: transaction.id,
       transactionId: transaction.id,
       amount,
       currency: input.currency ?? wallet.currency,
       userId: input.userId,
+      externalId: resolvedExternalId,
       idempotencyKey,
+      email: input.email,
     });
+
     const updated = await paymentRepository.updateTransactionStatus(transaction.id, {
       status: "PENDING",
       provider: external.provider,
-      reference: external.providerReference,
+      reference: external.providerTransId,
+      providerTransId: external.providerTransId,
+      providerExternalId: external.providerExternalId,
+      checkoutUrl: external.checkoutUrl,
+      internalStatus: "PROVIDER_PENDING",
+      wireStatus: "CREATED",
     });
-    // Persist checkout URL when repository supports it via raw update if needed
     return toPaymentDetail(updated, external.checkoutUrl);
   } catch (err) {
-    if (err instanceof Error && err.message === "PROVIDER_ERROR") {
-      await paymentRepository.updateTransactionStatus(transaction.id, { status: "FAILED" });
-      throw new PaymentUseCaseError(
-        PAYMENT_ERRORS.PROVIDER_ERROR.code,
-        PAYMENT_ERRORS.PROVIDER_ERROR.message,
-        PAYMENT_ERRORS.PROVIDER_ERROR.status,
-      );
+    if (err instanceof Error && err.message === "PROVIDER_TIMEOUT_AMBIGUOUS") {
+      await paymentRepository.updateTransactionStatus(transaction.id, {
+        status: "PENDING",
+        internalStatus: "RECONCILING",
+        wireStatus: "UNSPECIFIED",
+      });
+      mapProviderError(err);
     }
-    if (err instanceof Error && err.message === "PROVIDER_NOT_CONFIGURED") {
-      await paymentRepository.updateTransactionStatus(transaction.id, { status: "FAILED" });
-      throw new PaymentUseCaseError(
-        PAYMENT_ERRORS.PROVIDER_ERROR.code,
-        "Fournisseur de collecte non configuré",
-        502,
-      );
-    }
-    throw err;
+    await paymentRepository.updateTransactionStatus(transaction.id, {
+      status: "FAILED",
+      internalStatus: "FAILED",
+      wireStatus: "FAILED",
+    }).catch(() => {});
+    mapProviderError(err);
   }
 }
 
 /**
- * Webhook handler. Durable inbox + applyWebhookSettlement (idempotent).
- * Never credits PRIZE. ACCESS_FEE / ENTRY_FEE success → paymentState PAID atomically.
- * TOP_UP may credit wallet once via legacy settle path when no participation link.
+ * Webhook: verify x-wh-secret, durable inbox, then verify via payment-status before settlement.
+ * Never confirms success from webhook body alone.
  */
-export async function handlePaymentWebhook(payload: WebhookPayload): Promise<PaymentDetail> {
+export async function handlePaymentWebhook(
+  input: WebhookIngestInput,
+): Promise<WebhookIngestResult> {
   const secret = process.env.FAPSHI_WEBHOOK_SECRET;
-  if (!verifyWebhookSignature(payload.signature, secret)) {
+  if (!secret) {
+    throw new PaymentUseCaseError(
+      PAYMENT_ERRORS.WEBHOOK_SECRET_REQUIRED.code,
+      PAYMENT_ERRORS.WEBHOOK_SECRET_REQUIRED.message,
+      PAYMENT_ERRORS.WEBHOOK_SECRET_REQUIRED.status,
+    );
+  }
+  if (!verifyWebhookSecret(input.webhookSecretHeader, secret)) {
     throw new PaymentUseCaseError(
       PAYMENT_ERRORS.WEBHOOK_SIGNATURE_INVALID.code,
       PAYMENT_ERRORS.WEBHOOK_SIGNATURE_INVALID.message,
@@ -308,7 +408,146 @@ export async function handlePaymentWebhook(payload: WebhookPayload): Promise<Pay
     );
   }
 
-  const transaction = await paymentRepository.findTransactionById(payload.transactionId);
+  let payload;
+  try {
+    payload = parseFapshiWebhookPayload(input.body);
+  } catch {
+    throw new PaymentUseCaseError(
+      PAYMENT_ERRORS.PROVIDER_ERROR.code,
+      "Corps webhook Fapshi invalide",
+      400,
+    );
+  }
+
+  const payment =
+    (await paymentRepository.findTransactionByProviderTransId(payload.transId)) ??
+    (payload.externalId
+      ? await paymentRepository.findTransactionByProviderExternalId(payload.externalId)
+      : null);
+
+  const eventId = webhookEventId(payload.transId, payload.status);
+  const { inbox, duplicate } = await paymentRepository.ingestProviderWebhook({
+    provider: FAPSHI_PROVIDER.toLowerCase(),
+    externalEventId: eventId,
+    providerTransId: payload.transId,
+    wireStatus: toPrismaWireStatus(payload.status),
+    paymentId: payment?.id,
+    redactedSummary: redactedWebhookSummary(payload),
+    serviceKind: "COLLECTION",
+  });
+
+  if (duplicate) {
+    return {
+      received: true,
+      inboxId: inbox.id,
+      duplicate: true,
+      paymentId: payment?.id,
+    };
+  }
+
+  const settleAfterVerify = async () => {
+    try {
+      await verifyAndSettleCollection({
+        inboxId: inbox.id,
+        providerTransId: payload.transId,
+        paymentId: payment?.id,
+      });
+    } catch {
+      // Async path: leave inbox RECEIVED for reconciliation; never invent success.
+    }
+  };
+
+  if (input.processSync) {
+    await settleAfterVerify();
+  } else {
+    // Fire-and-forget after durable inbox write (ACK fast).
+    void settleAfterVerify();
+  }
+
+  return {
+    received: true,
+    inboxId: inbox.id,
+    duplicate: false,
+    paymentId: payment?.id,
+  };
+}
+
+/**
+ * Query official payment-status then apply settlement. Safe for webhook async + reconciliation.
+ */
+export async function verifyAndSettleCollection(input: {
+  inboxId: string;
+  providerTransId: string;
+  paymentId?: string;
+}): Promise<PaymentDetail | null> {
+  const providerStatus = await fetchVerifiedProviderStatus(input.providerTransId);
+
+  let payment = input.paymentId
+    ? await paymentRepository.findTransactionById(input.paymentId)
+    : await paymentRepository.findTransactionByProviderTransId(providerStatus.transId);
+
+  if (!payment && providerStatus.externalId) {
+    payment = await paymentRepository.findTransactionByProviderExternalId(
+      providerStatus.externalId,
+    );
+  }
+  if (!payment) {
+    return null;
+  }
+
+  if (payment.type === "PRIZE") {
+    assertPrizeCreditAllowed();
+  }
+
+  try {
+    assertSettlementMatch({
+      expectedAmountXaf: Number(payment.amount),
+      expectedExternalId: payment.providerExternalId,
+      expectedUserId: payment.userId,
+      provider: providerStatus,
+    });
+  } catch {
+    // Amount / identity mismatch: mark rejected via inbox only; do not mutate to SUCCESS.
+    return toPaymentDetail(payment);
+  }
+
+  // For non-terminal wire, update wire/pending only.
+  if (
+    providerStatus.status === "CREATED" ||
+    providerStatus.status === "PENDING"
+  ) {
+    const updated = await paymentRepository.updateTransactionStatus(payment.id, {
+      status: mapFapshiWireToPaymentStatus(providerStatus.status),
+      wireStatus: toPrismaWireStatus(providerStatus.status),
+      internalStatus: "PROVIDER_PENDING",
+      providerTransId: providerStatus.transId,
+    });
+    return toPaymentDetail(updated);
+  }
+
+  const wire = toPrismaWireStatus(providerStatus.status);
+  if (wire === "UNSPECIFIED") {
+    return toPaymentDetail(payment);
+  }
+
+  const { payment: settled } = await paymentRepository.applyWebhookSettlement({
+    inboxId: input.inboxId,
+    transactionId: payment.id,
+    wireStatus: wire,
+    providerTransId: providerStatus.transId,
+    admitOnSuccess: false,
+  });
+
+  return toPaymentDetail(settled);
+}
+
+/**
+ * Recoverable reconciliation when webhook was lost (Fapshi does not retry).
+ */
+export async function reconcileCollectionFromProvider(
+  paymentId: string,
+): Promise<PaymentDetail> {
+  const transaction = await paymentRepository.findTransactionById(paymentId);
   if (!transaction) {
     throw new PaymentUseCaseError(
       PAYMENT_ERRORS.PAYMENT_NOT_FOUND.code,
@@ -316,11 +555,6 @@ export async function handlePaymentWebhook(payload: WebhookPayload): Promise<Pay
       PAYMENT_ERRORS.PAYMENT_NOT_FOUND.status,
     );
   }
-
-  if (transaction.type === "PRIZE") {
-    assertPrizeCreditAllowed();
-  }
-
   if (
     transaction.status === "SUCCESSFUL" ||
     transaction.status === "FAILED" ||
@@ -328,73 +562,49 @@ export async function handlePaymentWebhook(payload: WebhookPayload): Promise<Pay
   ) {
     return toPaymentDetail(transaction);
   }
+  if (!transaction.providerTransId) {
+    throw new PaymentUseCaseError(
+      PAYMENT_ERRORS.PROVIDER_ERROR.code,
+      "Aucun transId fournisseur — impossible de réconcilier sans re-initiate",
+      409,
+    );
+  }
 
-  const wireStatus =
-    payload.status === "SUCCESS" || payload.status === "SUCCESSFUL"
-      ? "SUCCESSFUL"
-      : payload.status === "FAILED"
-        ? "FAILED"
-        : payload.status === "EXPIRED"
-          ? "EXPIRED"
-          : "PENDING";
+  const providerStatus = await fetchVerifiedProviderStatus(transaction.providerTransId);
+  assertSettlementMatch({
+    expectedAmountXaf: Number(transaction.amount),
+    expectedExternalId: transaction.providerExternalId,
+    expectedUserId: transaction.userId,
+    provider: providerStatus,
+  });
 
-  const externalEventId =
-    payload.externalEventId ??
-    `${payload.providerReference}:${wireStatus}:${payload.transactionId}`;
-
-  const { inbox, duplicate } = await paymentRepository.ingestProviderWebhook({
-    provider: "fapshi",
-    externalEventId,
-    providerTransId: payload.providerTransId ?? payload.providerReference,
-    wireStatus: wireStatus as never,
+  // Synthetic inbox row for settle path idempotence
+  const eventId = webhookEventId(providerStatus.transId, `reconcile:${providerStatus.status}`);
+  const { inbox } = await paymentRepository.ingestProviderWebhook({
+    provider: FAPSHI_PROVIDER.toLowerCase(),
+    externalEventId: eventId,
+    providerTransId: providerStatus.transId,
+    wireStatus: toPrismaWireStatus(providerStatus.status),
     paymentId: transaction.id,
-    redactedSummary: `status=${wireStatus}`,
-    serviceKind: (transaction.serviceKind ?? "COLLECTION") as never,
+    redactedSummary: redactedWebhookSummary(providerStatus),
+    serviceKind: "COLLECTION",
   });
 
-  if (duplicate && inbox.inboxStatus === "APPLIED") {
-    const current = await paymentRepository.findTransactionById(transaction.id);
-    return toPaymentDetail(current ?? transaction);
-  }
-
-  // Admission / terminal wire: applyWebhookSettlement → PAID on success (not auto-ADMITTED).
-  // TOP_UP credit: settlePaymentWebhook credits wallet once when no participation link.
-  const isTopUpCredit =
-    (transaction.type === "TOP_UP" || transaction.type === "WALLET_CREDIT") &&
-    !transaction.participationId &&
-    wireStatus === "SUCCESSFUL";
-
-  if (isTopUpCredit) {
-    const updated = await paymentRepository.settlePaymentWebhook({
-      transactionId: payload.transactionId,
-      status: "SUCCESSFUL",
-      providerReference: payload.providerReference,
-    });
-    if (!updated) {
-      throw new PaymentUseCaseError(
-        PAYMENT_ERRORS.PAYMENT_NOT_FOUND.code,
-        PAYMENT_ERRORS.PAYMENT_NOT_FOUND.message,
-        PAYMENT_ERRORS.PAYMENT_NOT_FOUND.status,
-      );
-    }
-    // Mark inbox applied best-effort via settlement path already handled for admission;
-    // top-up uses legacy settle — still record provider ref on payment.
-    return toPaymentDetail(updated);
-  }
-
-  const applied = await paymentRepository.applyWebhookSettlement({
+  const settled = await verifyAndSettleCollection({
     inboxId: inbox.id,
-    transactionId: transaction.id,
-    wireStatus: wireStatus as never,
-    providerTransId: payload.providerTransId ?? payload.providerReference,
-    admitOnSuccess: false,
+    providerTransId: providerStatus.transId,
+    paymentId: transaction.id,
   });
-  return toPaymentDetail(applied.payment);
+  if (!settled) {
+    throw new PaymentUseCaseError(
+      PAYMENT_ERRORS.PAYMENT_NOT_FOUND.code,
+      PAYMENT_ERRORS.PAYMENT_NOT_FOUND.message,
+      PAYMENT_ERRORS.PAYMENT_NOT_FOUND.status,
+    );
+  }
+  return settled;
 }
 
-/**
- * Debit wallet for access (or other non-prize reason) with server amount when purpose is ACCESS_FEE.
- */
 export async function payWithWallet(input: {
   userId: string;
   purpose?: PaymentPurpose;
@@ -444,7 +654,6 @@ export async function payWithWallet(input: {
       idempotencyKey,
       partyId: input.partyId,
       participationId: input.participationId,
-      userId: input.userId,
     });
     return {
       payment: toPaymentDetail(result.transaction),
@@ -543,8 +752,8 @@ export async function listAllTransactions(input: {
 }
 
 /**
- * Finance-only reconciliation command. Marks PENDING as FAILED with audit trail.
- * Idempotent for already-terminal transactions. Does not invent SUCCESS from client.
+ * Finance reconcile: prefer live Fapshi status; never invent SUCCESS without provider.
+ * Falls back to FAILED only when provider confirms FAILED/EXPIRED or admin force without transId.
  */
 export async function reconcilePayment(
   paymentId: string,
@@ -560,13 +769,30 @@ export async function reconcilePayment(
     );
   }
 
-  if (transaction.status !== "PENDING") {
+  if (transaction.status !== "PENDING" && transaction.status !== "CREATED") {
     return toPaymentDetail(transaction);
+  }
+
+  if (transaction.providerTransId) {
+    try {
+      const settled = await reconcileCollectionFromProvider(paymentId);
+      await auditRepository.createAuditLog({
+        userId: adminUserId,
+        action: "PAYMENT_RECONCILE",
+        entity: "PaymentTransaction",
+        entityId: paymentId,
+        metadata: { reason: reason ?? "provider_status", mode: "provider" },
+      }).catch(() => {});
+      return settled;
+    } catch {
+      // fall through to admin close only when explicitly requested via reason flag
+    }
   }
 
   const updated = await paymentRepository.updateTransactionStatus(paymentId, {
     status: "FAILED",
     reference: `RECONCILED_BY_ADMIN_${adminUserId}`,
+    internalStatus: "FAILED",
   });
 
   await auditRepository.createAuditLog({
@@ -580,10 +806,6 @@ export async function reconcilePayment(
   return toPaymentDetail(updated);
 }
 
-/**
- * Outbound transfer initiation (finance). Creates a PENDING transfer transaction;
- * worker reconciliation remains out of scope for this lot.
- */
 export async function initiateTransfer(input: {
   userId: string;
   amount: number;

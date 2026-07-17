@@ -159,6 +159,12 @@ export function updateTransactionStatus(
       ...(data.internalStatus !== undefined ? { internalStatus: data.internalStatus } : {}),
       ...(data.wireStatus !== undefined ? { wireStatus: data.wireStatus } : {}),
       ...(data.settledAt !== undefined ? { settledAt: data.settledAt } : {}),
+      ...(data.providerExternalId !== undefined
+        ? { providerExternalId: data.providerExternalId }
+        : {}),
+      ...(data.providerTransId !== undefined ? { providerTransId: data.providerTransId } : {}),
+      ...(data.checkoutUrl !== undefined ? { checkoutUrl: data.checkoutUrl } : {}),
+      ...(data.expiresAt !== undefined ? { expiresAt: data.expiresAt } : {}),
     },
   });
 }
