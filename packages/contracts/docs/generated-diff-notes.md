@@ -1,35 +1,39 @@
-# Notes de generation SEQ-01 (diff genere)
+# Generated output notes — P-SEQ-02 production freeze
 
-**Date :** 2026-07-16
-**Commande reproductible :**
+## Version
+
+- `CONTRACTS_VERSION` / `PRODUCTION_CONTRACTS_VERSION` : `v0.2.0-production`
+- Base SEQ-01 : 12 services / 57 RPC
+- Production freeze : 12 services / 65 RPC
+
+## Generation
 
 ```bash
-pnpm --filter @session-jeu/contracts lint:proto
 pnpm --filter @session-jeu/contracts generate
-pnpm --filter @session-jeu/contracts build
+# BUF_CACHE_DIR=../../.cache/buf buf generate
 ```
 
-Cache Buf : `BUF_CACHE_DIR=.cache/buf` (racine monorepo).
+Plugin : `protoc-gen-es` → `src/gen/**/*_pb.ts` (`import_extension=js`).
 
-## Pourquoi le diff
+## Descriptor hash
 
-1. **Nouveaux ErrorCode** (`common/v1/errors_pb.ts`) : codes 20–29 documentes sprints 02/09/13/14/17/18.
-2. **Minigame** : messages `MiniGameCommand`, `Public/PrivateState`, `ServerEvent`, `ScoreEvidence`.
-3. **Notification** : champs job/ack + `AcknowledgeNotification` RPC + events delivery.
-4. **Scoring** : champ `audience` sur reponses + message `ScoreWaitingReviewView`.
-5. **Compliance** : nouveau package `compliance/v1` + `compliance_pb.ts` (6 RPC sprint 18).
-6. Imports inutilises retires (admin, identity, session) — non breaking FILE.
+Recorded at freeze time in `docs/descriptor-hash.txt` (SHA-256 of `buf build` image).
 
-## Determinisme
-
-- Plugin unique `protoc-gen-es` (`target=ts`, `import_extension=js`).
-- `buf.gen.yaml` : `clean: true` (sortie `src/gen` regeneratee integralement).
-- Pas de `protoc-gen-connect-es` (Connect ES v2 lit les descriptors Protobuf-ES).
-
-## Verification
+Regenerate:
 
 ```bash
-pnpm --filter @session-jeu/contracts test
-pnpm --filter @session-jeu/contracts breaking   # vs HEAD git
-git diff -- packages/contracts/src/gen
+cd packages/contracts
+BUF_CACHE_DIR=../../.cache/buf buf build -o /tmp/contracts.bin
+sha256sum /tmp/contracts.bin | tee docs/descriptor-hash.txt
 ```
+
+## Additive changes vs SEQ-01
+
+- common: PageRequest/Response, IdempotencyKey, ContractVersion, TypedBytesEnvelope, ErrorEnvelope, new ErrorCodes
+- minigame: six typed game protos + schema fields on envelopes
+- payment: internal vs Fapshi wire statuses, webhook inbox, reconcile RPCs
+- compliance: export, retention, support cases
+- admin: GetSystemReadiness
+- round: schema-bound payload fields
+
+No field numbers reused or renumbered.

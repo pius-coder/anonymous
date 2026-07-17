@@ -58,8 +58,36 @@ message ListAdminPartiesResponse {
   string next_page_token = 2;
 }
 
+// Production readiness projection (ops). No secrets, credentials, or hostnames with tokens.
+enum ReadinessComponentStatus {
+  READINESS_COMPONENT_STATUS_UNSPECIFIED = 0;
+  READINESS_COMPONENT_STATUS_UP = 1;
+  READINESS_COMPONENT_STATUS_DEGRADED = 2;
+  READINESS_COMPONENT_STATUS_DOWN = 3;
+}
+
+message ReadinessComponent {
+  string name = 1;
+  ReadinessComponentStatus status = 2;
+  // Public detail only (e.g. "postgres ping ok"); never DSNs or keys.
+  string public_detail = 3;
+}
+
+message GetSystemReadinessQuery {
+  // When true, include dependency probes (DB/Redis/provider sandbox reachability).
+  bool deep = 1;
+}
+
+message GetSystemReadinessResponse {
+  bool ready = 1;
+  string contracts_version = 2;
+  repeated ReadinessComponent components = 3;
+  sessionjeu.common.v1.Timestamp checked_at = 4;
+}
+
 service AdminService {
   rpc GetGameState(GetAdminGameStateQuery) returns (GetAdminGameStateResponse);
   rpc GetReadonlySnapshot(GetReadonlySnapshotQuery) returns (GetReadonlySnapshotResponse);
   rpc ListParties(ListAdminPartiesQuery) returns (ListAdminPartiesResponse);
+  rpc GetSystemReadiness(GetSystemReadinessQuery) returns (GetSystemReadinessResponse);
 }

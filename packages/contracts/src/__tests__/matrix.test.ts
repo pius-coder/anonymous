@@ -7,6 +7,9 @@ import {
   FROZEN_SERVICES,
   PRE_SEQ01_METHOD_COUNT,
   PRE_SEQ01_SERVICE_COUNT,
+  PRODUCTION_MINIGAME_KEYS,
+  SEQ01_METHOD_COUNT,
+  SEQ01_SERVICE_COUNT,
   getServiceMatrixSummary,
 } from "../matrix.js";
 import { getContractsFoundation } from "../index.js";
@@ -40,16 +43,24 @@ function extractServiceRpcs(content: string): Map<string, string[]> {
 }
 
 describe("Frozen service matrix", () => {
-  it("matches SEQ-01 freeze counts (12 services / 57 methods)", () => {
+  it("matches P-SEQ-02 production freeze counts (12 services / 65 methods)", () => {
     expect(FROZEN_SERVICE_COUNT).toBe(12);
-    expect(FROZEN_METHOD_COUNT).toBe(57);
+    expect(FROZEN_METHOD_COUNT).toBe(65);
     expect(getContractsFoundation().serviceCount).toBe(12);
-    expect(getContractsFoundation().methodCount).toBe(57);
+    expect(getContractsFoundation().methodCount).toBe(65);
   });
 
-  it("records historical pre-SEQ-01 baseline of 11/50", () => {
+  it("records historical baselines", () => {
     expect(PRE_SEQ01_SERVICE_COUNT).toBe(11);
     expect(PRE_SEQ01_METHOD_COUNT).toBe(50);
+    expect(SEQ01_SERVICE_COUNT).toBe(12);
+    expect(SEQ01_METHOD_COUNT).toBe(57);
+  });
+
+  it("lists six production minigame keys", () => {
+    expect(PRODUCTION_MINIGAME_KEYS).toHaveLength(6);
+    expect(PRODUCTION_MINIGAME_KEYS).toContain("memory-sequence");
+    expect(PRODUCTION_MINIGAME_KEYS).toContain("silent-vote");
   });
 
   it("aligns matrix with proto service and rpc names", () => {
@@ -76,8 +87,9 @@ describe("Frozen service matrix", () => {
   it("summary enumerates every frozen service", () => {
     const summary = getServiceMatrixSummary();
     expect(summary.services).toBe(12);
-    expect(summary.methods).toBe(57);
+    expect(summary.methods).toBe(65);
     expect(summary.byService.map((s) => s.service)).toContain("ComplianceService");
-    expect(summary.byService.map((s) => s.service)).toContain("IdentityService");
+    expect(summary.byService.map((s) => s.service)).toContain("PaymentService");
+    expect(summary.byService.find((s) => s.service === "PaymentService")?.methods).toBe(8);
   });
 });

@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package sessionjeu.minigame.v1;
+
+import "common/v1/shared.proto";
+
+// Hidden role: Le saboteur — roles and win checks are private.
+// Public wire must never expose role, hidden vote target of others, or victory condition internals.
+
+message SilentVoteConfig {
+  string schema_version = 1;
+  int32 discussion_ms = 2;
+  int32 vote_ms = 3;
+  int32 min_players = 4;
+  int32 max_players = 5;
+  // Role catalog ids only — assignment is server-private.
+  repeated string role_catalog_ids = 6;
+}
+
+message SilentVotePlayerCommand {
+  string schema_version = 1;
+  // vote | accuse | lock_vote | abort
+  string action = 2;
+  // Target player id for vote/accuse (public act after lock may be delayed).
+  string target_player_id = 3;
+  int64 client_timestamp_ms = 4;
+}
+
+message SilentVotePublicState {
+  string schema_version = 1;
+  string phase = 2;
+  int32 remaining_ms = 3;
+  int32 living_count = 4;
+  // Player seats without roles.
+  repeated string participant_ids = 5;
+  // Votes locked count only — not who voted whom until reveal.
+  int32 votes_locked = 6;
+  string last_public_outcome = 7;
+}
+
+// Own role and own vote only — never other roles or majority math internals.
+message SilentVotePrivateState {
+  string schema_version = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  string own_role_id = 3;
+  string own_vote_target_id = 4;
+  bool own_vote_locked = 5;
+  // Night/special info permitted for this role only.
+  string private_hint = 6;
+}
+
+message SilentVoteServerEvent {
+  string schema_version = 1;
+  string event_type = 2;
+  sessionjeu.common.v1.Audience audience = 3;
+  SilentVotePublicState public_state = 4;
+  int64 server_timestamp_ms = 5;
+}
+
+// System/admin only after round close — roles redacted for support export.
+message SilentVoteScoreEvidence {
+  string schema_version = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  double raw_score = 3;
+  string evidence_hash = 4;
+  string role_id_redacted_hash = 5;
+  bool survived = 6;
+  bool team_won = 7;
+  int64 computed_at_ms = 8;
+}

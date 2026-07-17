@@ -4,6 +4,36 @@ package sessionjeu.payment.v1;
 
 import "common/v1/shared.proto";
 
+// Internal payment lifecycle (platform). Distinct from provider wire statuses.
+enum PaymentInternalStatus {
+  PAYMENT_INTERNAL_STATUS_UNSPECIFIED = 0;
+  PAYMENT_INTERNAL_STATUS_CREATED = 1;
+  PAYMENT_INTERNAL_STATUS_AWAITING_PROVIDER = 2;
+  PAYMENT_INTERNAL_STATUS_PROVIDER_PENDING = 3;
+  PAYMENT_INTERNAL_STATUS_SUCCEEDED = 4;
+  PAYMENT_INTERNAL_STATUS_FAILED = 5;
+  PAYMENT_INTERNAL_STATUS_EXPIRED = 6;
+  PAYMENT_INTERNAL_STATUS_RECONCILING = 7;
+  PAYMENT_INTERNAL_STATUS_RECONCILED = 8;
+  PAYMENT_INTERNAL_STATUS_COMPENSATING = 9;
+  PAYMENT_INTERNAL_STATUS_COMPENSATED = 10;
+  // Deprecated alias kept for wire compat with SEQ-01 PaymentStatus.PENDING mapping.
+  PAYMENT_INTERNAL_STATUS_PENDING = 11;
+}
+
+// Fapshi (and compatible) provider wire statuses — map only in adapters.
+// Official wire values: CREATED | PENDING | SUCCESSFUL | FAILED | EXPIRED.
+// Never put provider credential headers into these messages (client-facing fields forbidden).
+enum FapshiWireStatus {
+  FAPSHI_WIRE_STATUS_UNSPECIFIED = 0;
+  FAPSHI_WIRE_STATUS_CREATED = 1;
+  FAPSHI_WIRE_STATUS_PENDING = 2;
+  FAPSHI_WIRE_STATUS_SUCCESSFUL = 3;
+  FAPSHI_WIRE_STATUS_FAILED = 4;
+  FAPSHI_WIRE_STATUS_EXPIRED = 5;
+}
+
+// SEQ-01 enum retained (additive renumber forbidden). Prefer PaymentInternalStatus for new code.
 enum PaymentStatus {
   PAYMENT_STATUS_UNSPECIFIED = 0;
   PAYMENT_STATUS_PENDING = 1;
@@ -26,6 +56,24 @@ enum LedgerType {
   LEDGER_TYPE_REFUND = 3;
   LEDGER_TYPE_BONUS = 4;
   LEDGER_TYPE_ADJUSTMENT = 5;
+  LEDGER_TYPE_COMPENSATION = 6;
+}
+
+enum WebhookInboxStatus {
+  WEBHOOK_INBOX_STATUS_UNSPECIFIED = 0;
+  WEBHOOK_INBOX_STATUS_RECEIVED = 1;
+  WEBHOOK_INBOX_STATUS_VERIFIED = 2;
+  WEBHOOK_INBOX_STATUS_APPLIED = 3;
+  WEBHOOK_INBOX_STATUS_DUPLICATE = 4;
+  WEBHOOK_INBOX_STATUS_REJECTED = 5;
+}
+
+enum ReconciliationStatus {
+  RECONCILIATION_STATUS_UNSPECIFIED = 0;
+  RECONCILIATION_STATUS_PENDING = 1;
+  RECONCILIATION_STATUS_MATCHED = 2;
+  RECONCILIATION_STATUS_MISMATCH = 3;
+  RECONCILIATION_STATUS_RESOLVED = 4;
 }
 
 message PaymentTransaction {
@@ -38,6 +86,14 @@ message PaymentTransaction {
   string checkout_url = 7;
   sessionjeu.common.v1.Timestamp created_at = 8;
   sessionjeu.common.v1.Timestamp updated_at = 9;
+  // Production fields (additive).
+  PaymentInternalStatus internal_status = 10;
+  FapshiWireStatus last_wire_status = 11;
+  string party_id = 12;
+  string participation_id = 13;
+  string idempotency_key = 14;
+  // Provider transaction id (e.g. Fapshi transId) — public-safe reference, not a secret.
+  string provider_trans_id = 15;
 }
 
 message WalletEntry {
@@ -59,16 +115,47 @@ message LedgerEntry {
   sessionjeu.common.v1.Timestamp created_at = 9;
 }
 
+// Normalized provider webhook event after REST adapter mapping.
+// Adapter must never forward provider secrets/headers into this message.
+message ProviderWebhookEvent {
+  string inbox_id = 1;
+  string provider = 2;
+  string provider_trans_id = 3;
+  FapshiWireStatus wire_status = 4;
+  string external_event_id = 5;
+  sessionjeu.common.v1.Money amount = 6;
+  // Redacted summary only — never raw signed body with secrets.
+  string redacted_summary = 7;
+  sessionjeu.common.v1.Timestamp received_at = 8;
+  WebhookInboxStatus inbox_status = 9;
+}
+
+message ProviderWebhookInboxItem {
+  string inbox_id = 1;
+  string provider = 2;
+  string provider_trans_id = 3;
+  FapshiWireStatus wire_status = 4;
+  WebhookInboxStatus status = 5;
+  string payment_id = 6;
+  sessionjeu.common.v1.Timestamp received_at = 7;
+  sessionjeu.common.v1.Timestamp processed_at = 8;
+}
+
 message ProcessPaymentCommand {
   sessionjeu.common.v1.CorrelationId correlation_id = 1;
   sessionjeu.common.v1.PlayerId player_id = 2;
   sessionjeu.common.v1.Money amount = 3;
   string provider = 4;
+  string idempotency_key = 5;
+  string party_id = 6;
+  string participation_id = 7;
 }
 
 message ProcessPaymentResponse {
   string payment_id = 1;
   string checkout_url = 2;
+  PaymentInternalStatus internal_status = 3;
+  string provider_trans_id = 4;
 }
 
 message InitiateTransferCommand {
@@ -76,10 +163,12 @@ message InitiateTransferCommand {
   sessionjeu.common.v1.PlayerId player_id = 2;
   sessionjeu.common.v1.Money amount = 3;
   string destination_reference = 4;
+  string idempotency_key = 5;
 }
 
 message InitiateTransferResponse {
   string transfer_id = 1;
+  PaymentInternalStatus internal_status = 2;
 }
 
 message PaymentCompletedEvent {
@@ -87,6 +176,8 @@ message PaymentCompletedEvent {
   sessionjeu.common.v1.PlayerId player_id = 2;
   PaymentStatus status = 3;
   sessionjeu.common.v1.Timestamp completed_at = 4;
+  PaymentInternalStatus internal_status = 5;
+  FapshiWireStatus wire_status = 6;
 }
 
 message GetWalletQuery {
@@ -109,9 +200,65 @@ message GetPaymentHistoryResponse {
   string next_page_token = 2;
 }
 
+message GetPaymentStatusQuery {
+  string payment_id = 1;
+  // Optional provider_trans_id lookup.
+  string provider_trans_id = 2;
+}
+
+message GetPaymentStatusResponse {
+  PaymentTransaction payment = 1;
+  ReconciliationStatus reconciliation_status = 2;
+}
+
+// System: mapped from REST EX-REST-005 adapter after signature verification outside proto.
+message IngestProviderWebhookEventCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  ProviderWebhookEvent event = 2;
+  string idempotency_key = 3;
+}
+
+message IngestProviderWebhookEventResponse {
+  string inbox_id = 1;
+  WebhookInboxStatus status = 2;
+  string payment_id = 3;
+  bool duplicate = 4;
+}
+
+message ReconcilePaymentCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string payment_id = 2;
+  // When true, adapter should query provider payment-status API (not modeled as secret).
+  bool fetch_provider_status = 3;
+  string requested_by = 4;
+}
+
+message ReconcilePaymentResponse {
+  string payment_id = 1;
+  PaymentInternalStatus internal_status = 2;
+  FapshiWireStatus wire_status = 3;
+  ReconciliationStatus reconciliation_status = 4;
+}
+
+message ListWebhookInboxQuery {
+  string provider = 1;
+  WebhookInboxStatus status_filter = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListWebhookInboxResponse {
+  repeated ProviderWebhookInboxItem items = 1;
+  string next_page_token = 2;
+}
+
 service PaymentService {
   rpc ProcessPayment(ProcessPaymentCommand) returns (ProcessPaymentResponse);
   rpc InitiateTransfer(InitiateTransferCommand) returns (InitiateTransferResponse);
   rpc GetWallet(GetWalletQuery) returns (GetWalletResponse);
   rpc GetPaymentHistory(GetPaymentHistoryQuery) returns (GetPaymentHistoryResponse);
+  rpc GetPaymentStatus(GetPaymentStatusQuery) returns (GetPaymentStatusResponse);
+  rpc IngestProviderWebhookEvent(IngestProviderWebhookEventCommand) returns (IngestProviderWebhookEventResponse);
+  rpc ReconcilePayment(ReconcilePaymentCommand) returns (ReconcilePaymentResponse);
+  rpc ListWebhookInbox(ListWebhookInboxQuery) returns (ListWebhookInboxResponse);
 }

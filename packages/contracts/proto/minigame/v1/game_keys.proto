@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package sessionjeu.minigame.v1;
+
+// Canonical production keys (P-SEQ-01 candidates ratified for contract freeze).
+// Additive only — replacing a key requires a new enum value and matrix update.
+
+enum ProductionMiniGameKey {
+  PRODUCTION_MINI_GAME_KEY_UNSPECIFIED = 0;
+  PRODUCTION_MINI_GAME_KEY_MEMORY_SEQUENCE = 1;
+  PRODUCTION_MINI_GAME_KEY_PURE_REACTION_DUEL = 2;
+  PRODUCTION_MINI_GAME_KEY_TRUST_BRIDGE = 3;
+  PRODUCTION_MINI_GAME_KEY_TEAM_RELAY = 4;
+  PRODUCTION_MINI_GAME_KEY_DANGER_SWEEP = 5;
+  PRODUCTION_MINI_GAME_KEY_SILENT_VOTE = 6;
+}
+
+// Wire string keys matching seed/catalog (kebab-case).
+// memory-sequence | pure-reaction-duel | trust-bridge | team-relay | danger-sweep | silent-vote
+message MiniGameKeyRef {
+  ProductionMiniGameKey key = 1;
+  // Must match enum mapping; validated server-side.
+  string canonical_key = 2;
+  string schema_version = 3;
+}

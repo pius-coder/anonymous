@@ -2,9 +2,9 @@
 // @generated from file admin/v1/admin.proto (package sessionjeu.admin.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { PartyId, PlayerId } from "../../common/v1/shared_pb.js";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { PartyId, PlayerId, Timestamp } from "../../common/v1/shared_pb.js";
 import { file_common_v1_shared } from "../../common/v1/shared_pb.js";
 import type { PartyConfig, PartyStatus } from "../../session/v1/session_pb.js";
 import { file_session_v1_session } from "../../session/v1/session_pb.js";
@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file admin/v1/admin.proto.
  */
 export const file_admin_v1_admin: GenFile = /*@__PURE__*/
-  fileDesc("ChRhZG1pbi92MS9hZG1pbi5wcm90bxITc2Vzc2lvbmpldS5hZG1pbi52MSJJChZHZXRBZG1pbkdhbWVTdGF0ZVF1ZXJ5Ei8KCHBhcnR5X2lkGAEgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZCKkAQoWUGFydGljaXBhbnRBZG1pbkRldGFpbBIxCglwbGF5ZXJfaWQYASABKAsyHi5zZXNzaW9uamV1LmNvbW1vbi52MS5QbGF5ZXJJZBIMCgRuYW1lGAIgASgJEhkKEWNvbm5lY3Rpb25fc3RhdHVzGAMgASgJEhwKFHBhcnRpY2lwYXRpb25fc3RhdHVzGAQgASgJEhAKCGlzX3JlYWR5GAUgASgIIqACCg5BZG1pbkdhbWVTdGF0ZRIyCgZjb25maWcYASABKAsyIi5zZXNzaW9uamV1LnNlc3Npb24udjEuUGFydHlDb25maWcSMgoGc3RhdHVzGAIgASgOMiIuc2Vzc2lvbmpldS5zZXNzaW9uLnYxLlBhcnR5U3RhdHVzEkEKDHBhcnRpY2lwYW50cxgDIAMoCzIrLnNlc3Npb25qZXUuYWRtaW4udjEuUGFydGljaXBhbnRBZG1pbkRldGFpbBIZChFwYXJ0aWNpcGFudF9jb3VudBgEIAEoBRIXCg9jb25uZWN0ZWRfY291bnQYBSABKAUSGAoQY3VycmVudF9yb3VuZF9pZBgGIAEoCRIVCg1jdXJyZW50X3BoYXNlGAcgASgJIk8KGUdldEFkbWluR2FtZVN0YXRlUmVzcG9uc2USMgoFc3RhdGUYASABKAsyIy5zZXNzaW9uamV1LmFkbWluLnYxLkFkbWluR2FtZVN0YXRlIksKGEdldFJlYWRvbmx5U25hcHNob3RRdWVyeRIvCghwYXJ0eV9pZBgBIAEoCzIdLnNlc3Npb25qZXUuY29tbW9uLnYxLlBhcnR5SWQipgEKFUFkbWluUmVhZG9ubHlTbmFwc2hvdBISCgpwYXJ0eV9uYW1lGAEgASgJEjIKBnN0YXR1cxgCIAEoDjIiLnNlc3Npb25qZXUuc2Vzc2lvbi52MS5QYXJ0eVN0YXR1cxIZChFwYXJ0aWNpcGFudF9jb3VudBgDIAEoBRITCgtyb3VuZF9jb3VudBgEIAEoBRIVCg1jdXJyZW50X3BoYXNlGAUgASgJIlsKG0dldFJlYWRvbmx5U25hcHNob3RSZXNwb25zZRI8CghzbmFwc2hvdBgBIAEoCzIqLnNlc3Npb25qZXUuYWRtaW4udjEuQWRtaW5SZWFkb25seVNuYXBzaG90InkKFUxpc3RBZG1pblBhcnRpZXNRdWVyeRIRCglwYWdlX3NpemUYASABKAUSEgoKcGFnZV90b2tlbhgCIAEoCRI5Cg1zdGF0dXNfZmlsdGVyGAMgASgOMiIuc2Vzc2lvbmpldS5zZXNzaW9uLnYxLlBhcnR5U3RhdHVzImkKGExpc3RBZG1pblBhcnRpZXNSZXNwb25zZRI0CgdwYXJ0aWVzGAEgAygLMiMuc2Vzc2lvbmpldS5hZG1pbi52MS5BZG1pbkdhbWVTdGF0ZRIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAky3QIKDEFkbWluU2VydmljZRJrCgxHZXRHYW1lU3RhdGUSKy5zZXNzaW9uamV1LmFkbWluLnYxLkdldEFkbWluR2FtZVN0YXRlUXVlcnkaLi5zZXNzaW9uamV1LmFkbWluLnYxLkdldEFkbWluR2FtZVN0YXRlUmVzcG9uc2USdgoTR2V0UmVhZG9ubHlTbmFwc2hvdBItLnNlc3Npb25qZXUuYWRtaW4udjEuR2V0UmVhZG9ubHlTbmFwc2hvdFF1ZXJ5GjAuc2Vzc2lvbmpldS5hZG1pbi52MS5HZXRSZWFkb25seVNuYXBzaG90UmVzcG9uc2USaAoLTGlzdFBhcnRpZXMSKi5zZXNzaW9uamV1LmFkbWluLnYxLkxpc3RBZG1pblBhcnRpZXNRdWVyeRotLnNlc3Npb25qZXUuYWRtaW4udjEuTGlzdEFkbWluUGFydGllc1Jlc3BvbnNlYgZwcm90bzM", [file_common_v1_shared, file_session_v1_session]);
+  fileDesc("ChRhZG1pbi92MS9hZG1pbi5wcm90bxITc2Vzc2lvbmpldS5hZG1pbi52MSJJChZHZXRBZG1pbkdhbWVTdGF0ZVF1ZXJ5Ei8KCHBhcnR5X2lkGAEgASgLMh0uc2Vzc2lvbmpldS5jb21tb24udjEuUGFydHlJZCKkAQoWUGFydGljaXBhbnRBZG1pbkRldGFpbBIxCglwbGF5ZXJfaWQYASABKAsyHi5zZXNzaW9uamV1LmNvbW1vbi52MS5QbGF5ZXJJZBIMCgRuYW1lGAIgASgJEhkKEWNvbm5lY3Rpb25fc3RhdHVzGAMgASgJEhwKFHBhcnRpY2lwYXRpb25fc3RhdHVzGAQgASgJEhAKCGlzX3JlYWR5GAUgASgIIqACCg5BZG1pbkdhbWVTdGF0ZRIyCgZjb25maWcYASABKAsyIi5zZXNzaW9uamV1LnNlc3Npb24udjEuUGFydHlDb25maWcSMgoGc3RhdHVzGAIgASgOMiIuc2Vzc2lvbmpldS5zZXNzaW9uLnYxLlBhcnR5U3RhdHVzEkEKDHBhcnRpY2lwYW50cxgDIAMoCzIrLnNlc3Npb25qZXUuYWRtaW4udjEuUGFydGljaXBhbnRBZG1pbkRldGFpbBIZChFwYXJ0aWNpcGFudF9jb3VudBgEIAEoBRIXCg9jb25uZWN0ZWRfY291bnQYBSABKAUSGAoQY3VycmVudF9yb3VuZF9pZBgGIAEoCRIVCg1jdXJyZW50X3BoYXNlGAcgASgJIk8KGUdldEFkbWluR2FtZVN0YXRlUmVzcG9uc2USMgoFc3RhdGUYASABKAsyIy5zZXNzaW9uamV1LmFkbWluLnYxLkFkbWluR2FtZVN0YXRlIksKGEdldFJlYWRvbmx5U25hcHNob3RRdWVyeRIvCghwYXJ0eV9pZBgBIAEoCzIdLnNlc3Npb25qZXUuY29tbW9uLnYxLlBhcnR5SWQipgEKFUFkbWluUmVhZG9ubHlTbmFwc2hvdBISCgpwYXJ0eV9uYW1lGAEgASgJEjIKBnN0YXR1cxgCIAEoDjIiLnNlc3Npb25qZXUuc2Vzc2lvbi52MS5QYXJ0eVN0YXR1cxIZChFwYXJ0aWNpcGFudF9jb3VudBgDIAEoBRITCgtyb3VuZF9jb3VudBgEIAEoBRIVCg1jdXJyZW50X3BoYXNlGAUgASgJIlsKG0dldFJlYWRvbmx5U25hcHNob3RSZXNwb25zZRI8CghzbmFwc2hvdBgBIAEoCzIqLnNlc3Npb25qZXUuYWRtaW4udjEuQWRtaW5SZWFkb25seVNuYXBzaG90InkKFUxpc3RBZG1pblBhcnRpZXNRdWVyeRIRCglwYWdlX3NpemUYASABKAUSEgoKcGFnZV90b2tlbhgCIAEoCRI5Cg1zdGF0dXNfZmlsdGVyGAMgASgOMiIuc2Vzc2lvbmpldS5zZXNzaW9uLnYxLlBhcnR5U3RhdHVzImkKGExpc3RBZG1pblBhcnRpZXNSZXNwb25zZRI0CgdwYXJ0aWVzGAEgAygLMiMuc2Vzc2lvbmpldS5hZG1pbi52MS5BZG1pbkdhbWVTdGF0ZRIXCg9uZXh0X3BhZ2VfdG9rZW4YAiABKAkieAoSUmVhZGluZXNzQ29tcG9uZW50EgwKBG5hbWUYASABKAkSPQoGc3RhdHVzGAIgASgOMi0uc2Vzc2lvbmpldS5hZG1pbi52MS5SZWFkaW5lc3NDb21wb25lbnRTdGF0dXMSFQoNcHVibGljX2RldGFpbBgDIAEoCSInChdHZXRTeXN0ZW1SZWFkaW5lc3NRdWVyeRIMCgRkZWVwGAEgASgIIrgBChpHZXRTeXN0ZW1SZWFkaW5lc3NSZXNwb25zZRINCgVyZWFkeRgBIAEoCBIZChFjb250cmFjdHNfdmVyc2lvbhgCIAEoCRI7Cgpjb21wb25lbnRzGAMgAygLMicuc2Vzc2lvbmpldS5hZG1pbi52MS5SZWFkaW5lc3NDb21wb25lbnQSMwoKY2hlY2tlZF9hdBgEIAEoCzIfLnNlc3Npb25qZXUuY29tbW9uLnYxLlRpbWVzdGFtcCq3AQoYUmVhZGluZXNzQ29tcG9uZW50U3RhdHVzEioKJlJFQURJTkVTU19DT01QT05FTlRfU1RBVFVTX1VOU1BFQ0lGSUVEEAASIQodUkVBRElORVNTX0NPTVBPTkVOVF9TVEFUVVNfVVAQARInCiNSRUFESU5FU1NfQ09NUE9ORU5UX1NUQVRVU19ERUdSQURFRBACEiMKH1JFQURJTkVTU19DT01QT05FTlRfU1RBVFVTX0RPV04QAzLSAwoMQWRtaW5TZXJ2aWNlEmsKDEdldEdhbWVTdGF0ZRIrLnNlc3Npb25qZXUuYWRtaW4udjEuR2V0QWRtaW5HYW1lU3RhdGVRdWVyeRouLnNlc3Npb25qZXUuYWRtaW4udjEuR2V0QWRtaW5HYW1lU3RhdGVSZXNwb25zZRJ2ChNHZXRSZWFkb25seVNuYXBzaG90Ei0uc2Vzc2lvbmpldS5hZG1pbi52MS5HZXRSZWFkb25seVNuYXBzaG90UXVlcnkaMC5zZXNzaW9uamV1LmFkbWluLnYxLkdldFJlYWRvbmx5U25hcHNob3RSZXNwb25zZRJoCgtMaXN0UGFydGllcxIqLnNlc3Npb25qZXUuYWRtaW4udjEuTGlzdEFkbWluUGFydGllc1F1ZXJ5Gi0uc2Vzc2lvbmpldS5hZG1pbi52MS5MaXN0QWRtaW5QYXJ0aWVzUmVzcG9uc2UScwoSR2V0U3lzdGVtUmVhZGluZXNzEiwuc2Vzc2lvbmpldS5hZG1pbi52MS5HZXRTeXN0ZW1SZWFkaW5lc3NRdWVyeRovLnNlc3Npb25qZXUuYWRtaW4udjEuR2V0U3lzdGVtUmVhZGluZXNzUmVzcG9uc2ViBnByb3RvMw", [file_common_v1_shared, file_session_v1_session]);
 
 /**
  * @generated from message sessionjeu.admin.v1.GetAdminGameStateQuery
@@ -255,6 +255,119 @@ export const ListAdminPartiesResponseSchema: GenMessage<ListAdminPartiesResponse
   messageDesc(file_admin_v1_admin, 8);
 
 /**
+ * @generated from message sessionjeu.admin.v1.ReadinessComponent
+ */
+export type ReadinessComponent = Message<"sessionjeu.admin.v1.ReadinessComponent"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: sessionjeu.admin.v1.ReadinessComponentStatus status = 2;
+   */
+  status: ReadinessComponentStatus;
+
+  /**
+   * Public detail only (e.g. "postgres ping ok"); never DSNs or keys.
+   *
+   * @generated from field: string public_detail = 3;
+   */
+  publicDetail: string;
+};
+
+/**
+ * Describes the message sessionjeu.admin.v1.ReadinessComponent.
+ * Use `create(ReadinessComponentSchema)` to create a new message.
+ */
+export const ReadinessComponentSchema: GenMessage<ReadinessComponent> = /*@__PURE__*/
+  messageDesc(file_admin_v1_admin, 9);
+
+/**
+ * @generated from message sessionjeu.admin.v1.GetSystemReadinessQuery
+ */
+export type GetSystemReadinessQuery = Message<"sessionjeu.admin.v1.GetSystemReadinessQuery"> & {
+  /**
+   * When true, include dependency probes (DB/Redis/provider sandbox reachability).
+   *
+   * @generated from field: bool deep = 1;
+   */
+  deep: boolean;
+};
+
+/**
+ * Describes the message sessionjeu.admin.v1.GetSystemReadinessQuery.
+ * Use `create(GetSystemReadinessQuerySchema)` to create a new message.
+ */
+export const GetSystemReadinessQuerySchema: GenMessage<GetSystemReadinessQuery> = /*@__PURE__*/
+  messageDesc(file_admin_v1_admin, 10);
+
+/**
+ * @generated from message sessionjeu.admin.v1.GetSystemReadinessResponse
+ */
+export type GetSystemReadinessResponse = Message<"sessionjeu.admin.v1.GetSystemReadinessResponse"> & {
+  /**
+   * @generated from field: bool ready = 1;
+   */
+  ready: boolean;
+
+  /**
+   * @generated from field: string contracts_version = 2;
+   */
+  contractsVersion: string;
+
+  /**
+   * @generated from field: repeated sessionjeu.admin.v1.ReadinessComponent components = 3;
+   */
+  components: ReadinessComponent[];
+
+  /**
+   * @generated from field: sessionjeu.common.v1.Timestamp checked_at = 4;
+   */
+  checkedAt?: Timestamp | undefined;
+};
+
+/**
+ * Describes the message sessionjeu.admin.v1.GetSystemReadinessResponse.
+ * Use `create(GetSystemReadinessResponseSchema)` to create a new message.
+ */
+export const GetSystemReadinessResponseSchema: GenMessage<GetSystemReadinessResponse> = /*@__PURE__*/
+  messageDesc(file_admin_v1_admin, 11);
+
+/**
+ * Production readiness projection (ops). No secrets, credentials, or hostnames with tokens.
+ *
+ * @generated from enum sessionjeu.admin.v1.ReadinessComponentStatus
+ */
+export enum ReadinessComponentStatus {
+  /**
+   * @generated from enum value: READINESS_COMPONENT_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: READINESS_COMPONENT_STATUS_UP = 1;
+   */
+  UP = 1,
+
+  /**
+   * @generated from enum value: READINESS_COMPONENT_STATUS_DEGRADED = 2;
+   */
+  DEGRADED = 2,
+
+  /**
+   * @generated from enum value: READINESS_COMPONENT_STATUS_DOWN = 3;
+   */
+  DOWN = 3,
+}
+
+/**
+ * Describes the enum sessionjeu.admin.v1.ReadinessComponentStatus.
+ */
+export const ReadinessComponentStatusSchema: GenEnum<ReadinessComponentStatus> = /*@__PURE__*/
+  enumDesc(file_admin_v1_admin, 0);
+
+/**
  * @generated from service sessionjeu.admin.v1.AdminService
  */
 export const AdminService: GenService<{
@@ -281,6 +394,14 @@ export const AdminService: GenService<{
     methodKind: "unary";
     input: typeof ListAdminPartiesQuerySchema;
     output: typeof ListAdminPartiesResponseSchema;
+  },
+  /**
+   * @generated from rpc sessionjeu.admin.v1.AdminService.GetSystemReadiness
+   */
+  getSystemReadiness: {
+    methodKind: "unary";
+    input: typeof GetSystemReadinessQuerySchema;
+    output: typeof GetSystemReadinessResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_admin_v1_admin, 0);

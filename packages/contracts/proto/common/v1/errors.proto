@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package sessionjeu.common.v1;
 
+import "common/v1/shared.proto";
+
 // Public stable error codes. Additive only; never renumber.
 // Sprint-validated domain codes continue from 20.
 enum ErrorCode {
@@ -40,6 +42,22 @@ enum ErrorCode {
   ERROR_CODE_INVALID_MINIGAME_COMMAND = 27;
   ERROR_CODE_DUPLICATE_NONCE = 28;
   ERROR_CODE_PRIVATE_STATE_FORBIDDEN = 29;
+  // Production freeze P-SEQ-02 (additive)
+  ERROR_CODE_IDEMPOTENCY_CONFLICT = 30;
+  ERROR_CODE_PAYLOAD_TOO_LARGE = 31;
+  ERROR_CODE_SCHEMA_UNSUPPORTED = 32;
+  ERROR_CODE_PAYMENT_NOT_RECONCILED = 33;
+  ERROR_CODE_WEBHOOK_DUPLICATE = 34;
+  ERROR_CODE_EXPORT_NOT_READY = 35;
+  ERROR_CODE_RETENTION_FORBIDDEN = 36;
+  ERROR_CODE_READINESS_FAILED = 37;
+  ERROR_CODE_GAME_PHASE_INVALID = 38;
+  ERROR_CODE_GAME_FAIRNESS_VIOLATION = 39;
+}
+
+message ErrorField {
+  string field = 1;
+  string description = 2;
 }
 
 message ErrorDetail {
@@ -49,7 +67,11 @@ message ErrorDetail {
   repeated ErrorField violations = 4;
 }
 
-message ErrorField {
-  string field = 1;
-  string description = 2;
+// Stable public error envelope for Connect and REST adapters.
+message ErrorEnvelope {
+  ErrorDetail detail = 1;
+  sessionjeu.common.v1.CorrelationId correlation_id = 2;
+  bool retryable = 3;
+  // Public machine-readable reason; never secrets or stack traces.
+  string public_reason = 4;
 }

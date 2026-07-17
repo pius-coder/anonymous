@@ -1,0 +1,136 @@
+{
+  "keys": [
+    "memory-sequence",
+    "pure-reaction-duel",
+    "trust-bridge",
+    "team-relay",
+    "danger-sweep",
+    "silent-vote"
+  ],
+  "memory_sequence": {
+    "config": {
+      "schema_version": "1.0.0",
+      "sequence_length": 6,
+      "display_ms_per_item": 700,
+      "input_timeout_ms": 15000,
+      "max_attempts": 1,
+      "symbol_ids": ["a", "b", "c", "d"]
+    },
+    "command": {
+      "schema_version": "1.0.0",
+      "action": "submit_input",
+      "symbol_id": "a",
+      "step_index": 0
+    },
+    "public_state": {
+      "schema_version": "1.0.0",
+      "phase": "INPUT",
+      "sequence_length": 6,
+      "current_step": 0,
+      "remaining_ms": 12000
+    },
+    "private_state": {
+      "schema_version": "1.0.0",
+      "player_id": "player-001",
+      "steps_correct": 0,
+      "attempt_open": true,
+      "next_expected_step": 0
+    }
+  },
+  "pure_reaction_duel": {
+    "config": {
+      "schema_version": "1.0.0",
+      "max_rounds": 3,
+      "min_delay_ms": 800,
+      "max_delay_ms": 3000,
+      "reaction_timeout_ms": 1500,
+      "false_start_eliminates": true
+    },
+    "command": {
+      "schema_version": "1.0.0",
+      "action": "react",
+      "client_clicked_at_ms": 0
+    },
+    "public_state": {
+      "schema_version": "1.0.0",
+      "phase": "WAIT",
+      "signal_armed": true,
+      "signal_active": false
+    }
+  },
+  "trust_bridge": {
+    "public_state": {
+      "schema_version": "1.0.0",
+      "phase": "DECIDE",
+      "pairs_locked": 0,
+      "pairs_total": 4
+    },
+    "private_state": {
+      "schema_version": "1.0.0",
+      "player_id": "player-001",
+      "partner_player_id": "player-002",
+      "own_choice_id": "hold",
+      "own_locked": true,
+      "partner_locked": false
+    }
+  },
+  "team_relay": {
+    "public_state": {
+      "schema_version": "1.0.0",
+      "phase": "TURN",
+      "active_team_id": "team-a",
+      "active_player_id": "player-001"
+    }
+  },
+  "danger_sweep": {
+    "public_state": {
+      "schema_version": "1.0.0",
+      "phase": "LIVE",
+      "tick": 42,
+      "alive_count": 8,
+      "beam_x": 10,
+      "beam_y": 5,
+      "beam_angle_deg": 90
+    }
+  },
+  "silent_vote": {
+    "public_state": {
+      "schema_version": "1.0.0",
+      "phase": "VOTE",
+      "living_count": 6,
+      "votes_locked": 2,
+      "participant_ids": ["p1", "p2", "p3", "p4", "p5", "p6"]
+    },
+    "private_state_self_only": {
+      "schema_version": "1.0.0",
+      "player_id": "p1",
+      "own_role_id": "villager",
+      "own_vote_target_id": "p3",
+      "own_vote_locked": true
+    }
+  },
+  "no_leak": {
+    "observer_public_silent_vote_excludes_roles": true,
+    "observer_excludes_partner_choice": true,
+    "observer_excludes_provisional_score": true,
+    "player_excludes_others_private_state": true,
+    "support_excludes_full_answer_sequence": true,
+    "negative_player_projection": {
+      "phase": "VOTE",
+      "participant_ids": ["p1", "p2"],
+      "FORBIDDEN_IF_PRESENT": [
+        "api_key",
+        "secret",
+        "own_role_id",
+        "cached_choice",
+        "provisional_scores",
+        "partner_choice_id",
+        "full_answer_sequence"
+      ]
+    }
+  },
+  "payload_policy": {
+    "gameplay_payload_max_bytes": 4096,
+    "opaque_requires_schema_id_and_version": true
+  }
+}

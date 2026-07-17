@@ -18,7 +18,18 @@
     "nonce": "nonce-abc",
     "client_sequence": 3,
     "payload": "",
-    "client_timestamp_ms": 1760400300000
+    "client_timestamp_ms": 1760400300000,
+    "schema_id": "minigame.memory_sequence.command.v1",
+    "schema_version": "1.0.0",
+    "payload_max_bytes": 4096,
+    "typed": {
+      "memory_sequence": {
+        "schema_version": "1.0.0",
+        "action": "submit_input",
+        "symbol_id": "a",
+        "step_index": 0
+      }
+    }
   },
   "public_state": {
     "round_id": "round-001",
@@ -26,13 +37,24 @@
     "phase": "ACTIVE",
     "remaining_seconds": 42,
     "participant_count": 12,
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "typed": {
+      "memory_sequence": {
+        "schema_version": "1.0.0",
+        "phase": "INPUT",
+        "sequence_length": 6,
+        "current_step": 1
+      }
+    }
   },
   "private_state": {
     "round_id": "round-001",
     "player_id": "player-001",
     "private_payload": "",
-    "version": "1.0.0"
+    "version": "1.0.0",
+    "schema_id": "minigame.memory_sequence.private.v1",
+    "schema_version": "1.0.0",
+    "payload_max_bytes": 4096
   },
   "score_evidence": {
     "round_id": "round-001",

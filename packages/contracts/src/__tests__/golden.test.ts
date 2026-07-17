@@ -110,6 +110,34 @@ const FIXTURES: FixtureEntry[] = [
     description: "Payment wallet views",
     requiredKeys: ["process_payment", "get_wallet", "wallet_view_player", "constraints"],
   },
+  {
+    path: "../../fixtures/payment/v1/fapshi-lifecycle.json",
+    description: "Fapshi wire vs internal lifecycle",
+    requiredKeys: [
+      "wire_statuses",
+      "internal_statuses",
+      "process_payment",
+      "webhook_ingest",
+      "reconcile",
+      "constraints",
+      "no_leak",
+    ],
+  },
+  {
+    path: "../../fixtures/minigame/v1/six-games-typed.json",
+    description: "Six production games typed contracts",
+    requiredKeys: [
+      "keys",
+      "memory_sequence",
+      "pure_reaction_duel",
+      "trust_bridge",
+      "team_relay",
+      "danger_sweep",
+      "silent_vote",
+      "no_leak",
+      "payload_policy",
+    ],
+  },
 ];
 
 describe("Golden fixtures", () => {
