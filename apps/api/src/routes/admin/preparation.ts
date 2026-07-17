@@ -13,6 +13,7 @@ import {
   getPreparationState,
   PreparationUseCaseError,
 } from "../../use-cases/preparation/preparation.use-case.js";
+import { assertLease, AdminLeaseError } from "../../lib/admin-control-lease.js";
 import type { StatusCode } from "hono/utils/http-status";
 
 const adminPreparationRouter = new Hono<AppEnv>();
@@ -33,6 +34,9 @@ const confirmStartSchema = z.object({
 
 function handleError(c: Parameters<typeof errorResponse>[0], err: unknown) {
   if (err instanceof PreparationUseCaseError) {
+    return errorResponse(c, err.httpStatus as StatusCode, err.code, err.message);
+  }
+  if (err instanceof AdminLeaseError) {
     return errorResponse(c, err.httpStatus as StatusCode, err.code, err.message);
   }
   console.error("Unexpected admin preparation error:", err);
@@ -89,6 +93,7 @@ adminPreparationRouter.post(
       const { id } = c.req.valid("param");
       const { forceWithAbsents, overrideReason } = c.req.valid("json");
       const user = c.get("user");
+      await assertLease(id, user.id);
       const result = await confirmStart({ partyId: id, userId: user.id, forceWithAbsents, overrideReason });
       return successResponse(c, result);
     } catch (err) {

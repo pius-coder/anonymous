@@ -1,5 +1,7 @@
 import { PartyAdminNav } from "@/components/admin/AdminWorkspace";
+import { AdminControlLeasePanel } from "@/components/admin/AdminControlLeasePanel";
 import { AdminPreparationPanel } from "@/components/admin/AdminPreparationPanel";
+import { AdminRoundControls } from "@/components/admin/AdminRoundControls";
 import { AppShell } from "@/components/ui/AppShell";
 import { ConnectionStatus } from "@/components/ui/ConnectionStatus";
 
@@ -25,7 +27,9 @@ export default async function AdminRoundControlPage({
     >
       <div className="space-y-4">
         <PartyAdminNav partyId={partyId} current="control" />
+        <AdminControlLeasePanel partyId={partyId} />
         <AdminPreparationPanel partyId={partyId} />
+        <AdminRoundControls partyId={partyId} status="setup" />
       </div>
     </AppShell>
   );

@@ -168,6 +168,14 @@ describe("L4 Preparation RBAC", () => {
       ),
     );
 
+    // Sensitive commands require control lease (P-A-ADMIN).
+    const leaseRes = await app.request("/v1/admin/parties/party-1/control-lease", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ttlSeconds: 60 }),
+    });
+    expect(leaseRes.status).toBe(200);
+
     const res = await app.request("/v1/admin/parties/party-1/preparation/confirm-start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
