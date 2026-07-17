@@ -36,5 +36,10 @@ describe("PAYMENT_ERRORS", () => {
     expect(keys).toContain("INVALID_AMOUNT");
     expect(keys).toContain("PROVIDER_ERROR");
     expect(keys).toContain("WEBHOOK_SIGNATURE_INVALID");
+    expect(keys).toContain("PROVIDER_NOT_CONFIGURED");
+    expect(keys).toContain("PROVIDER_TIMEOUT_AMBIGUOUS");
+    expect(keys).toContain("CHECKOUT_LINK_REJECTED");
+    expect(keys).toContain("WEBHOOK_SECRET_REQUIRED");
+    expect(keys).toContain("COLLECTION_DISABLED");
   });
 });

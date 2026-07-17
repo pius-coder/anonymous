@@ -35,7 +35,7 @@ export function mapPaymentToFinanceRow(payment: PaymentDetail): FinanceTransacti
 
   return {
     id: payment.id,
-    user: payment.walletId.slice(0, 8),
+    user: (payment.walletId ?? payment.id).slice(0, 8),
     party: payment.type,
     type: payment.type,
     amount: formatXaf(payment.amount),

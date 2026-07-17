@@ -54,7 +54,7 @@ describe("paymentService Connect transport (L4)", () => {
   it("processPayment uses correlation id as idempotency key", async () => {
     useCaseMocks.initiatePayment.mockResolvedValueOnce({
       id: "pay-1",
-      checkoutUrl: "/payments/checkout/pay-1",
+      checkoutUrl: "https://sandbox.fapshi.com/pay/abc",
     });
 
     const result = await paymentService.processPayment!(
@@ -74,7 +74,10 @@ describe("paymentService Connect transport (L4)", () => {
         idempotencyKey: "corr-pay-12345",
       }),
     );
-    expect(result).toEqual({ paymentId: "pay-1", checkoutUrl: "/payments/checkout/pay-1" });
+    expect(result).toEqual({
+      paymentId: "pay-1",
+      checkoutUrl: "https://sandbox.fapshi.com/pay/abc",
+    });
   });
 
   it("initiateTransfer requires finance role", async () => {

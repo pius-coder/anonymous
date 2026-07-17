@@ -11,6 +11,31 @@ export const PAYMENT_ERRORS = {
   INVALID_AMOUNT: { code: "INVALID_ARGUMENT", status: 400, message: "Le montant doit être supérieur à zéro" },
   PROVIDER_ERROR: { code: "PROVIDER_ERROR", status: 502, message: "Erreur du fournisseur de paiement" },
   WEBHOOK_SIGNATURE_INVALID: { code: "UNAUTHENTICATED", status: 401, message: "Signature webhook invalide" },
+  PROVIDER_NOT_CONFIGURED: {
+    code: "PROVIDER_NOT_CONFIGURED",
+    status: 503,
+    message: "Fournisseur de paiement non configuré",
+  },
+  PROVIDER_TIMEOUT_AMBIGUOUS: {
+    code: "PROVIDER_TIMEOUT_AMBIGUOUS",
+    status: 504,
+    message: "Timeout fournisseur ambigu — réconciliation requise, pas de nouvel initiate",
+  },
+  CHECKOUT_LINK_REJECTED: {
+    code: "CHECKOUT_LINK_REJECTED",
+    status: 502,
+    message: "Lien de checkout fournisseur refusé (hôte non autorisé)",
+  },
+  WEBHOOK_SECRET_REQUIRED: {
+    code: "WEBHOOK_SECRET_REQUIRED",
+    status: 503,
+    message: "Secret webhook Fapshi obligatoire",
+  },
+  COLLECTION_DISABLED: {
+    code: "COLLECTION_DISABLED",
+    status: 503,
+    message: "Collecte Fapshi désactivée (kill switch)",
+  },
 } as const;
 
 export type PaymentErrorCode = keyof typeof PAYMENT_ERRORS;

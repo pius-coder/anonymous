@@ -113,7 +113,7 @@ describe("POST /v1/payments/webhook/fapshi (L4 signature)", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns 401 when signature is invalid and secret is set", async () => {
+  it("returns 401 when x-wh-secret is invalid", async () => {
     process.env.FAPSHI_WEBHOOK_SECRET = "super-secret";
     const { PaymentUseCaseError } = await import("../../use-cases/payment/payment.use-case.js");
     useCaseMocks.handlePaymentWebhook.mockRejectedValueOnce(
@@ -122,44 +122,52 @@ describe("POST /v1/payments/webhook/fapshi (L4 signature)", () => {
 
     const res = await app.request("/v1/payments/webhook/fapshi", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-wh-secret": "bad",
+      },
       body: JSON.stringify({
-        transactionId: "tx-1",
-        status: "SUCCESS",
-        providerReference: "prv-1",
-        signature: "bad",
+        transId: "tr-1",
+        status: "SUCCESSFUL",
+        amount: 1000,
       }),
     });
 
     expect(res.status).toBe(401);
   });
 
-  it("accepts valid webhook payload shape and returns success body", async () => {
+  it("accepts official Fapshi webhook payload and returns inbox ACK", async () => {
     useCaseMocks.handlePaymentWebhook.mockResolvedValueOnce({
-      id: "tx-1",
-      walletId: "w1",
-      amount: 1000,
-      type: "TOP_UP",
-      provider: "FAPSHI",
-      reference: "prv-1",
-      status: "SUCCESSFUL",
-      createdAt: "2026-07-15T10:00:00.000Z",
+      received: true,
+      inboxId: "inbox-1",
+      duplicate: false,
+      paymentId: "tx-1",
     });
 
     const res = await app.request("/v1/payments/webhook/fapshi", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-wh-secret": "ok",
+      },
       body: JSON.stringify({
-        transactionId: "tx-1",
-        status: "SUCCESS",
-        providerReference: "prv-1",
-        signature: "ok",
+        transId: "tr-1",
+        status: "SUCCESSFUL",
+        amount: 1000,
+        externalId: "pay_ext",
       }),
     });
 
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(body.data.status).toBe("SUCCESSFUL");
+    expect(body.data.received).toBe(true);
+    expect(body.data.inboxId).toBe("inbox-1");
+    expect(useCaseMocks.handlePaymentWebhook).toHaveBeenCalledWith(
+      expect.objectContaining({
+        webhookSecretHeader: "ok",
+        body: expect.objectContaining({ transId: "tr-1", status: "SUCCESSFUL" }),
+      }),
+    );
   });
 });

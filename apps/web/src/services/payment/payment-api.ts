@@ -6,6 +6,7 @@
 import { api } from "@/lib/api";
 
 export type PaymentStatus =
+  | "CREATED"
   | "PENDING"
   | "SUCCESSFUL"
   | "FAILED"
@@ -14,13 +15,15 @@ export type PaymentStatus =
 
 export type PaymentDetail = {
   id: string;
-  walletId: string;
+  walletId: string | null;
   amount: number;
   type: string;
   provider: string | null;
   reference: string | null;
   status: PaymentStatus | string;
   checkoutUrl?: string;
+  providerTransId?: string | null;
+  providerExternalId?: string | null;
   createdAt: string;
 };
 
@@ -132,6 +135,8 @@ export const paymentApi = {
 /** Map server status to UI labels without inventing intermediate states. */
 export function mapPaymentStatusLabel(status: string): string {
   switch (status) {
+    case "CREATED":
+      return "Créé";
     case "PENDING":
       return "En attente";
     case "SUCCESSFUL":

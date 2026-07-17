@@ -26,3 +26,4 @@ export const FOUNDATION_BOUNDARIES: readonly FoundationBoundary[] = [
 export * from "./auth/errors.js";
 export * from "./auth/tokens.js";
 export * from "./payments/errors.js";
+export * from "./payments/fapshi.js";

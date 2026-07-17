@@ -6,6 +6,8 @@ const dbMocks = vi.hoisted(() => ({
     listAllTransactions: vi.fn(),
     findTransactionById: vi.fn(),
     updateTransactionStatus: vi.fn(),
+    ingestProviderWebhook: vi.fn(),
+    applyWebhookSettlement: vi.fn(),
   },
 }));
 
@@ -48,6 +50,8 @@ describe("reconcilePendingTransactions", () => {
     expect(dbMocks.paymentRepository.updateTransactionStatus).toHaveBeenCalledWith("tx-1", {
       status: "EXPIRED",
       reference: "r1_EXPIRED",
+      internalStatus: "EXPIRED",
+      wireStatus: "EXPIRED",
     });
   });
 
@@ -55,10 +59,45 @@ describe("reconcilePendingTransactions", () => {
     dbMocks.paymentRepository.listAllTransactions.mockResolvedValue([]);
     const result = await reconcilePendingTransactions();
     expect(result).toMatchObject({ processed: 0, failed: 0 });
-    expect(Object.keys(dbMocks.paymentRepository)).toEqual([
-      "listAllTransactions",
-      "findTransactionById",
-      "updateTransactionStatus",
+    expect(Object.keys(dbMocks.paymentRepository)).toEqual(
+      expect.arrayContaining([
+        "listAllTransactions",
+        "findTransactionById",
+        "updateTransactionStatus",
+      ]),
+    );
+  });
+
+  it("settles via provider status client when available", async () => {
+    const recent = new Date();
+    dbMocks.paymentRepository.listAllTransactions.mockResolvedValue([
+      { id: "tx-3", status: "PENDING", createdAt: recent },
     ]);
+    dbMocks.paymentRepository.findTransactionById.mockResolvedValue({
+      id: "tx-3",
+      status: "PENDING",
+      createdAt: recent,
+      providerTransId: "tr_1",
+      amount: 1000,
+    });
+    dbMocks.paymentRepository.ingestProviderWebhook.mockResolvedValue({
+      inbox: { id: "inbox-1" },
+      duplicate: false,
+    });
+    dbMocks.paymentRepository.applyWebhookSettlement.mockResolvedValue({
+      payment: { id: "tx-3", status: "SUCCESSFUL" },
+      applied: true,
+    });
+
+    const result = await reconcilePendingTransactions(new Date(), "test", {
+      getPaymentStatus: async () => ({
+        transId: "tr_1",
+        status: "SUCCESSFUL" as const,
+        amount: 1000,
+      }),
+    });
+
+    expect(result.processed).toBe(1);
+    expect(dbMocks.paymentRepository.applyWebhookSettlement).toHaveBeenCalled();
   });
 });
