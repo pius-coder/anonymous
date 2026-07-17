@@ -37,6 +37,9 @@ describe("L1 env validator", () => {
         FAPSHI_API_USER: "user",
         FAPSHI_API_KEY: "key",
         FAPSHI_WEBHOOK_SECRET: "whsec",
+        FAPSHI_PAYOUT_API_USER: "payout-user",
+        FAPSHI_PAYOUT_API_KEY: "payout-key",
+        FINANCE_STEP_UP_TOKEN: "step",
       },
     });
     expect(result.ok).toBe(false);
@@ -57,6 +60,9 @@ describe("L1 env validator", () => {
         FAPSHI_API_USER: "user",
         FAPSHI_API_KEY: "key",
         FAPSHI_WEBHOOK_SECRET: "whsec",
+        FAPSHI_PAYOUT_API_USER: "payout-user",
+        FAPSHI_PAYOUT_API_KEY: "payout-key",
+        FINANCE_STEP_UP_TOKEN: "step",
       },
     });
     expect(result.ok).toBe(false);
@@ -79,6 +85,9 @@ describe("L1 env validator", () => {
         FAPSHI_API_USER: "user",
         FAPSHI_API_KEY: "key",
         FAPSHI_WEBHOOK_SECRET: "whsec",
+        FAPSHI_PAYOUT_API_USER: "payout-user",
+        FAPSHI_PAYOUT_API_KEY: "payout-key",
+        FINANCE_STEP_UP_TOKEN: "step",
       },
     });
     expect(result.ok).toBe(false);
@@ -116,6 +125,8 @@ describe("L1 env validator", () => {
         FAPSHI_API_USER: "user",
         FAPSHI_API_KEY: "key",
         FAPSHI_WEBHOOK_SECRET: "whsec",
+        FAPSHI_PAYOUT_API_USER: "payout-user",
+        FAPSHI_PAYOUT_API_KEY: "payout-key",
         NOTIFICATION_PROVIDER: "fake",
       },
     });

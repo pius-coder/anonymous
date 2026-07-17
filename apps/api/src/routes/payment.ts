@@ -25,6 +25,8 @@ const initiatePaymentSchema = z.object({
   amount: z.number().positive().optional(),
   idempotencyKey: z.string().min(8),
   // Client redirectUrl is intentionally rejected — server builds redirectUrl.
+  partyId: z.string().min(1).optional(),
+  participationId: z.string().min(1).optional(),
 });
 
 /** Official Fapshi webhook payload (same shape as payment-status). */
@@ -44,6 +46,8 @@ const payWithWalletSchema = z.object({
   reason: z.string().min(1),
   amount: z.number().positive().optional(),
   idempotencyKey: z.string().min(8),
+  partyId: z.string().min(1).optional(),
+  participationId: z.string().min(1).optional(),
 });
 
 const paymentIdParamSchema = z.object({
@@ -70,6 +74,8 @@ paymentRouter.post("/payments/initiate", requireAuth, zValidator("json", initiat
       requestedAmount: input.amount,
       idempotencyKey: input.idempotencyKey,
       email: user.email,
+      partyId: input.partyId,
+      participationId: input.participationId,
     });
     return successResponse(c, result, 201);
   } catch (err) {
@@ -111,6 +117,8 @@ paymentRouter.post("/payments/wallet/pay", requireAuth, zValidator("json", payWi
       reason: input.reason,
       requestedAmount: input.amount,
       idempotencyKey: input.idempotencyKey,
+      partyId: input.partyId,
+      participationId: input.participationId,
     });
     return successResponse(c, result, 201);
   } catch (err) {

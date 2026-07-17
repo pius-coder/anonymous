@@ -95,7 +95,7 @@ export const paymentService: Partial<ServiceImpl<typeof PaymentV1.PaymentService
   },
 
   async initiateTransfer(request, context) {
-    const actor = await requireRpcRole(context, "FINANCE", "ADMIN", "SUPER_ADMIN");
+    const actor = await requireRpcRole(context, "FINANCE", "SUPER_ADMIN");
     const playerId = request.playerId?.value;
     if (!playerId) {
       throw new ConnectError("player_id requis", Code.InvalidArgument);
@@ -123,7 +123,7 @@ export const paymentService: Partial<ServiceImpl<typeof PaymentV1.PaymentService
     const playerId = request.playerId?.value || user.id;
     if (playerId !== user.id) {
       // Players only read their own wallet via this RPC; finance uses admin REST.
-      await requireRpcRole(context, "FINANCE", "ADMIN", "SUPER_ADMIN");
+      await requireRpcRole(context, "FINANCE", "SUPER_ADMIN");
     }
     try {
       const wallet = await getMyWallet(playerId);
@@ -159,7 +159,7 @@ export const paymentService: Partial<ServiceImpl<typeof PaymentV1.PaymentService
     const user = await requireRpcUser(context);
     const playerId = request.playerId?.value || user.id;
     if (playerId !== user.id) {
-      await requireRpcRole(context, "FINANCE", "ADMIN", "SUPER_ADMIN");
+      await requireRpcRole(context, "FINANCE", "SUPER_ADMIN");
     }
     try {
       const payments = await listMyPayments(playerId);

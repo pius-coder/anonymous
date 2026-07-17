@@ -41,5 +41,9 @@ describe("PAYMENT_ERRORS", () => {
     expect(keys).toContain("CHECKOUT_LINK_REJECTED");
     expect(keys).toContain("WEBHOOK_SECRET_REQUIRED");
     expect(keys).toContain("COLLECTION_DISABLED");
+    expect(keys).toContain("FINANCE_FORBIDDEN");
+    expect(keys).toContain("PROVIDER_AMBIGUOUS");
+    expect(keys).toContain("BENEFICIARY_UNVERIFIED");
   });
 });
+

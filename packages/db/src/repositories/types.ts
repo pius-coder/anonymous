@@ -203,6 +203,10 @@ export type ListTransactionsFilter = {
   take?: number;
   status?: PaymentStatus | string;
   walletId?: string;
+  serviceKind?: ProviderServiceKind;
+  type?: string;
+  userId?: string;
+  createdAfter?: Date;
 };
 
 export type CreateAuthSessionData = {

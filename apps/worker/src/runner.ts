@@ -12,7 +12,6 @@ import {
 } from "./jobs/notificationDelivery.js";
 import { closeDueRoundDeadlines } from "./jobs/roundDeadline.js";
 import { reconcilePendingTransactions } from "./jobs/paymentReconciliation.js";
-import { tryCreateFapshiStatusClient } from "./providers/fapshi-status.js";
 import { log, newCorrelationId } from "./logging.js";
 import { createBullConnection } from "./redis.js";
 import {
@@ -96,15 +95,12 @@ export function createWorkerRunner(deps: RunnerDeps = {}): WorkerRunner {
     },
   );
 
-  const fapshiStatusClient = tryCreateFapshiStatusClient();
-
   const reconciliationWorker = new Worker(
     QUEUE_NAMES.PAYMENT_RECONCILIATION,
     async (job: Job<{ correlationId?: string }>) => {
       const correlationId = job.data?.correlationId || newCorrelationId("recon");
-      // When credentials present: query official payment-status (Fapshi does not retry webhooks).
-      // When absent: age-based EXPIRED only — never invent SUCCESS.
-      return reconcilePendingTransactions(new Date(), correlationId, fapshiStatusClient ?? undefined);
+      // Uses @session-jeu/shared getCollectionPaymentStatus (official payment-status).
+      return reconcilePendingTransactions(new Date(), correlationId);
     },
     {
       connection: createBullConnection(config),

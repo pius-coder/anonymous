@@ -36,6 +36,26 @@ export const PAYMENT_ERRORS = {
     status: 503,
     message: "Collecte Fapshi désactivée (kill switch)",
   },
+  FINANCE_FORBIDDEN: { code: "FORBIDDEN", status: 403, message: "Commande finance réservée au rôle FINANCE" },
+  STEP_UP_REQUIRED: { code: "FAILED_PRECONDITION", status: 403, message: "Step-up / MFA finance requis" },
+  MAKER_CHECKER_REQUIRED: {
+    code: "FAILED_PRECONDITION",
+    status: 403,
+    message: "Approbation maker-checker requise (autre opérateur FINANCE)",
+  },
+  VELOCITY_LIMIT: { code: "RESOURCE_EXHAUSTED", status: 429, message: "Limite de vélocité finance atteinte" },
+  FRAUD_HOLD: { code: "FAILED_PRECONDITION", status: 422, message: "Opération bloquée (hold fraude)" },
+  COMPENSATION_NOT_FOUND: { code: "NOT_FOUND", status: 404, message: "Demande de compensation introuvable" },
+  PROVIDER_AMBIGUOUS: {
+    code: "PROVIDER_AMBIGUOUS",
+    status: 409,
+    message: "Réponse provider ambigüe — rapprocher sans rejouer l'opération",
+  },
+  BENEFICIARY_UNVERIFIED: {
+    code: "FAILED_PRECONDITION",
+    status: 422,
+    message: "Bénéficiaire non vérifié pour le payout",
+  },
 } as const;
 
 export type PaymentErrorCode = keyof typeof PAYMENT_ERRORS;

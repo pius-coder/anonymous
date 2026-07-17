@@ -11,10 +11,12 @@ const dbMocks = vi.hoisted(() => ({
     findTransactionByProviderTransId: vi.fn(),
     findTransactionByProviderExternalId: vi.fn(),
     createPaymentTransaction: vi.fn(),
+    createCheckoutPayment: vi.fn(),
     updateTransactionStatus: vi.fn(),
     settlePaymentWebhook: vi.fn(),
     ingestProviderWebhook: vi.fn(),
     applyWebhookSettlement: vi.fn(),
+
     findWalletById: vi.fn(),
     listLedgerEntriesByUserId: vi.fn(),
     listTransactionsByWallet: vi.fn(),

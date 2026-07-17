@@ -102,6 +102,9 @@ export type InitiatePaymentInput = {
   idempotencyKey: string;
   requestedAmount?: number;
   email?: string;
+  /** When set with participationId, links collection checkout to admission. */
+  partyId?: string;
+  participationId?: string;
 };
 
 export type PaymentDetail = {
@@ -233,6 +236,22 @@ function requireIdempotencyKey(key: string | undefined): string {
   return key.trim();
 }
 
+/** Map official/shared wire names to Prisma FapshiWireStatus (no UNKNOWN). */
+function toPrismaWireStatus(
+  status: string,
+): "CREATED" | "PENDING" | "SUCCESSFUL" | "FAILED" | "EXPIRED" | "UNSPECIFIED" {
+  switch (status) {
+    case "CREATED":
+    case "PENDING":
+    case "SUCCESSFUL":
+    case "FAILED":
+    case "EXPIRED":
+      return status;
+    default:
+      return "UNSPECIFIED";
+  }
+}
+
 export function assertPrizeCreditAllowed(_opts?: { published?: boolean }): void {
   throw new PaymentUseCaseError(
     "FAILED_PRECONDITION",
@@ -279,27 +298,46 @@ export async function initiatePayment(input: InitiatePaymentInput): Promise<Paym
 
   const type = purpose === "TOP_UP" ? "TOP_UP" : "ACCESS_FEE";
   const providerExternalId = generateProviderExternalId();
+  const admissionCheckout =
+    purpose === "ACCESS_FEE" && !!input.partyId && !!input.participationId;
 
   let transaction;
   try {
-    transaction = await paymentRepository.createPaymentTransaction({
-      walletId: wallet.id,
-      userId: input.userId,
-      amount,
-      currency: input.currency ?? wallet.currency,
-      type,
-      provider: FAPSHI_PROVIDER,
-      idempotencyKey,
-      status: "PENDING",
-      internalStatus: "AWAITING_PROVIDER",
-      wireStatus: "CREATED",
-      providerExternalId,
-    });
+    if (admissionCheckout) {
+      transaction = await paymentRepository.createCheckoutPayment({
+        amount,
+        currency: input.currency ?? wallet.currency,
+        userId: input.userId,
+        partyId: input.partyId!,
+        participationId: input.participationId!,
+        walletId: wallet.id,
+        providerExternalId,
+        idempotencyKey,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      });
+    } else {
+      transaction = await paymentRepository.createPaymentTransaction({
+        walletId: wallet.id,
+        userId: input.userId,
+        amount,
+        currency: input.currency ?? wallet.currency,
+        type,
+        provider: FAPSHI_PROVIDER,
+        idempotencyKey,
+        status: "PENDING",
+        internalStatus: "AWAITING_PROVIDER",
+        wireStatus: "CREATED",
+        providerExternalId,
+      });
+    }
   } catch (err) {
     const raced = await paymentRepository.findTransactionByIdempotencyKey(idempotencyKey);
     if (raced) return toPaymentDetail(raced);
     throw err;
   }
+
+  // createCheckoutPayment may return existing intent already linked to provider
+  const resolvedExternalId = transaction.providerExternalId ?? providerExternalId;
 
   // If provider already attached (race recovery), do not re-initiate.
   if (transaction.providerTransId && transaction.checkoutUrl) {
@@ -313,7 +351,7 @@ export async function initiatePayment(input: InitiatePaymentInput): Promise<Paym
       amount,
       currency: input.currency ?? wallet.currency,
       userId: input.userId,
-      externalId: providerExternalId,
+      externalId: resolvedExternalId,
       idempotencyKey,
       email: input.email,
     });
@@ -392,7 +430,7 @@ export async function handlePaymentWebhook(
     provider: FAPSHI_PROVIDER.toLowerCase(),
     externalEventId: eventId,
     providerTransId: payload.transId,
-    wireStatus: payload.status,
+    wireStatus: toPrismaWireStatus(payload.status),
     paymentId: payment?.id,
     redactedSummary: redactedWebhookSummary(payload),
     serviceKind: "COLLECTION",
@@ -480,17 +518,22 @@ export async function verifyAndSettleCollection(input: {
   ) {
     const updated = await paymentRepository.updateTransactionStatus(payment.id, {
       status: mapFapshiWireToPaymentStatus(providerStatus.status),
-      wireStatus: providerStatus.status,
+      wireStatus: toPrismaWireStatus(providerStatus.status),
       internalStatus: "PROVIDER_PENDING",
       providerTransId: providerStatus.transId,
     });
     return toPaymentDetail(updated);
   }
 
+  const wire = toPrismaWireStatus(providerStatus.status);
+  if (wire === "UNSPECIFIED") {
+    return toPaymentDetail(payment);
+  }
+
   const { payment: settled } = await paymentRepository.applyWebhookSettlement({
     inboxId: input.inboxId,
     transactionId: payment.id,
-    wireStatus: providerStatus.status,
+    wireStatus: wire,
     providerTransId: providerStatus.transId,
     admitOnSuccess: false,
   });
@@ -541,7 +584,7 @@ export async function reconcileCollectionFromProvider(
     provider: FAPSHI_PROVIDER.toLowerCase(),
     externalEventId: eventId,
     providerTransId: providerStatus.transId,
-    wireStatus: providerStatus.status,
+    wireStatus: toPrismaWireStatus(providerStatus.status),
     paymentId: transaction.id,
     redactedSummary: redactedWebhookSummary(providerStatus),
     serviceKind: "COLLECTION",
@@ -569,6 +612,8 @@ export async function payWithWallet(input: {
   reason: string;
   idempotencyKey: string;
   requestedAmount?: number;
+  partyId?: string;
+  participationId?: string;
 }): Promise<{ payment: PaymentDetail; ledger: LedgerEntryDetail; amount: number }> {
   const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
   const purpose: PaymentPurpose = input.purpose ?? "ACCESS_FEE";
@@ -607,6 +652,8 @@ export async function payWithWallet(input: {
       amount,
       reason: input.reason,
       idempotencyKey,
+      partyId: input.partyId,
+      participationId: input.participationId,
     });
     return {
       payment: toPaymentDetail(result.transaction),

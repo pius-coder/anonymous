@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageState } from "@/components/ui/PageState";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { mapPaymentStatusLabel, paymentApi } from "@/services/payment/payment-api";
 import { mapPaymentToFinanceRow } from "./finance-data";
@@ -44,6 +45,9 @@ export function TransactionDetail({ transactionId }: { transactionId: string }) 
     },
   });
 
+  const [stepUp, setStepUp] = useState("");
+  const [compPhone, setCompPhone] = useState("");
+
   const reconcileMutation = useMutation({
     mutationFn: async (why: string) => {
       const res = await paymentApi.reconcile(transactionId, why);
@@ -55,6 +59,44 @@ export function TransactionDetail({ transactionId }: { transactionId: string }) 
       setReason("");
       await queryClient.invalidateQueries({ queryKey: ["admin-payment", transactionId] });
       await queryClient.invalidateQueries({ queryKey: ["admin-payments"] });
+    },
+  });
+
+  const expireMutation = useMutation({
+    mutationFn: async () => {
+      const res = await paymentApi.expire(
+        transactionId,
+        reason.trim() || "expire_manual",
+        paymentApi.newIdempotencyKey("expire"),
+        stepUp,
+      );
+      if (!res.success) throw new Error(res.error.message);
+      return res.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-payment", transactionId] });
+      await queryClient.invalidateQueries({ queryKey: ["admin-payments"] });
+    },
+  });
+
+  const compensationMutation = useMutation({
+    mutationFn: async () => {
+      const res = await paymentApi.requestCompensation(
+        transactionId,
+        {
+          reason: reason.trim(),
+          beneficiaryPhone: compPhone || undefined,
+          beneficiaryVerified: Boolean(compPhone),
+          idempotencyKey: paymentApi.newIdempotencyKey("comp"),
+        },
+        stepUp,
+      );
+      if (!res.success) throw new Error(res.error.message);
+      return res.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-payment", transactionId] });
+      await queryClient.invalidateQueries({ queryKey: ["finance-mismatches"] });
     },
   });
 
@@ -132,18 +174,44 @@ export function TransactionDetail({ transactionId }: { transactionId: string }) 
             </Alert>
           ) : null}
 
+          <div className="space-y-2">
+            <label className="text-sm text-muted-foreground" htmlFor="step-up">
+              Step-up finance (X-Finance-Step-Up)
+            </label>
+            <Input
+              id="step-up"
+              value={stepUp}
+              onChange={(e) => setStepUp(e.target.value)}
+              placeholder="Jeton step-up / MFA"
+              autoComplete="off"
+            />
+          </div>
+
           {canReconcile ? (
             <>
               <Button className="w-full" onClick={() => setOpen(true)} disabled={reconcileMutation.isPending}>
                 <RefreshCw /> Confirmer le retry / rapprochement idempotent
               </Button>
+              <Button
+                className="w-full"
+                variant="outline"
+                disabled={!stepUp || expireMutation.isPending}
+                onClick={() => expireMutation.mutate()}
+              >
+                Expirer (provider + local)
+              </Button>
+              {expireMutation.isError ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {(expireMutation.error as Error).message}
+                </p>
+              ) : null}
               <AlertDialog open={open} onOpenChange={setOpen}>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Réconcilier la transaction</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Action finance audité. Le serveur marquera un PENDING divergent comme FAILED
-                      sans inventer un succès client.
+                      Action finance audité. Le serveur interroge le provider puis enregistre
+                      MATCH/MISMATCH sans inventer un succès client.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <Textarea
@@ -172,12 +240,47 @@ export function TransactionDetail({ transactionId }: { transactionId: string }) 
                 </AlertDialogContent>
               </AlertDialog>
             </>
-          ) : (
+          ) : null}
+
+          {payment.status === "SUCCESSFUL" ? (
+            <div className="space-y-2">
+              <Input
+                value={compPhone}
+                onChange={(e) => setCompPhone(e.target.value)}
+                placeholder="Téléphone bénéficiaire (compensation payout)"
+              />
+              <Textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Motif compensation (maker — checker distinct requis)"
+              />
+              <Button
+                className="w-full"
+                variant="secondary"
+                disabled={!reason.trim() || !stepUp || compensationMutation.isPending}
+                onClick={() => compensationMutation.mutate()}
+              >
+                Demander compensation (maker)
+              </Button>
+              {compensationMutation.isSuccess ? (
+                <p className="text-sm text-primary" role="status">
+                  Demande {compensationMutation.data.reconciliationId} — en attente checker.
+                </p>
+              ) : null}
+              {compensationMutation.isError ? (
+                <p className="text-sm text-destructive" role="alert">
+                  {(compensationMutation.error as Error).message}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {terminal && payment.status !== "SUCCESSFUL" ? (
             <p className="flex gap-2 text-sm text-muted-foreground">
               <CheckCircle2 className="size-4 shrink-0" />
               Transaction terminale — lecture seule, aucun double crédit possible via l’UI.
             </p>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 
