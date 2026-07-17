@@ -381,7 +381,7 @@ export async function handlePaymentWebhook(
     );
   }
 
-  let payment =
+  const payment =
     (await paymentRepository.findTransactionByProviderTransId(payload.transId)) ??
     (payload.externalId
       ? await paymentRepository.findTransactionByProviderExternalId(payload.externalId)
