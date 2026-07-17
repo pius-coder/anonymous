@@ -30,7 +30,7 @@ sha256sum /tmp/contracts.bin | tee docs/descriptor-hash.txt
 ## Additive changes vs SEQ-01
 
 - common: PageRequest/Response, IdempotencyKey, ContractVersion, TypedBytesEnvelope, ErrorEnvelope, new ErrorCodes
-- minigame: six typed game protos + schema fields on envelopes
+- minigame: six typed game protos + schema fields on envelopes (keys aligned with P-SEQ-01 rulebooks)
 - payment: internal vs Fapshi wire statuses, webhook inbox, reconcile RPCs
 - compliance: export, retention, support cases
 - admin: GetSystemReadiness

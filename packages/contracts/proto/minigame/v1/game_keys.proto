@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package sessionjeu.minigame.v1;
 
-// Canonical production keys (P-SEQ-01 candidates ratified for contract freeze).
-// Additive only — replacing a key requires a new enum value and matrix update.
+// Canonical production keys ratified by P-SEQ-01 (DEC-P-SEQ-01-RATIFY, rulebooks APPROVED v1.0.0).
+// Additive only — replacing a key requires a new enum value, ADR, and matrix update.
 
 enum ProductionMiniGameKey {
   PRODUCTION_MINI_GAME_KEY_UNSPECIFIED = 0;
