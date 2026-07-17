@@ -42,8 +42,20 @@ function phaseFromServerStatus(status: string | undefined): UiPhase | null {
   if (!status) return null;
   if (status === "SUCCESSFUL") return "success";
   if (status === "FAILED" || status === "EXPIRED") return "failed";
-  if (status === "PENDING") return "pending";
+  if (status === "PENDING" || status === "CREATED") return "pending";
   return null;
+}
+
+/** Client-side safety: only navigate to known Fapshi hosts (server already allowlists). */
+function isOfficialCheckoutUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return false;
+    const host = parsed.hostname.toLowerCase();
+    return host === "fapshi.com" || host.endsWith(".fapshi.com");
+  } catch {
+    return false;
+  }
 }
 
 export function PaymentPanel({ party }: { party: UiParty }) {
@@ -109,7 +121,11 @@ export function PaymentPanel({ party }: { party: UiParty }) {
     onSuccess: (data) => {
       pollStartedAt.current = Date.now();
       applyServerPayment(data);
-      if (data.status === "PENDING") setPhase("pending");
+      if (data.status === "PENDING" || data.status === "CREATED") setPhase("pending");
+      // Open official Fapshi hosted checkout (server-returned link only; never invent).
+      if (data.checkoutUrl && isOfficialCheckoutUrl(data.checkoutUrl)) {
+        window.location.assign(data.checkoutUrl);
+      }
     },
     onError: (err: Error) => {
       setErrorMessage(err.message);
@@ -248,6 +264,18 @@ export function PaymentPanel({ party }: { party: UiParty }) {
                   : "Transmission au serveur… Ne relancez pas un second débit."
               }
             />
+          ) : null}
+          {effectivePhase === "pending" &&
+          displayPayment?.checkoutUrl &&
+          isOfficialCheckoutUrl(displayPayment.checkoutUrl) ? (
+            <a
+              href={displayPayment.checkoutUrl}
+              rel="noopener noreferrer"
+              className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-lg bg-secondary px-2.5 text-sm font-medium text-secondary-foreground"
+            >
+              Ouvrir le checkout Fapshi
+              <ArrowRight className="size-4" />
+            </a>
           ) : null}
           {effectivePhase === "success" ? (
             <PageState

@@ -1,88 +1,79 @@
 /**
- * Payment provider adapter (Fapshi-compatible port).
- * Does not call a real remote SDK unless FAPSHI_API_URL + FAPSHI_API_KEY are set.
- * Ownership: A-PAYMENT may own this adapter; contracts/schema/worker remain out of scope.
- * P-SEQ-00: never emit fapshi-local references in staging/production.
+ * Payment provider adapter — official Fapshi collection only.
+ * No Bearer, no /initiate, no fapshi-local-*, no invented checkoutUrl/reference.
  */
-import { isStrictDeployEnv, resolveAppEnv } from "@session-jeu/config";
+import {
+  generateProviderExternalId,
+  initiateCollectionCheckout,
+  verifyWebhookSecret,
+  type InitiateCollectionResult,
+} from "./fapshi-collection.js";
+import { FapshiClientError } from "./fapshi-client.js";
 
 export type ExternalInitiateInput = {
+  paymentId: string;
   transactionId: string;
   amount: number;
   currency: string;
   userId: string;
+  externalId: string;
   idempotencyKey: string;
+  email?: string;
+  message?: string;
 };
 
 export type ExternalInitiateResult = {
   checkoutUrl: string;
-  providerReference: string;
+  providerTransId: string;
+  providerExternalId: string;
   provider: "FAPSHI";
+  wireStatus: string;
+  ambiguousTimeout?: boolean;
 };
 
 /**
- * Initiate an external checkout. Returns a deterministic local checkout URL in
- * foundation mode so UI can poll status without inventing amounts or statuses.
+ * Initiate official Fapshi checkout. Fail-closed: never invents local checkout.
  */
 export async function initiateExternalCheckout(
   input: ExternalInitiateInput,
 ): Promise<ExternalInitiateResult> {
-  const apiUrl = process.env.FAPSHI_API_URL;
-  const apiKey = process.env.FAPSHI_API_KEY;
+  const result: InitiateCollectionResult = await initiateCollectionCheckout({
+    amountXaf: input.amount,
+    userId: input.userId,
+    externalId: input.externalId,
+    email: input.email,
+    paymentId: input.paymentId,
+    message: input.message,
+  });
 
-  if (apiUrl && apiKey) {
-    // Real provider path — kept minimal and behind env gates (no secrets logged).
-    const response = await fetch(`${apiUrl.replace(/\/$/, "")}/initiate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-        "Idempotency-Key": input.idempotencyKey,
-      },
-      body: JSON.stringify({
-        externalId: input.transactionId,
-        amount: input.amount,
-        currency: input.currency,
-        userId: input.userId,
-      }),
-    });
-    if (!response.ok) {
-      throw new Error("PROVIDER_ERROR");
-    }
-    const body = (await response.json()) as {
-      checkoutUrl?: string;
-      reference?: string;
-    };
-    if (!body.checkoutUrl || !body.reference) {
-      throw new Error("PROVIDER_ERROR");
-    }
+  if (result.kind === "ok") {
     return {
-      checkoutUrl: body.checkoutUrl,
-      providerReference: body.reference,
+      checkoutUrl: result.checkoutUrl,
+      providerTransId: result.providerTransId,
+      providerExternalId: input.externalId,
       provider: "FAPSHI",
+      wireStatus: result.wireStatus,
     };
   }
 
-  // Foundation / offline adapter: local/test only — never staging/production.
-  if (isStrictDeployEnv(resolveAppEnv())) {
-    throw new Error("PROVIDER_NOT_CONFIGURED");
+  if (result.kind === "ambiguous_timeout") {
+    const err = new Error("PROVIDER_TIMEOUT_AMBIGUOUS");
+    (err as Error & { code?: string }).code = "PROVIDER_TIMEOUT_AMBIGUOUS";
+    throw err;
   }
 
-  return {
-    checkoutUrl: `/payments/checkout/${input.transactionId}`,
-    providerReference: `fapshi-local-${input.transactionId}`,
-    provider: "FAPSHI",
-  };
+  const code = result.error.code;
+  const err = new Error(code === "CHECKOUT_LINK_REJECTED" ? "CHECKOUT_LINK_REJECTED" : code);
+  (err as Error & { code?: string }).code = code;
+  throw err;
 }
 
-export function verifyWebhookSignature(signature: string, secret: string | undefined): boolean {
-  if (!secret) {
-    if (isStrictDeployEnv(resolveAppEnv())) {
-      return false;
-    }
-    // When secret is unset (local/dev), accept any non-empty signature so tests
-    // can exercise the happy path; production must set FAPSHI_WEBHOOK_SECRET.
-    return signature.length > 0;
-  }
-  return signature === secret;
+/** @deprecated use verifyWebhookSecret — kept name for call sites during migration */
+export function verifyWebhookSignature(
+  providedHeader: string,
+  secret: string | undefined,
+): boolean {
+  return verifyWebhookSecret(providedHeader, secret);
 }
+
+export { generateProviderExternalId, verifyWebhookSecret, FapshiClientError };

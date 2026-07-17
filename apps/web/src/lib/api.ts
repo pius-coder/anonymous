@@ -31,11 +31,15 @@ export function buildApiUrl(url: string) {
 
 export async function api<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
   try {
+    const { headers: optionHeaders, signal, ...rest } = options ?? {};
     const res = await fetch(buildApiUrl(url), {
       credentials: "include",
-      headers: { "Content-Type": "application/json", ...options?.headers },
-      ...options,
-      signal: options?.signal ?? AbortSignal.timeout(15_000),
+      ...rest,
+      headers: {
+        "Content-Type": "application/json",
+        ...(optionHeaders as Record<string, string> | undefined),
+      },
+      signal: signal ?? AbortSignal.timeout(15_000),
     });
 
     const body = await res.json();

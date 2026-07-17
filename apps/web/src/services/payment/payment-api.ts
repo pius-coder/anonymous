@@ -6,6 +6,7 @@
 import { api } from "@/lib/api";
 
 export type PaymentStatus =
+  | "CREATED"
   | "PENDING"
   | "SUCCESSFUL"
   | "FAILED"
@@ -14,13 +15,15 @@ export type PaymentStatus =
 
 export type PaymentDetail = {
   id: string;
-  walletId: string;
+  walletId: string | null;
   amount: number;
   type: string;
   provider: string | null;
   reference: string | null;
   status: PaymentStatus | string;
   checkoutUrl?: string;
+  providerTransId?: string | null;
+  providerExternalId?: string | null;
   createdAt: string;
 };
 
@@ -127,11 +130,122 @@ export const paymentApi = {
       body: JSON.stringify({ reason }),
     });
   },
+
+  expire(paymentId: string, reason: string, idempotencyKey: string, stepUp: string) {
+    return api<PaymentDetail>(`/v1/admin/payments/${encodeURIComponent(paymentId)}/expire`, {
+      method: "POST",
+      headers: { "X-Finance-Step-Up": stepUp },
+      body: JSON.stringify({ reason, idempotencyKey }),
+    });
+  },
+
+  requestCompensation(
+    paymentId: string,
+    body: {
+      reason: string;
+      amount?: number;
+      beneficiaryPhone?: string;
+      beneficiaryEmail?: string;
+      beneficiaryVerified: boolean;
+      idempotencyKey: string;
+    },
+    stepUp: string,
+  ) {
+    return api<{ reconciliationId: string; decision: string }>(
+      `/v1/admin/payments/${encodeURIComponent(paymentId)}/compensation`,
+      {
+        method: "POST",
+        headers: { "X-Finance-Step-Up": stepUp },
+        body: JSON.stringify(body),
+      },
+    );
+  },
+
+  decideCompensation(
+    reconciliationId: string,
+    body: {
+      decision: "APPROVED_PAYOUT" | "APPROVED_MANUAL" | "REJECTED" | "OUT_OF_SCOPE";
+      reason: string;
+      idempotencyKey: string;
+    },
+    stepUp: string,
+  ) {
+    return api<{ reconciliationId: string; decision: string; outcome: string }>(
+      `/v1/admin/compensations/${encodeURIComponent(reconciliationId)}/decide`,
+      {
+        method: "POST",
+        headers: { "X-Finance-Step-Up": stepUp },
+        body: JSON.stringify(body),
+      },
+    );
+  },
+
+  listMismatches(params?: { skip?: number; take?: number }) {
+    const q = new URLSearchParams();
+    if (params?.skip !== undefined) q.set("skip", String(params.skip));
+    if (params?.take !== undefined) q.set("take", String(params.take));
+    const qs = q.toString();
+    return api<{
+      mismatches: Array<{
+        id: string;
+        paymentId: string;
+        status: string;
+        notes: string | null;
+        createdAt: string;
+      }>;
+    }>(`/v1/admin/mismatches${qs ? `?${qs}` : ""}`);
+  },
+
+  dailyReport() {
+    return api<{
+      day: string;
+      collectionSuccessfulCount: number;
+      collectionPendingCount: number;
+      collectionFailedCount: number;
+      payoutCount: number;
+      mismatchCount: number;
+      ledgerCredits: number;
+      ledgerDebits: number;
+      walletBalanceSum: number;
+      paidParticipations: number;
+      serviceBalanceNote: string;
+    }>("/v1/admin/report/daily");
+  },
+
+  listWallets(params?: { skip?: number; take?: number }) {
+    const q = new URLSearchParams();
+    if (params?.skip !== undefined) q.set("skip", String(params.skip));
+    if (params?.take !== undefined) q.set("take", String(params.take));
+    const qs = q.toString();
+    return api<{
+      wallets: Array<{
+        id: string;
+        userId: string;
+        balance: number;
+        currency: string;
+        isFrozen: boolean;
+        version: number;
+        updatedAt: string;
+      }>;
+    }>(`/v1/admin/wallets${qs ? `?${qs}` : ""}`);
+  },
+
+  exportTransactions() {
+    return api<{
+      exportedAt: string;
+      report: unknown;
+      transactions: PaymentDetail[];
+      total: number;
+      status: string;
+    }>("/v1/admin/export/transactions");
+  },
 };
 
 /** Map server status to UI labels without inventing intermediate states. */
 export function mapPaymentStatusLabel(status: string): string {
   switch (status) {
+    case "CREATED":
+      return "Créé";
     case "PENDING":
       return "En attente";
     case "SUCCESSFUL":

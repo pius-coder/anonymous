@@ -24,22 +24,30 @@ const initiatePaymentSchema = z.object({
   /** Client may send amount for TOP_UP only; ACCESS_FEE always uses server catalog. */
   amount: z.number().positive().optional(),
   idempotencyKey: z.string().min(8),
+  // Client redirectUrl is intentionally rejected — server builds redirectUrl.
+  partyId: z.string().min(1).optional(),
+  participationId: z.string().min(1).optional(),
 });
 
-const webhookSchema = z.object({
-  transactionId: z.string().min(1),
-  status: z.enum(["SUCCESS", "FAILED", "PENDING"]),
-  providerReference: z.string().min(1),
-  signature: z.string().min(1),
-});
+/** Official Fapshi webhook payload (same shape as payment-status). */
+const fapshiWebhookBodySchema = z
+  .object({
+    transId: z.string().min(1),
+    status: z.enum(["CREATED", "PENDING", "SUCCESSFUL", "FAILED", "EXPIRED"]),
+    amount: z.number().int().optional(),
+    externalId: z.string().optional(),
+    userId: z.string().optional(),
+  })
+  .passthrough();
 
 const payWithWalletSchema = z.object({
   purpose: z.enum(["ACCESS_FEE"]).optional().default("ACCESS_FEE"),
   productCode: z.string().min(1).optional(),
   reason: z.string().min(1),
-  /** Optional client hint — ignored for ACCESS_FEE (server amount). */
   amount: z.number().positive().optional(),
   idempotencyKey: z.string().min(8),
+  partyId: z.string().min(1).optional(),
+  participationId: z.string().min(1).optional(),
 });
 
 const paymentIdParamSchema = z.object({
@@ -50,7 +58,7 @@ function handleError(c: Parameters<typeof errorResponse>[0], err: unknown) {
   if (err instanceof PaymentUseCaseError) {
     return errorResponse(c, err.httpStatus as StatusCode, err.code, err.message);
   }
-  console.error("Unexpected payment error:", err);
+  console.error("Unexpected payment error:", err instanceof Error ? err.message : "unknown");
   return errorResponse(c, 500 as StatusCode, "INTERNAL", "Erreur interne du serveur");
 }
 
@@ -65,6 +73,9 @@ paymentRouter.post("/payments/initiate", requireAuth, zValidator("json", initiat
       currency: input.currency,
       requestedAmount: input.amount,
       idempotencyKey: input.idempotencyKey,
+      email: user.email,
+      partyId: input.partyId,
+      participationId: input.participationId,
     });
     return successResponse(c, result, 201);
   } catch (err) {
@@ -72,16 +83,24 @@ paymentRouter.post("/payments/initiate", requireAuth, zValidator("json", initiat
   }
 });
 
-paymentRouter.post("/payments/webhook/fapshi", zValidator("json", webhookSchema), async (c) => {
+/**
+ * Fapshi webhook — header x-wh-secret required.
+ * ACK quickly after durable inbox write; settlement uses payment-status verify.
+ */
+paymentRouter.post("/payments/webhook/fapshi", async (c) => {
   try {
-    const payload = c.req.valid("json");
+    const webhookSecretHeader = c.req.header("x-wh-secret") ?? undefined;
+    const raw = await c.req.json().catch(() => null);
+    const parsed = fapshiWebhookBodySchema.safeParse(raw);
+    if (!parsed.success) {
+      return errorResponse(c, 400 as StatusCode, "INVALID_ARGUMENT", "Corps webhook Fapshi invalide");
+    }
     const result = await handlePaymentWebhook({
-      transactionId: payload.transactionId,
-      status: payload.status,
-      providerReference: payload.providerReference,
-      signature: payload.signature,
+      webhookSecretHeader,
+      body: parsed.data,
+      processSync: false,
     });
-    return successResponse(c, result);
+    return successResponse(c, result, 200);
   } catch (err) {
     return handleError(c, err);
   }
@@ -98,6 +117,8 @@ paymentRouter.post("/payments/wallet/pay", requireAuth, zValidator("json", payWi
       reason: input.reason,
       requestedAmount: input.amount,
       idempotencyKey: input.idempotencyKey,
+      partyId: input.partyId,
+      participationId: input.participationId,
     });
     return successResponse(c, result, 201);
   } catch (err) {

@@ -99,6 +99,7 @@ export function createWorkerRunner(deps: RunnerDeps = {}): WorkerRunner {
     QUEUE_NAMES.PAYMENT_RECONCILIATION,
     async (job: Job<{ correlationId?: string }>) => {
       const correlationId = job.data?.correlationId || newCorrelationId("recon");
+      // Uses @session-jeu/shared getCollectionPaymentStatus (official payment-status).
       return reconcilePendingTransactions(new Date(), correlationId);
     },
     {
