@@ -1,5 +1,9 @@
 # Plan d'execution APEX parallele v0.1
 
+> Ce document pilote la reconstruction et le gel v0.1. Il ne constitue pas un plan de go-live.
+> Pour la production commerciale, lire `apex-production-execution-plan.md` et les fiches
+> `apex-tasks/production/`.
+
 Ce plan transforme l'analyse d'ecart en taches lancables dans plusieurs worktrees sans partager un
 index Git, une branche, une base de donnees ou un port. L'ordre est contractuel : les taches
 non independantes sont executees avant les vagues paralleles.

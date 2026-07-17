@@ -14,6 +14,14 @@ Cette documentation est la source de verite de reconstruction. Elle ne valide pa
 6. `05-workflows/` impose le pipeline agentique des futures features.
 7. `06-roadmap/` decoupe la reconstruction en sprints fonctionnels et explique la couverture narrative des cas d'utilisation.
 
+Pour la sortie production, la source de verite est :
+
+1. `00-audit/production-readiness-gap-analysis.md`;
+2. `06-roadmap/apex-production-execution-plan.md`;
+3. `06-roadmap/apex-tasks/production/README.md` et les fiches associees.
+
+Terminer les anciennes fiches APEX et SEQ-04 gele une v0.1 recettable; cela ne donne pas un go-live.
+
 Pour terminer v0.1 avec plusieurs agents/worktrees, lire dans cet ordre :
 
 1. `00-audit/v0.1-gap-analysis.md` pour l'etat prouve au commit audite;

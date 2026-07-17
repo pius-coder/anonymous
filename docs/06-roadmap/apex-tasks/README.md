@@ -10,8 +10,18 @@ merge dans son commit de base.
 |---|---|
 | SEQ-00 | Termine, commit `71f7518` |
 | SEQ-01 | Termine, inclus dans le commit de freeze contrats courant |
-| SEQ-02 | Termine (seed deterministe, ScoreReview/DeliveryLog, L3 PG) — commit local a figer |
-| WAVE-A/B, SEQ-03/04 | WAVE-A deblocable; SEQ-03 apres merge train WAVE-A |
+| SEQ-02 | Termine, inclus dans la baseline integree |
+| WAVE-A | Sept lots merges dans `v0.1` |
+| SEQ-03 | Termine, commit d'integration `cd96de8` |
+| WAVE-B / SEQ-04 | Programme de recette v0.1 non termine |
+| Production | **NO-GO**; nouveau programme dans `production/README.md` |
+
+Les fiches historiques ci-dessous terminent la reconstruction v0.1. Elles ne valent pas autorisation
+de mise en production. L'audit de sortie et les nouvelles fiches sont :
+
+- `docs/00-audit/production-readiness-gap-analysis.md`;
+- `docs/06-roadmap/apex-production-execution-plan.md`;
+- `docs/06-roadmap/apex-tasks/production/README.md`.
 
 ## Ordre de lancement
 
