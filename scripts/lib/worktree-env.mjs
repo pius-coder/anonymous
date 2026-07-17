@@ -10,12 +10,62 @@ import { cwd } from "node:process";
 const OFFSET_MOD = 200;
 
 /**
+ * Ports blocked by WHATWG fetch / Next.js (`next dev` / `next start`).
+ * Hitting these makes L5 fail with: Bad port: "N" is reserved for …
+ * @see https://nextjs.org/docs/messages/reserved-port
+ * @see https://fetch.spec.whatwg.org/#port-blocking
+ */
+export const NEXT_RESERVED_PORTS = new Set([
+  1, 7, 9, 11, 13, 15, 17, 19, 20, 21, 22, 23, 25, 37, 42, 43, 53, 69, 77, 79, 87, 95,
+  101, 102, 103, 104, 109, 110, 111, 113, 115, 117, 119, 123, 135, 137, 139, 143, 161,
+  179, 389, 427, 465, 512, 513, 514, 515, 526, 530, 531, 532, 540, 548, 554, 556, 563,
+  587, 601, 636, 989, 990, 993, 995, 1719, 1720, 1723, 2049, 3659, 4045, 5060, 5061,
+  6000, 6566, 6665, 6666, 6667, 6668, 6669, 6697, 10080,
+]);
+
+/**
  * @param {string} text
  * @returns {number}
  */
 export function stableOffset(text) {
   const hex = createHash("sha256").update(text).digest("hex").slice(0, 8);
   return Number.parseInt(hex, 16) % OFFSET_MOD;
+}
+
+/**
+ * Map base+offset into a non-reserved port while staying in [base, base+OFFSET_MOD).
+ * Deterministic: same base+offset always yields the same safe port.
+ *
+ * @param {number} base
+ * @param {number} offset
+ * @returns {number}
+ */
+export function safePort(base, offset) {
+  const start = ((Number(offset) % OFFSET_MOD) + OFFSET_MOD) % OFFSET_MOD;
+  for (let i = 0; i < OFFSET_MOD; i++) {
+    const candidate = base + ((start + i) % OFFSET_MOD);
+    if (!NEXT_RESERVED_PORTS.has(candidate)) {
+      return candidate;
+    }
+  }
+  // Fallback outside the window if the entire range were reserved (should not happen).
+  return base + OFFSET_MOD + start;
+}
+
+/**
+ * If an explicit port is reserved (e.g. WEB_PORT=3659), walk upward until free.
+ * @param {number} port
+ * @returns {number}
+ */
+export function bumpPastReserved(port) {
+  let p = Number(port);
+  if (!Number.isFinite(p) || p <= 0) return p;
+  let guard = 0;
+  while (NEXT_RESERVED_PORTS.has(p) && guard < 1000) {
+    p += 1;
+    guard += 1;
+  }
+  return p;
 }
 
 /**
@@ -73,10 +123,14 @@ export function resolveWorktreeEnv(env = process.env) {
       ? Number(env.WORKTREE_OFFSET) % OFFSET_MOD
       : stableOffset(worktreeId);
 
-  const apiPort = Number(env.API_PORT || env.PORT) || 3100 + offset;
-  const gameServerPort = Number(env.GAME_SERVER_PORT || env.GAME_PORT) || 3300 + offset;
-  const webPort = Number(env.WEB_PORT) || 3500 + offset;
-  const workerPort = Number(env.WORKER_PORT) || 3700 + offset;
+  // Prefer explicit env overrides; otherwise derive isolated ports and skip Next/fetch reserved ports
+  // (e.g. WEB 3500+159 → 3659 apple-sasl breaks Playwright next dev in CI).
+  const apiPort = bumpPastReserved(Number(env.API_PORT || env.PORT) || safePort(3100, offset));
+  const gameServerPort = bumpPastReserved(
+    Number(env.GAME_SERVER_PORT || env.GAME_PORT) || safePort(3300, offset),
+  );
+  const webPort = bumpPastReserved(Number(env.WEB_PORT) || safePort(3500, offset));
+  const workerPort = bumpPastReserved(Number(env.WORKER_PORT) || safePort(3700, offset));
   const postgresPort = Number(env.POSTGRES_PORT) || 15432 + offset;
   const redisPort = Number(env.REDIS_PORT) || 16379 + offset;
 
