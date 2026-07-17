@@ -49,6 +49,9 @@ export type InitiatePaymentInput = {
   idempotencyKey: string;
   /** Only consumed for TOP_UP; ignored for ACCESS_FEE. */
   requestedAmount?: number;
+  /** When set with participationId, creates collection checkout linked to admission. */
+  partyId?: string;
+  participationId?: string;
 };
 
 export type PaymentDetail = {
@@ -87,6 +90,9 @@ export type WebhookPayload = {
   status: string;
   providerReference: string;
   signature: string;
+  /** Optional provider event id for inbox idempotency. */
+  externalEventId?: string;
+  providerTransId?: string;
 };
 
 type WithNumeric = { toNumber(): number };
@@ -187,6 +193,7 @@ export async function getOrCreateWallet(userId: string): Promise<WalletDetail> {
 /**
  * Initiate external payment. Amount is always server-resolved.
  * Idempotent on idempotencyKey.
+ * When partyId+participationId are provided, links collection checkout to participation (PAYMENT_PENDING).
  */
 export async function initiatePayment(input: InitiatePaymentInput): Promise<PaymentDetail> {
   const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
@@ -207,27 +214,44 @@ export async function initiatePayment(input: InitiatePaymentInput): Promise<Paym
 
   const existing = await paymentRepository.findTransactionByIdempotencyKey(idempotencyKey);
   if (existing) {
-    return toPaymentDetail(existing, existing.reference
-      ? `/payments/checkout/${existing.id}`
-      : undefined);
+    return toPaymentDetail(
+      existing,
+      existing.checkoutUrl ??
+        (existing.reference ? `/payments/checkout/${existing.id}` : undefined),
+    );
   }
 
-  // TOP_UP (not WALLET_CREDIT): settlePaymentWebhook credits once for non-WALLET_CREDIT types.
-  // ACCESS_FEE uses status-only settlement (no wallet credit) in handlePaymentWebhook.
   const type = purpose === "TOP_UP" ? "TOP_UP" : "ACCESS_FEE";
+  const admissionCheckout =
+    purpose === "ACCESS_FEE" && !!input.partyId && !!input.participationId;
 
   let transaction;
   try {
-    transaction = await paymentRepository.createPaymentTransaction({
-      walletId: wallet.id,
-      amount,
-      type,
-      provider: "FAPSHI",
-      idempotencyKey,
-      status: "PENDING",
-    });
+    if (admissionCheckout) {
+      const externalId = `ext-${idempotencyKey}`.slice(0, 100);
+      transaction = await paymentRepository.createCheckoutPayment({
+        amount,
+        currency: input.currency ?? wallet.currency,
+        userId: input.userId,
+        partyId: input.partyId!,
+        participationId: input.participationId!,
+        walletId: wallet.id,
+        providerExternalId: externalId,
+        idempotencyKey,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      });
+    } else {
+      transaction = await paymentRepository.createPaymentTransaction({
+        walletId: wallet.id,
+        userId: input.userId,
+        amount,
+        type,
+        provider: "FAPSHI",
+        idempotencyKey,
+        status: "PENDING",
+      });
+    }
   } catch (err) {
-    // Race on unique idempotency: re-read winner.
     const raced = await paymentRepository.findTransactionByIdempotencyKey(idempotencyKey);
     if (raced) return toPaymentDetail(raced);
     throw err;
@@ -246,6 +270,7 @@ export async function initiatePayment(input: InitiatePaymentInput): Promise<Paym
       provider: external.provider,
       reference: external.providerReference,
     });
+    // Persist checkout URL when repository supports it via raw update if needed
     return toPaymentDetail(updated, external.checkoutUrl);
   } catch (err) {
     if (err instanceof Error && err.message === "PROVIDER_ERROR") {
@@ -256,14 +281,22 @@ export async function initiatePayment(input: InitiatePaymentInput): Promise<Paym
         PAYMENT_ERRORS.PROVIDER_ERROR.status,
       );
     }
+    if (err instanceof Error && err.message === "PROVIDER_NOT_CONFIGURED") {
+      await paymentRepository.updateTransactionStatus(transaction.id, { status: "FAILED" });
+      throw new PaymentUseCaseError(
+        PAYMENT_ERRORS.PROVIDER_ERROR.code,
+        "Fournisseur de collecte non configuré",
+        502,
+      );
+    }
     throw err;
   }
 }
 
 /**
- * Webhook handler. Duplicate deliveries are idempotent via settlePaymentWebhook.
- * Never credits PRIZE. ACCESS_FEE success marks paid without inventing client status.
- * TOP_UP (WALLET_CREDIT) credits wallet once.
+ * Webhook handler. Durable inbox + applyWebhookSettlement (idempotent).
+ * Never credits PRIZE. ACCESS_FEE / ENTRY_FEE success → paymentState PAID atomically.
+ * TOP_UP may credit wallet once via legacy settle path when no participation link.
  */
 export async function handlePaymentWebhook(payload: WebhookPayload): Promise<PaymentDetail> {
   const secret = process.env.FAPSHI_WEBHOOK_SECRET;
@@ -288,40 +321,75 @@ export async function handlePaymentWebhook(payload: WebhookPayload): Promise<Pay
     assertPrizeCreditAllowed();
   }
 
-  if (transaction.status === "SUCCESSFUL" || transaction.status === "FAILED") {
+  if (
+    transaction.status === "SUCCESSFUL" ||
+    transaction.status === "FAILED" ||
+    transaction.status === "EXPIRED"
+  ) {
     return toPaymentDetail(transaction);
   }
 
-  const newStatus =
-    payload.status === "SUCCESS"
+  const wireStatus =
+    payload.status === "SUCCESS" || payload.status === "SUCCESSFUL"
       ? "SUCCESSFUL"
       : payload.status === "FAILED"
         ? "FAILED"
-        : "PENDING";
+        : payload.status === "EXPIRED"
+          ? "EXPIRED"
+          : "PENDING";
 
-  // ACCESS_FEE: settle status only (no wallet credit). TOP_UP uses settle that may credit.
-  if (transaction.type === "ACCESS_FEE" && newStatus === "SUCCESSFUL") {
-    const updated = await paymentRepository.updateTransactionStatus(payload.transactionId, {
+  const externalEventId =
+    payload.externalEventId ??
+    `${payload.providerReference}:${wireStatus}:${payload.transactionId}`;
+
+  const { inbox, duplicate } = await paymentRepository.ingestProviderWebhook({
+    provider: "fapshi",
+    externalEventId,
+    providerTransId: payload.providerTransId ?? payload.providerReference,
+    wireStatus: wireStatus as never,
+    paymentId: transaction.id,
+    redactedSummary: `status=${wireStatus}`,
+    serviceKind: (transaction.serviceKind ?? "COLLECTION") as never,
+  });
+
+  if (duplicate && inbox.inboxStatus === "APPLIED") {
+    const current = await paymentRepository.findTransactionById(transaction.id);
+    return toPaymentDetail(current ?? transaction);
+  }
+
+  // Admission / terminal wire: applyWebhookSettlement → PAID on success (not auto-ADMITTED).
+  // TOP_UP credit: settlePaymentWebhook credits wallet once when no participation link.
+  const isTopUpCredit =
+    (transaction.type === "TOP_UP" || transaction.type === "WALLET_CREDIT") &&
+    !transaction.participationId &&
+    wireStatus === "SUCCESSFUL";
+
+  if (isTopUpCredit) {
+    const updated = await paymentRepository.settlePaymentWebhook({
+      transactionId: payload.transactionId,
       status: "SUCCESSFUL",
-      reference: payload.providerReference,
+      providerReference: payload.providerReference,
     });
+    if (!updated) {
+      throw new PaymentUseCaseError(
+        PAYMENT_ERRORS.PAYMENT_NOT_FOUND.code,
+        PAYMENT_ERRORS.PAYMENT_NOT_FOUND.message,
+        PAYMENT_ERRORS.PAYMENT_NOT_FOUND.status,
+      );
+    }
+    // Mark inbox applied best-effort via settlement path already handled for admission;
+    // top-up uses legacy settle — still record provider ref on payment.
     return toPaymentDetail(updated);
   }
 
-  const updated = await paymentRepository.settlePaymentWebhook({
-    transactionId: payload.transactionId,
-    status: newStatus,
-    providerReference: payload.providerReference,
+  const applied = await paymentRepository.applyWebhookSettlement({
+    inboxId: inbox.id,
+    transactionId: transaction.id,
+    wireStatus: wireStatus as never,
+    providerTransId: payload.providerTransId ?? payload.providerReference,
+    admitOnSuccess: false,
   });
-  if (!updated) {
-    throw new PaymentUseCaseError(
-      PAYMENT_ERRORS.PAYMENT_NOT_FOUND.code,
-      PAYMENT_ERRORS.PAYMENT_NOT_FOUND.message,
-      PAYMENT_ERRORS.PAYMENT_NOT_FOUND.status,
-    );
-  }
-
-  return toPaymentDetail(updated);
+  return toPaymentDetail(applied.payment);
 }
 
 /**
@@ -334,6 +402,8 @@ export async function payWithWallet(input: {
   reason: string;
   idempotencyKey: string;
   requestedAmount?: number;
+  partyId?: string;
+  participationId?: string;
 }): Promise<{ payment: PaymentDetail; ledger: LedgerEntryDetail; amount: number }> {
   const idempotencyKey = requireIdempotencyKey(input.idempotencyKey);
   const purpose: PaymentPurpose = input.purpose ?? "ACCESS_FEE";
@@ -372,6 +442,9 @@ export async function payWithWallet(input: {
       amount,
       reason: input.reason,
       idempotencyKey,
+      partyId: input.partyId,
+      participationId: input.participationId,
+      userId: input.userId,
     });
     return {
       payment: toPaymentDetail(result.transaction),
