@@ -3,7 +3,17 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
+      "env": ["APP_ENV", "API_URL", "GAME_WS_URL", "NODE_ENV", "CI"],
+      "passThroughEnv": [
+        "APP_ENV",
+        "API_URL",
+        "GAME_WS_URL",
+        "DATABASE_URL",
+        "REDIS_URL",
+        "NEXT_PUBLIC_*",
+        "FAPSHI_*"
+      ]
     },
     "dev": {
       "dependsOn": ["^build"],

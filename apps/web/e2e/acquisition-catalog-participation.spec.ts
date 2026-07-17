@@ -1,28 +1,24 @@
-import { spawnSync } from "node:child_process";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * CI `pnpm test:e2e` migrates an empty DB and does not seed.
- * Acquisition catalogue needs at least one published public party — seed is idempotent.
+ * Seed is also run in globalSetup. Specs re-affirm under exclusive lock
+ * so parallel workers never race unique keys (P-SEQ-00).
  */
-function ensureDeterministicSeed() {
+async function ensureDeterministicSeed() {
   const monorepoRoot = process.env.MONOREPO_ROOT || join(process.cwd(), "../..");
   const databaseUrl = process.env.DATABASE_URL || process.env.TEST_DATABASE_URL;
   if (!databaseUrl) {
     throw new Error("DATABASE_URL/TEST_DATABASE_URL required to seed acquisition E2E fixtures");
   }
-
-  const result = spawnSync("pnpm", ["--filter", "@session-jeu/db", "db:seed"], {
-    cwd: monorepoRoot,
-    env: process.env,
-    encoding: "utf8",
+  const mod = await import(pathToFileURL(join(monorepoRoot, "scripts/lib/seed-lock.mjs")).href);
+  mod.runSeedIsolated({
+    ...process.env,
+    DATABASE_URL: databaseUrl,
+    MONOREPO_ROOT: monorepoRoot,
+    APP_ENV: process.env.APP_ENV || "test",
   });
-  if (result.status !== 0) {
-    throw new Error(
-      `db:seed failed (status ${result.status}): ${result.stderr || result.stdout || "no output"}`,
-    );
-  }
 }
 
 const isSessionCookie = (cookie: { name: string; httpOnly: boolean }) =>
@@ -48,8 +44,8 @@ async function registerPlayer(page: Page) {
 }
 
 test.describe("L5 acquisition catalogue → detail → register/cancel", () => {
-  test.beforeAll(() => {
-    ensureDeterministicSeed();
+  test.beforeAll(async () => {
+    await ensureDeterministicSeed();
   });
 
   test("player browses public catalogue and registers once", async ({ page }) => {

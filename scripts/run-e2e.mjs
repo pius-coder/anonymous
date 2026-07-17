@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * L5 E2E: disposable infra → migrate → Playwright (webServer boots api/game/web) → teardown.
+ * L5 E2E: disposable infra → migrate → Playwright (api/game/web) → teardown.
+ * Seed isolation is handled by Playwright globalSetup + seed-lock (parallel workers safe).
  */
 import { spawnSync } from "node:child_process";
 import {
@@ -39,9 +40,17 @@ async function main() {
     infraStarted = true;
     migrateEmptyDb(env);
 
-    const childEnv = toChildEnv(env);
+    const childEnv = {
+      ...toChildEnv(env),
+      APP_ENV: "test",
+      TEST_LEVEL: "L5",
+      // Parallel workers OK with seed-lock
+      PLAYWRIGHT_WORKERS: process.env.PLAYWRIGHT_WORKERS || (process.env.CI ? "2" : ""),
+    };
 
-    safeLog("[e2e] building workspace deps for web/api/game-server");
+    // Build runtime deps only. Playwright webServer uses `next dev` (not next build).
+    // Full web production build is covered by the gates job.
+    safeLog("[e2e] building api/game-server/config (web via next dev in Playwright)");
     const build = spawnSync(
       "pnpm",
       [
@@ -49,9 +58,9 @@ async function main() {
         "turbo",
         "run",
         "build",
-        "--filter=@session-jeu/web...",
         "--filter=@session-jeu/api...",
         "--filter=@session-jeu/game-server...",
+        "--filter=@session-jeu/config",
       ],
       { cwd: ROOT, env: childEnv, stdio: "inherit" },
     );
@@ -59,7 +68,6 @@ async function main() {
       throw new Error("e2e dependency build failed");
     }
 
-    // Install browsers if missing (local + CI safe)
     spawnSync("pnpm", ["--filter", "@session-jeu/web", "exec", "playwright", "install", "chromium"], {
       cwd: ROOT,
       env: childEnv,

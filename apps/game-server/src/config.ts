@@ -1,6 +1,9 @@
 /**
  * Server-side live policy. Never accept client join options for these values.
+ * P-SEQ-00: no silent localhost Redis in staging/production.
  */
+import { isStrictDeployEnv, resolveAppEnv } from "@session-jeu/config";
+
 function envInt(name: string, fallback: number): number {
   const raw = process.env[name];
   if (raw === undefined || raw === "") return fallback;
@@ -13,7 +16,11 @@ export const config = {
     return envInt("GAME_SERVER_PORT", 3002);
   },
   get redisUrl(): string {
-    return process.env.REDIS_URL || "redis://localhost:6379";
+    if (process.env.REDIS_URL) return process.env.REDIS_URL;
+    if (isStrictDeployEnv(resolveAppEnv())) {
+      throw new Error("REDIS_URL is required in staging/production");
+    }
+    return "redis://localhost:6379";
   },
   /** Authoritative reconnect window (ms). Clients cannot override. */
   get reconnectTimeoutMs(): number {

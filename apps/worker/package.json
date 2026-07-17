@@ -12,6 +12,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@session-jeu/config": "workspace:*",
     "@session-jeu/db": "workspace:*",
     "@session-jeu/whatsapp-gateway": "workspace:*",
     "bullmq": "^5.30.0",

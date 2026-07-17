@@ -16,6 +16,7 @@
     "@connectrpc/connect-node": "^2.1.2",
     "@hono/node-server": "^1.13.0",
     "@hono/zod-validator": "^0.8.0",
+    "@session-jeu/config": "workspace:*",
     "@session-jeu/contracts": "workspace:^",
     "@session-jeu/db": "workspace:*",
     "@session-jeu/game-engine": "workspace:^",
