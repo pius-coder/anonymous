@@ -48,7 +48,9 @@ async function main() {
       PLAYWRIGHT_WORKERS: process.env.PLAYWRIGHT_WORKERS || (process.env.CI ? "2" : ""),
     };
 
-    safeLog("[e2e] building workspace deps for web/api/game-server/config");
+    // Build runtime deps only. Playwright webServer uses `next dev` (not next build).
+    // Full web production build is covered by the gates job.
+    safeLog("[e2e] building api/game-server/config (web via next dev in Playwright)");
     const build = spawnSync(
       "pnpm",
       [
@@ -56,7 +58,6 @@ async function main() {
         "turbo",
         "run",
         "build",
-        "--filter=@session-jeu/web...",
         "--filter=@session-jeu/api...",
         "--filter=@session-jeu/game-server...",
         "--filter=@session-jeu/config",
