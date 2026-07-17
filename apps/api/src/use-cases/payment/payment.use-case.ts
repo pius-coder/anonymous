@@ -53,7 +53,8 @@ export type InitiatePaymentInput = {
 
 export type PaymentDetail = {
   id: string;
-  walletId: string;
+  /** Nullable after production model (provider checkout may omit wallet until settled). */
+  walletId: string | null;
   amount: number;
   type: string;
   provider: string | null;
@@ -90,16 +91,21 @@ export type WebhookPayload = {
 
 type WithNumeric = { toNumber(): number };
 
-function toPaymentDetail(t: {
-  id: string;
-  walletId: string;
-  amount: number | WithNumeric;
-  type: string;
-  provider: string | null;
-  reference: string | null;
-  status: string;
-  createdAt: Date;
-}, checkoutUrl?: string): PaymentDetail {
+function toPaymentDetail(
+  t: {
+    id: string;
+    walletId: string | null;
+    amount: number | WithNumeric;
+    type: string;
+    provider: string | null;
+    reference: string | null;
+    status: string;
+    createdAt: Date;
+    checkoutUrl?: string | null;
+  },
+  checkoutUrl?: string,
+): PaymentDetail {
+  const resolvedCheckout = checkoutUrl ?? t.checkoutUrl ?? undefined;
   return {
     id: t.id,
     walletId: t.walletId,
@@ -107,8 +113,8 @@ function toPaymentDetail(t: {
     type: t.type,
     provider: t.provider,
     reference: t.reference,
-    status: t.status,
-    ...(checkoutUrl ? { checkoutUrl } : {}),
+    status: String(t.status),
+    ...(resolvedCheckout ? { checkoutUrl: resolvedCheckout } : {}),
     createdAt: t.createdAt.toISOString(),
   };
 }
@@ -408,8 +414,13 @@ export async function getPaymentStatus(paymentId: string, userId?: string): Prom
     );
   }
   if (userId) {
-    const wallet = await paymentRepository.findWalletById(transaction.walletId);
-    if (!wallet || wallet.userId !== userId) {
+    const ownsViaUser = transaction.userId === userId;
+    let ownsViaWallet = false;
+    if (transaction.walletId) {
+      const wallet = await paymentRepository.findWalletById(transaction.walletId);
+      ownsViaWallet = !!wallet && wallet.userId === userId;
+    }
+    if (!ownsViaUser && !ownsViaWallet) {
       throw new PaymentUseCaseError(
         PAYMENT_ERRORS.PAYMENT_NOT_FOUND.code,
         PAYMENT_ERRORS.PAYMENT_NOT_FOUND.message,

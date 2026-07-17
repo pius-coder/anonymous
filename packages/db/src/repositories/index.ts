@@ -11,3 +11,8 @@ export * as notificationRepository from "./notification.repository.js";
 export * as paymentRepository from "./payment.repository.js";
 export * as announcementRepository from "./announcement.repository.js";
 export * as realtimeRepository from "./realtime.repository.js";
+export * as encryptionRepository from "./encryption.repository.js";
+export * as checkpointRepository from "./checkpoint.repository.js";
+export * as complianceRepository from "./compliance.repository.js";
+export * as manifestRepository from "./manifest.repository.js";
+export * as assignmentRepository from "./assignment.repository.js";

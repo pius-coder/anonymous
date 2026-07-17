@@ -33,25 +33,25 @@ describe.skipIf(!runL3)("L3 repositories / constraints / transactions / claim", 
   });
 
   beforeEach(async () => {
-    await cleanupL3Fixtures({ emailPrefix: "l3-", partyCodePrefix: "L3-" });
+    await cleanupL3Fixtures({ emailPrefix: "l3-repo-", partyCodePrefix: "L3REPO-" });
   });
 
   afterAll(async () => {
-    await cleanupL3Fixtures({ emailPrefix: "l3-", partyCodePrefix: "L3-" });
+    await cleanupL3Fixtures({ emailPrefix: "l3-repo-", partyCodePrefix: "L3REPO-" });
     await disconnectTestPrisma();
   });
 
   async function createGraph() {
     const userA = await userRepository.createUser({
-      email: `l3-a-${suffix}@example.test`,
+      email: `l3-repo-a-${suffix}@example.test`,
       name: "L3 A",
     });
     const userB = await userRepository.createUser({
-      email: `l3-b-${suffix}@example.test`,
+      email: `l3-repo-b-${suffix}@example.test`,
       name: "L3 B",
     });
     const party = await partyRepository.createParty({
-      code: `L3-PARTY-${suffix}`,
+      code: `L3REPO-PARTY-${suffix}`,
       name: "L3 Party",
     });
     await partyRepository.updatePartyStatus(party.id, "SCHEDULED");
@@ -59,13 +59,13 @@ describe.skipIf(!runL3)("L3 repositories / constraints / transactions / claim", 
       partyId: party.id,
       userId: userA.id,
       status: "REGISTERED",
-      idempotencyKey: `l3-part-a-${suffix}`,
+      idempotencyKey: `l3-repo-part-a-${suffix}`,
     });
     const partB = await participationRepository.createParticipation({
       partyId: party.id,
       userId: userB.id,
       status: "REGISTERED",
-      idempotencyKey: `l3-part-b-${suffix}`,
+      idempotencyKey: `l3-repo-part-b-${suffix}`,
     });
     const round = await roundRepository.createRound({
       partyId: party.id,
@@ -99,7 +99,7 @@ describe.skipIf(!runL3)("L3 repositories / constraints / transactions / claim", 
       walletId: wallet.id,
       amount: 10,
       type: "ACCESS_FEE",
-      idempotencyKey: `l3-pay-${suffix}`,
+      idempotencyKey: `l3-repo-pay-${suffix}`,
       status: "PENDING",
     });
 
@@ -108,7 +108,7 @@ describe.skipIf(!runL3)("L3 repositories / constraints / transactions / claim", 
         walletId: wallet.id,
         amount: 10,
         type: "ACCESS_FEE",
-        idempotencyKey: `l3-pay-${suffix}`,
+        idempotencyKey: `l3-repo-pay-${suffix}`,
         status: "PENDING",
       }),
     ).rejects.toBeInstanceOf(Prisma.PrismaClientKnownRequestError);
@@ -123,13 +123,13 @@ describe.skipIf(!runL3)("L3 repositories / constraints / transactions / claim", 
       walletId: wallet.id,
       amount: 100,
       reason: "L3 access fee",
-      idempotencyKey: `l3-debit-${suffix}`,
+      idempotencyKey: `l3-repo-debit-${suffix}`,
     });
     const second = await paymentRepository.createWalletDebitPayment({
       walletId: wallet.id,
       amount: 100,
       reason: "L3 access fee",
-      idempotencyKey: `l3-debit-${suffix}`,
+      idempotencyKey: `l3-repo-debit-${suffix}`,
     });
 
     expect(second.transaction.id).toBe(first.transaction.id);

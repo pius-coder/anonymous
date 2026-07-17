@@ -8,38 +8,176 @@ datasource db {
 }
 
 // ─────────────────────────────
+// Finance / ops enums (no free-form financial statuses)
+// ─────────────────────────────
+
+/// Provider-facing / public payment status (aligned with Fapshi wire SUCCESSFUL naming).
+enum PaymentStatus {
+  PENDING
+  SUCCESSFUL
+  FAILED
+  EXPIRED
+  REFUNDED
+  CREATED
+}
+
+/// Platform internal payment lifecycle (distinct from provider wire).
+enum PaymentInternalStatus {
+  CREATED
+  AWAITING_PROVIDER
+  PROVIDER_PENDING
+  SUCCEEDED
+  FAILED
+  EXPIRED
+  RECONCILING
+  RECONCILED
+  COMPENSATING
+  COMPENSATED
+  PENDING
+}
+
+/// Official Fapshi wire statuses — map only in adapters.
+enum FapshiWireStatus {
+  UNSPECIFIED
+  CREATED
+  PENDING
+  SUCCESSFUL
+  FAILED
+  EXPIRED
+}
+
+enum ProviderServiceKind {
+  COLLECTION
+  PAYOUT
+}
+
+enum LedgerDirection {
+  CREDIT
+  DEBIT
+}
+
+enum LedgerType {
+  ENTRY_FEE
+  PRIZE
+  REFUND
+  BONUS
+  ADJUSTMENT
+  COMPENSATION
+  WALLET_CREDIT
+  ACCESS_FEE
+}
+
+enum WebhookInboxStatus {
+  RECEIVED
+  VERIFIED
+  APPLIED
+  DUPLICATE
+  REJECTED
+}
+
+enum ReconciliationStatus {
+  PENDING
+  MATCHED
+  MISMATCH
+  RESOLVED
+}
+
+enum EncryptionKeyStatus {
+  ACTIVE
+  ROTATING
+  RETIRED
+  PURGED
+}
+
+enum DataClassification {
+  PUBLIC
+  RESTRICTED
+  SYSTEM_ONLY
+  SECRET
+}
+
+enum EncryptedSecretPurpose {
+  ROLE
+  VOTE
+  SEQUENCE
+  CHECKPOINT
+  SCORE_PROOF
+  OTHER
+}
+
+enum RetentionAction {
+  KEEP
+  ANONYMIZE
+  DELETE
+  LEGAL_HOLD
+}
+
+enum ComplianceGateStatus {
+  OPEN
+  BLOCKED
+  APPROVED
+  WAIVED
+}
+
+enum IncidentStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  CLOSED
+}
+
+enum SupportAccessStatus {
+  REQUESTED
+  APPROVED
+  DENIED
+  EXPIRED
+  REVOKED
+}
+
+enum ConsentStatus {
+  GRANTED
+  WITHDRAWN
+  SUPERSEDED
+}
+
+// ─────────────────────────────
 // Identity
 // ─────────────────────────────
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  avatarUrl String?
-  passwordHash String?
-  sessionVersion Int @default(0)
-  isActive   Boolean @default(true)
-  lastLoginAt DateTime?
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String?
+  avatarUrl      String?
+  passwordHash   String?
+  sessionVersion Int       @default(0)
+  isActive       Boolean   @default(true)
+  lastLoginAt    DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  authSessions      AuthSession[]
-  roleAssignments   RoleAssignment[]
+  authSessions        AuthSession[]
+  roleAssignments     RoleAssignment[]
   passwordResetTokens PasswordResetToken[]
-  participations    PartyParticipation[]
-  auditLogs         AuditLog[]
-  announcements     Announcement[]
-  notificationJobs  NotificationJob[]
-  wallet            Wallet?
+  participations      PartyParticipation[]
+  auditLogs           AuditLog[]
+  announcements       Announcement[]
+  notificationJobs    NotificationJob[]
+  wallet              Wallet?
+  paymentTransactions PaymentTransaction[]
+  consentRecords      ConsentRecord[]
+  supportAccessGrants SupportAccessGrant[]
+  incidentsOpened     Incident[]           @relation("IncidentOpenedBy")
+  encryptionKeys      EncryptionKey[]      @relation("KeyCreatedBy")
 }
 
 model AuthSession {
-  id        String   @id @default(cuid())
-  userId    String
-  token     String   @unique
-  expiresAt DateTime
-  sessionVersion Int @default(0)
+  id             String   @id @default(cuid())
+  userId         String
+  token          String   @unique
+  expiresAt      DateTime
+  sessionVersion Int      @default(0)
 
   createdAt DateTime @default(now())
 
@@ -49,13 +187,13 @@ model AuthSession {
 }
 
 model PasswordResetToken {
-  id        String    @id @default(cuid())
-  userId    String
-  token     String    @unique
-  expiresAt DateTime
+  id         String    @id @default(cuid())
+  userId     String
+  token      String    @unique
+  expiresAt  DateTime
   consumedAt DateTime?
 
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -63,9 +201,9 @@ model PasswordResetToken {
 }
 
 model RoleAssignment {
-  id        String   @id @default(cuid())
-  userId    String
-  role      String
+  id     String @id @default(cuid())
+  userId String
+  role   String
 
   createdAt DateTime @default(now())
 
@@ -80,22 +218,34 @@ model RoleAssignment {
 // ─────────────────────────────
 
 model Party {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  name      String
-  status    String
-  visibility String  @default("public")
-  roundProgram Json?
-  minPlayers Int?
-  maxPlayers Int?
+  id               String    @id @default(cuid())
+  code             String    @unique
+  name             String
+  status           String
+  visibility       String    @default("public")
+  roundProgram     Json?
+  minPlayers       Int?
+  maxPlayers       Int?
+  /// Entry fee amount in major currency units (Decimal). Null = free party.
+  entryFeeAmount   Decimal?  @db.Decimal(18, 2)
+  entryFeeCurrency String    @default("XAF")
+  /// Monotonic config/manifest version for fee + program changes.
+  configVersion    Int       @default(1)
+  feeVersion       Int       @default(1)
+  description      String?
 
   scheduledAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  participations  PartyParticipation[]
-  rounds          Round[]
-  announcements   Announcement[]
+  participations    PartyParticipation[]
+  rounds            Round[]
+  announcements     Announcement[]
+  payments          PaymentTransaction[]
+  complianceGates   ComplianceGate[]
+  incidents         Incident[]
+  teamAssignments   TeamAssignment[]
+  pairAssignments   PairAssignment[]
 }
 
 // ─────────────────────────────
@@ -103,33 +253,47 @@ model Party {
 // ─────────────────────────────
 
 model PartyParticipation {
-  id              String   @id @default(cuid())
-  partyId         String
-  userId          String
-  role            String
-  status          String
-  readinessState  String   @default("offline")
-  connectionState String   @default("disconnected")
+  id                 String    @id @default(cuid())
+  partyId            String
+  userId             String
+  role               String
+  status             String
+  /// Payment axis (separate from presence / connection / round).
+  paymentState       String    @default("NONE")
+  /// Admission axis after capacity + payment checks.
+  admissionState     String    @default("NOT_ADMITTED")
+  readinessState     String    @default("offline")
+  connectionState    String    @default("disconnected")
+  paymentTransactionId String? @unique
 
-  idempotencyKey   String?  @unique
-  expiresAt        DateTime?
-  cancelledAt      DateTime?
+  idempotencyKey     String?   @unique
+  expiresAt          DateTime?
+  cancelledAt        DateTime?
   cancellationReason String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  party      Party                @relation(fields: [partyId], references: [id], onDelete: Cascade)
-  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  connection RealtimeConnection?
-  rounds     RoundParticipant[]
-  scores     ProvisionalScore[]
-  published  PublishedScore[]
-  playerActions PlayerAction[]
+  party              Party                @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentTransaction PaymentTransaction?  @relation("ParticipationPayment", fields: [paymentTransactionId], references: [id], onDelete: SetNull)
+  connection         RealtimeConnection?
+  rounds             RoundParticipant[]
+  scores             ProvisionalScore[]
+  published          PublishedScore[]
+  playerActions      PlayerAction[]
+  payments           PaymentTransaction[] @relation("PaymentParticipation")
+  roleSecrets        EncryptedSecret[]    @relation("ParticipationSecrets")
+  pairAsA            PairAssignment[]     @relation("PairA")
+  pairAsB            PairAssignment[]     @relation("PairB")
+  teamMemberships    TeamMember[]
 
   @@unique([partyId, userId])
   @@index([partyId])
   @@index([userId])
+  @@index([partyId, admissionState])
+  @@index([partyId, paymentState])
+  @@index([partyId, status])
 }
 
 // ─────────────────────────────
@@ -137,14 +301,14 @@ model PartyParticipation {
 // ─────────────────────────────
 
 model RealtimeConnection {
-  id               String   @id @default(cuid())
-  participationId  String   @unique
-  connectionId     String   @unique
-  state            String
-  tokenHash        String   @unique
-  tokenExpiresAt   DateTime
+  id              String    @id @default(cuid())
+  participationId String    @unique
+  connectionId    String    @unique
+  state           String
+  tokenHash       String    @unique
+  tokenExpiresAt  DateTime
 
-  connectedAt    DateTime @default(now())
+  connectedAt    DateTime  @default(now())
   disconnectedAt DateTime?
 
   participation PartyParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
@@ -158,40 +322,48 @@ model RealtimeConnection {
 // ─────────────────────────────
 
 model Round {
-  id        String   @id @default(cuid())
-  partyId   String
-  number    Int
-  minigame  String
-  status    String
+  id       String @id @default(cuid())
+  partyId  String
+  number   Int
+  minigame String
+  status   String
+  /// Bound minigame manifest version used for this round.
+  runtimeVersion String?
+  configVersion  Int?
 
   startedAt DateTime?
   deadline  DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  party        Party              @relation(fields: [partyId], references: [id], onDelete: Cascade)
-  participants RoundParticipant[]
-  actions      PlayerAction[]
+  party         Party              @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  participants  RoundParticipant[]
+  actions       PlayerAction[]
   deadlineState RoundDeadline?
-  scores       ProvisionalScore[]
-  published    PublishedScore[]
+  scores        ProvisionalScore[]
+  published     PublishedScore[]
+  checkpoints   RoundCheckpoint[]
+  teamAssignments TeamAssignment[]
+  pairAssignments PairAssignment[]
+  encryptedSecrets EncryptedSecret[] @relation("RoundSecrets")
 
   @@unique([partyId, number])
   @@index([partyId])
   @@index([status])
+  @@index([minigame])
 }
 
 model RoundParticipant {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   roundId         String
   participationId String
-  status          String   @default("PENDING")
+  status          String    @default("PENDING")
   score           Int?
   finishedAt      DateTime?
 
   createdAt DateTime @default(now())
 
-  round        Round              @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  round         Round              @relation(fields: [roundId], references: [id], onDelete: Cascade)
   participation PartyParticipation @relation(fields: [participationId], references: [id])
 
   @@unique([roundId, participationId])
@@ -222,8 +394,8 @@ model PlayerAction {
 }
 
 model RoundDeadline {
-  id          String   @id @default(cuid())
-  roundId     String   @unique
+  id          String    @id @default(cuid())
+  roundId     String    @unique
   deadlineAt  DateTime?
   durationMs  Int
   pausedAt    DateTime?
@@ -239,20 +411,51 @@ model RoundDeadline {
   @@index([closedAt])
 }
 
+/// Durable crash-recovery checkpoint. Payload is ciphertext only — never cleartext secrets.
+model RoundCheckpoint {
+  id               String   @id @default(cuid())
+  roundId          String
+  version          Int
+  phase            String
+  configVersion    Int?
+  runtimeVersion   String?
+  /// AES-GCM (or KMS) ciphertext of checkpoint JSON (roles/votes/sequences hashed or encrypted inside).
+  payloadCipher    Bytes
+  payloadNonce     Bytes?
+  payloadHash      String
+  keyId            String
+  acceptedInputIds Json?
+  deadlines        Json?
+  classification   DataClassification @default(SYSTEM_ONLY)
+
+  createdAt DateTime @default(now())
+
+  round Round         @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  key   EncryptionKey @relation(fields: [keyId], references: [id])
+
+  @@unique([roundId, version])
+  @@index([roundId])
+  @@index([keyId])
+}
+
 // ─────────────────────────────
 // Scoring
 // ─────────────────────────────
 
 model ProvisionalScore {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   roundId         String
   participationId String
-  score           Decimal  @default(0)
+  score           Decimal   @default(0)
   rank            Int?
   status          String
+  /// Public-safe evidence hash (not the proof body).
+  evidenceHash    String?
+  /// Optional redacted JSON for non-secret meta only.
   evidence        Json?
   reviewedBy      String?
   reviewedAt      DateTime?
+  classification  DataClassification @default(RESTRICTED)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -261,10 +464,12 @@ model ProvisionalScore {
   participation PartyParticipation @relation(fields: [participationId], references: [id])
   published     PublishedScore?
   reviews       ScoreReview[]
+  scoreEvidence ScoreEvidence?
 
   @@unique([roundId, participationId])
   @@index([roundId])
   @@index([status])
+  @@index([evidenceHash])
 }
 
 model PublishedScore {
@@ -276,10 +481,11 @@ model PublishedScore {
   rank               Int?
   publishedBy        String
   publishedAt        DateTime @default(now())
+  evidenceHash       String?
 
   provisionalScore ProvisionalScore    @relation(fields: [provisionalScoreId], references: [id])
-  round            Round              @relation(fields: [roundId], references: [id])
-  participation    PartyParticipation @relation(fields: [participationId], references: [id])
+  round            Round               @relation(fields: [roundId], references: [id])
+  participation    PartyParticipation  @relation(fields: [participationId], references: [id])
 
   @@index([roundId])
   @@index([participationId])
@@ -300,18 +506,179 @@ model ScoreReview {
   @@index([provisionalScoreId])
 }
 
+/// Encrypted score proof material (raw evidence). Cleartext never stored.
+model ScoreEvidence {
+  id                 String             @id @default(cuid())
+  provisionalScoreId String             @unique
+  evidenceHash       String
+  ciphertext         Bytes
+  nonce              Bytes?
+  keyId              String
+  minigameVersion    String?
+  classification     DataClassification @default(SYSTEM_ONLY)
+  purgedAt           DateTime?
+
+  createdAt DateTime @default(now())
+
+  provisionalScore ProvisionalScore @relation(fields: [provisionalScoreId], references: [id], onDelete: Cascade)
+  key              EncryptionKey    @relation(fields: [keyId], references: [id])
+
+  @@index([evidenceHash])
+  @@index([keyId])
+}
+
+// ─────────────────────────────
+// Assignments (team / binôme)
+// ─────────────────────────────
+
+model TeamAssignment {
+  id         String   @id @default(cuid())
+  partyId    String
+  roundId    String?
+  teamKey    String
+  captainParticipationId String?
+  lockedAt   DateTime?
+  createdAt  DateTime @default(now())
+
+  party   Party        @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  round   Round?       @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  members TeamMember[]
+
+  @@unique([partyId, teamKey, roundId])
+  @@index([partyId])
+  @@index([roundId])
+}
+
+model TeamMember {
+  id              String @id @default(cuid())
+  teamId          String
+  participationId String
+  orderIndex      Int    @default(0)
+
+  team          TeamAssignment     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  participation PartyParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, participationId])
+  @@index([participationId])
+}
+
+model PairAssignment {
+  id               String   @id @default(cuid())
+  partyId          String
+  roundId          String?
+  pairKey          String
+  participationAId String
+  participationBId String?
+  unpaired         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  party           Party              @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  round           Round?             @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  participationA  PartyParticipation @relation("PairA", fields: [participationAId], references: [id], onDelete: Cascade)
+  participationB  PartyParticipation? @relation("PairB", fields: [participationBId], references: [id], onDelete: Cascade)
+
+  @@unique([partyId, pairKey, roundId])
+  @@index([roundId])
+  @@index([participationAId])
+  @@index([participationBId])
+}
+
+// ─────────────────────────────
+// Minigame manifests
+// ─────────────────────────────
+
+model MinigameManifest {
+  id          String  @id @default(cuid())
+  key         String
+  family      String
+  name        String
+  version     String
+  enabled     Boolean @default(true)
+  resolverId  String?
+  config      Json?
+  production  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([key, version])
+  @@index([key])
+  @@index([enabled])
+}
+
+// ─────────────────────────────
+// Encryption / classification
+// ─────────────────────────────
+
+model EncryptionKey {
+  id              String              @id @default(cuid())
+  /// Stable external key id (for AAD / envelope).
+  keyId           String              @unique
+  purpose         EncryptedSecretPurpose
+  algorithm       String              @default("AES-256-GCM")
+  status          EncryptionKeyStatus @default(ACTIVE)
+  /// Optional wrapped DEK material or KMS key ARN/name — never raw app password.
+  wrappedMaterial Bytes?
+  kmsKeyRef       String?
+  createdByUserId String?
+  rotatedAt       DateTime?
+  purgedAt        DateTime?
+  createdAt       DateTime            @default(now())
+
+  createdBy     User?              @relation("KeyCreatedBy", fields: [createdByUserId], references: [id])
+  secrets       EncryptedSecret[]
+  checkpoints   RoundCheckpoint[]
+  scoreEvidence ScoreEvidence[]
+  supportAccess SupportAccessGrant[]
+
+  @@index([purpose, status])
+  @@index([status])
+}
+
+model EncryptedSecret {
+  id               String                 @id @default(cuid())
+  purpose          EncryptedSecretPurpose
+  classification   DataClassification     @default(SECRET)
+  entityType       String
+  entityId         String
+  ciphertext       Bytes
+  nonce            Bytes?
+  keyId            String
+  aad              String?
+  purgedAt         DateTime?
+  roundId          String?
+  participationId  String?
+
+  createdAt DateTime @default(now())
+
+  key           EncryptionKey       @relation(fields: [keyId], references: [id])
+  round         Round?              @relation("RoundSecrets", fields: [roundId], references: [id], onDelete: Cascade)
+  participation PartyParticipation? @relation("ParticipationSecrets", fields: [participationId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@index([purpose])
+  @@index([keyId])
+  @@index([roundId])
+  @@index([participationId])
+  @@index([purgedAt])
+}
+
 // ─────────────────────────────
 // Audit
 // ─────────────────────────────
 
 model AuditLog {
-  id        String   @id @default(cuid())
-  userId    String?
-  action    String
-  entity    String
-  entityId  String?
-  metadata  Json?
-  ipAddress String?
+  id            String  @id @default(cuid())
+  userId        String?
+  action        String
+  entity        String
+  entityId      String?
+  metadata      Json?
+  ipAddress     String?
+  /// Outcome of the audited action (e.g. SUCCESS, DENIED, COMPENSATED).
+  result        String?
+  correlationId String?
+  reason        String?
 
   createdAt DateTime @default(now())
 
@@ -321,6 +688,8 @@ model AuditLog {
   @@index([action])
   @@index([entity, entityId])
   @@index([createdAt])
+  @@index([correlationId])
+  @@index([result])
 }
 
 // ─────────────────────────────
@@ -328,7 +697,7 @@ model AuditLog {
 // ─────────────────────────────
 
 model Announcement {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   partyId   String?
   title     String
   body      String
@@ -343,29 +712,39 @@ model Announcement {
 }
 
 model NotificationJob {
-  id        String   @id @default(cuid())
-  userId    String
-  type      String
-  payload   Json
-  status    String
-  sentAt    DateTime?
+  id             String    @id @default(cuid())
+  userId         String
+  type           String
+  payload        Json
+  status         String
+  sentAt         DateTime?
+  /// Idempotency for enqueue (prevents double notification).
+  idempotencyKey String?   @unique
+  claimToken     String?
+  claimedAt      DateTime?
+  claimedBy      String?
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(5)
+  availableAt    DateTime  @default(now())
 
   createdAt DateTime @default(now())
 
-  user     User           @relation(fields: [userId], references: [id])
+  user       User           @relation(fields: [userId], references: [id])
   deliveries DeliveryLog[]
 
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  @@index([status, availableAt])
+  @@index([claimToken])
 }
 
 model DeliveryLog {
-  id        String   @id @default(cuid())
-  jobId     String
-  channel   String
-  status    String
-  error     String?
+  id          String   @id @default(cuid())
+  jobId       String
+  channel     String
+  status      String
+  error       String?
   deliveredAt DateTime @default(now())
 
   notificationJob NotificationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
@@ -378,50 +757,260 @@ model DeliveryLog {
 // Payments & Wallet
 // ─────────────────────────────
 
+/// External credential *reference* only (env key name / secret manager path). Never stores secret values.
+model ProviderCredentialRef {
+  id          String             @id @default(cuid())
+  serviceKind ProviderServiceKind
+  name        String
+  /// Name of env var or secret manager path — not the secret itself.
+  envKeyName  String
+  provider    String             @default("fapshi")
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  payments PaymentTransaction[]
+
+  @@unique([serviceKind, name])
+  @@index([serviceKind, isActive])
+}
+
 model Wallet {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  balance   Decimal  @default(0)
-  currency  String   @default("XAF")
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  balance   Decimal @default(0) @db.Decimal(18, 2)
+  currency  String  @default("XAF")
+  isFrozen  Boolean @default(false)
+  /// Optimistic concurrency for balance updates.
+  version   Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user     User                @relation(fields: [userId], references: [id])
+  user     User                 @relation(fields: [userId], references: [id])
   payments PaymentTransaction[]
+  ledger   LedgerEntry[]
 }
 
 model PaymentTransaction {
-  id          String   @id @default(cuid())
-  walletId    String
-  amount      Decimal
-  type        String
-  provider    String?
-  reference   String?
-  idempotencyKey String? @unique
-  status      String
+  id                 String                @id @default(cuid())
+  walletId           String?
+  userId             String?
+  partyId            String?
+  participationId    String?
+  amount             Decimal               @db.Decimal(18, 2)
+  currency           String                @default("XAF")
+  type               String
+  provider           String?
+  reference          String?
+  idempotencyKey     String?               @unique
+  /// Legacy/public status enum (not free string).
+  status             PaymentStatus
+  internalStatus     PaymentInternalStatus @default(PENDING)
+  wireStatus         FapshiWireStatus      @default(UNSPECIFIED)
+  /// Fapshi merchant external id — partial unique when set.
+  providerExternalId String?
+  /// Fapshi transId — partial unique when set.
+  providerTransId    String?
+  checkoutUrl        String?
+  expiresAt          DateTime?
+  settledAt          DateTime?
+  serviceKind        ProviderServiceKind   @default(COLLECTION)
+  credentialRefId    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  wallet      Wallet       @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  ledgerEntry LedgerEntry?
+  wallet              Wallet?                 @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user                User?                   @relation(fields: [userId], references: [id])
+  party               Party?                  @relation(fields: [partyId], references: [id])
+  participation       PartyParticipation?     @relation("PaymentParticipation", fields: [participationId], references: [id])
+  linkedParticipation PartyParticipation?     @relation("ParticipationPayment")
+  credentialRef       ProviderCredentialRef?  @relation(fields: [credentialRefId], references: [id])
+  ledgerEntry         LedgerEntry?
+  webhookEvents       ProviderWebhookInbox[]
+  reconciliations     PaymentReconciliation[]
 
   @@index([walletId])
+  @@index([userId])
+  @@index([partyId])
+  @@index([participationId])
   @@index([status])
+  @@index([internalStatus])
+  @@index([serviceKind])
   @@index([createdAt])
+  @@index([providerTransId])
+  @@index([providerExternalId])
+  @@index([expiresAt])
 }
 
 model LedgerEntry {
-  id            String   @id @default(cuid())
-  transactionId String   @unique
-  debit         Decimal  @default(0)
-  credit        Decimal  @default(0)
-  balance       Decimal
-  reason        String
-  idempotencyKey String? @unique
+  id               String          @id @default(cuid())
+  transactionId    String          @unique
+  walletId         String?
+  debit            Decimal         @default(0) @db.Decimal(18, 2)
+  credit           Decimal         @default(0) @db.Decimal(18, 2)
+  balance          Decimal         @db.Decimal(18, 2)
+  balanceAfter     Decimal?        @db.Decimal(18, 2)
+  reason           String
+  direction        LedgerDirection?
+  ledgerType       LedgerType?
+  idempotencyKey   String?         @unique
+  /// Self-relation for compensating entries.
+  compensationOfId String?         @unique
 
   createdAt DateTime @default(now())
 
-  transaction PaymentTransaction @relation(fields: [transactionId], references: [id])
+  transaction    PaymentTransaction @relation(fields: [transactionId], references: [id])
+  wallet         Wallet?            @relation(fields: [walletId], references: [id])
+  compensationOf LedgerEntry?       @relation("LedgerCompensation", fields: [compensationOfId], references: [id])
+  compensations  LedgerEntry?       @relation("LedgerCompensation")
+
+  @@index([walletId])
+  @@index([ledgerType])
+  @@index([createdAt])
+}
+
+/// Idempotent provider webhook inbox (collection + payout).
+model ProviderWebhookInbox {
+  id               String             @id @default(cuid())
+  provider         String
+  /// Provider-stable event id when available.
+  externalEventId  String?
+  providerTransId  String?
+  wireStatus       FapshiWireStatus   @default(UNSPECIFIED)
+  inboxStatus      WebhookInboxStatus @default(RECEIVED)
+  paymentId        String?
+  /// Redacted summary only — never raw signed body with secrets.
+  redactedSummary  String?
+  receivedAt       DateTime           @default(now())
+  processedAt      DateTime?
+  serviceKind      ProviderServiceKind @default(COLLECTION)
+
+  payment PaymentTransaction? @relation(fields: [paymentId], references: [id])
+
+  @@unique([provider, externalEventId])
+  @@index([providerTransId])
+  @@index([inboxStatus])
+  @@index([paymentId])
+  @@index([receivedAt])
+  @@index([serviceKind])
+}
+
+model PaymentReconciliation {
+  id          String               @id @default(cuid())
+  paymentId   String
+  status      ReconciliationStatus @default(PENDING)
+  notes       String?
+  resolvedAt  DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  payment PaymentTransaction @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@index([status])
+}
+
+// ─────────────────────────────
+// Compliance / incidents / retention / consent
+// ─────────────────────────────
+
+model ComplianceGate {
+  id          String               @id @default(cuid())
+  partyId     String?
+  gateType    String
+  status      ComplianceGateStatus @default(OPEN)
+  summary     String?
+  evidenceRefs Json?
+  decidedBy   String?
+  decidedAt   DateTime?
+  reason      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  party Party? @relation(fields: [partyId], references: [id])
+
+  @@index([partyId])
+  @@index([status])
+  @@index([gateType])
+}
+
+model Incident {
+  id          String         @id @default(cuid())
+  partyId     String?
+  subject     String
+  description String?
+  status      IncidentStatus @default(OPEN)
+  openedById  String?
+  openedAt    DateTime       @default(now())
+  resolvedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  party    Party? @relation(fields: [partyId], references: [id])
+  openedBy User?  @relation("IncidentOpenedBy", fields: [openedById], references: [id])
+
+  @@index([partyId])
+  @@index([status])
+  @@index([openedAt])
+}
+
+/// Dual-auth support access to decrypt competitive secrets (ticket + reason + duration).
+model SupportAccessGrant {
+  id              String              @id @default(cuid())
+  ticketId        String
+  requestedById   String
+  approvedById    String?
+  keyId           String?
+  purpose         EncryptedSecretPurpose
+  reason          String
+  status          SupportAccessStatus @default(REQUESTED)
+  expiresAt       DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime            @default(now())
+
+  requestedBy User           @relation(fields: [requestedById], references: [id])
+  key         EncryptionKey? @relation(fields: [keyId], references: [id])
+
+  @@index([ticketId])
+  @@index([status])
+  @@index([requestedById])
+  @@index([expiresAt])
+}
+
+model ConsentRecord {
+  id              String        @id @default(cuid())
+  userId          String
+  policyVersion   String
+  policyKey       String
+  status          ConsentStatus @default(GRANTED)
+  grantedAt       DateTime      @default(now())
+  withdrawnAt     DateTime?
+  metadata        Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, policyKey, policyVersion])
+  @@index([userId])
+  @@index([policyKey])
+  @@index([status])
+}
+
+model RetentionPolicyRule {
+  id          String          @id @default(cuid())
+  domain      String
+  entityType  String
+  retainDays  Int
+  action      RetentionAction @default(KEEP)
+  notes       String?
+  active      Boolean         @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([domain, entityType])
+  @@index([active])
 }
