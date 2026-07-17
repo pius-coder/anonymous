@@ -49,10 +49,8 @@ export default function AdminPartyMonitorPage({
 
   const party = partyQuery.data;
   const participants = prepQuery.data?.participants ?? [];
-  const stale =
-    partyQuery.isStale ||
-    prepQuery.isStale ||
-    (partyQuery.dataUpdatedAt > 0 && Date.now() - partyQuery.dataUpdatedAt > 20_000);
+  // Derive stale only from React Query flags (no Date.now — purity lint).
+  const stale = partyQuery.isStale || prepQuery.isStale;
   const connState =
     partyQuery.isError || prepQuery.isError
       ? "offline"

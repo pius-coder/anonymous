@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, CircleAlert, Save } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useId, useState } from "react";
 import { AdminSection, AdminStatus, PartyAdminNav } from "@/components/admin/AdminWorkspace";
 import { SensitiveActionPanel } from "@/components/admin/SensitiveActionPanel";
 import { AppShell } from "@/components/ui/AppShell";
@@ -20,39 +20,94 @@ import {
   scheduleAdminParty,
   updateAdminPartyConfig,
   validateAdminParty,
+  type AdminPartyDetail,
 } from "@/services/admin/adminPartyClient";
 import { MiniGameService } from "@/services/rpcServices";
 
-function randomCode(): string {
-  return `P${Date.now().toString(36).slice(-6).toUpperCase()}`;
+type FormSeed = {
+  code: string;
+  name: string;
+  description: string;
+  scheduledLocal: string;
+  maxPlayers: string;
+  minPlayers: string;
+  entryFee: string;
+  visibility: "public" | "private";
+  minigameId: string;
+  status?: string;
+  updatedAt?: string;
+  configVersion?: number;
+};
+
+function toScheduledLocal(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function PartySetupView({ partyId, mode }: { partyId: string; mode: "create" | "edit" }) {
+function seedFromParty(p: AdminPartyDetail): FormSeed {
+  const program = p.roundProgram as { minigameIds?: string[] } | null;
+  return {
+    code: p.code,
+    name: p.name,
+    description: p.description ?? "",
+    scheduledLocal: toScheduledLocal(p.scheduledAt),
+    maxPlayers: p.maxPlayers != null ? String(p.maxPlayers) : "",
+    minPlayers: p.minPlayers != null ? String(p.minPlayers) : "2",
+    entryFee: p.entryFeeAmount != null ? String(p.entryFeeAmount) : "",
+    visibility: p.visibility === "private" ? "private" : "public",
+    minigameId: program?.minigameIds?.[0] ?? "",
+    status: p.status,
+    updatedAt: p.updatedAt,
+    configVersion: p.configVersion,
+  };
+}
+
+function createSeed(stableCode: string): FormSeed {
+  return {
+    code: stableCode,
+    name: "",
+    description: "",
+    scheduledLocal: "",
+    maxPlayers: "32",
+    minPlayers: "2",
+    entryFee: "",
+    visibility: "public",
+    minigameId: "",
+  };
+}
+
+function PartySetupForm({
+  partyId,
+  mode,
+  seed,
+}: {
+  partyId: string;
+  mode: "create" | "edit";
+  seed: FormSeed;
+}) {
   const isCreate = mode === "create";
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const [code, setCode] = useState(randomCode());
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [scheduledLocal, setScheduledLocal] = useState("");
-  const [maxPlayers, setMaxPlayers] = useState("32");
-  const [minPlayers, setMinPlayers] = useState("2");
-  const [entryFee, setEntryFee] = useState("");
-  const [visibility, setVisibility] = useState<"public" | "private">("public");
-  const [minigameId, setMinigameId] = useState("");
+  const [code, setCode] = useState(seed.code);
+  const [name, setName] = useState(seed.name);
+  const [description, setDescription] = useState(seed.description);
+  const [scheduledLocal, setScheduledLocal] = useState(seed.scheduledLocal);
+  const [maxPlayers, setMaxPlayers] = useState(seed.maxPlayers);
+  const [minPlayers, setMinPlayers] = useState(seed.minPlayers);
+  const [entryFee, setEntryFee] = useState(seed.entryFee);
+  const [visibility, setVisibility] = useState<"public" | "private">(seed.visibility);
+  const [minigameId, setMinigameId] = useState(seed.minigameId);
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; message: string } | null>(
     null,
   );
-
-  const partyQuery = useQuery({
-    queryKey: ["admin", "party", partyId],
-    enabled: !isCreate,
-    queryFn: async () => {
-      const res = await getAdminParty(partyId);
-      if (!res.success) throw new Error(`${res.error.code}: ${res.error.message}`);
-      return res.data;
-    },
+  const [meta, setMeta] = useState({
+    status: seed.status,
+    updatedAt: seed.updatedAt,
+    configVersion: seed.configVersion,
   });
 
   const catalogQuery = useQuery({
@@ -65,31 +120,12 @@ export function PartySetupView({ partyId, mode }: { partyId: string; mode: "crea
     retry: 0,
   });
 
-  useEffect(() => {
-    if (!partyQuery.data) return;
-    const p = partyQuery.data;
-    setCode(p.code);
-    setName(p.name);
-    setDescription(p.description ?? "");
-    setMaxPlayers(p.maxPlayers != null ? String(p.maxPlayers) : "");
-    setMinPlayers(p.minPlayers != null ? String(p.minPlayers) : "2");
-    setEntryFee(p.entryFeeAmount != null ? String(p.entryFeeAmount) : "");
-    setVisibility(p.visibility === "private" ? "private" : "public");
-    if (p.scheduledAt) {
-      const d = new Date(p.scheduledAt);
-      const pad = (n: number) => String(n).padStart(2, "0");
-      setScheduledLocal(
-        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`,
-      );
-    }
-    const program = p.roundProgram as { minigameIds?: string[] } | null;
-    if (program?.minigameIds?.[0]) setMinigameId(program.minigameIds[0]);
-  }, [partyQuery.data]);
-
   const catalogGames =
     (catalogQuery.data as { minigames?: Array<{ id: string; name?: string }> } | undefined)
       ?.minigames ??
-    (Array.isArray(catalogQuery.data) ? (catalogQuery.data as Array<{ id: string; name?: string }>) : []);
+    (Array.isArray(catalogQuery.data)
+      ? (catalogQuery.data as Array<{ id: string; name?: string }>)
+      : []);
 
   function buildRoundProgram() {
     if (!minigameId) return undefined;
@@ -98,8 +134,8 @@ export function PartySetupView({ partyId, mode }: { partyId: string; mode: "crea
 
   function concurrency() {
     return {
-      expectedUpdatedAt: partyQuery.data?.updatedAt,
-      expectedConfigVersion: partyQuery.data?.configVersion,
+      expectedUpdatedAt: meta.updatedAt,
+      expectedConfigVersion: meta.configVersion,
     };
   }
 
@@ -141,9 +177,13 @@ export function PartySetupView({ partyId, mode }: { partyId: string; mode: "crea
     },
     onSuccess: (data) => {
       setFeedback({ kind: "success", message: "Configuration enregistrée" });
+      setMeta({
+        status: data.status,
+        updatedAt: data.updatedAt,
+        configVersion: data.configVersion,
+      });
       void queryClient.invalidateQueries({ queryKey: ["admin", "party"] });
       if (isCreate) router.push(`/admin/parties/${data.id}/setup`);
-      else void partyQuery.refetch();
     },
     onError: (e: Error) => setFeedback({ kind: "error", message: e.message }),
   });
@@ -168,9 +208,13 @@ export function PartySetupView({ partyId, mode }: { partyId: string; mode: "crea
       if (!res.success) throw new Error(`${res.error.code}: ${res.error.message}`);
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setFeedback({ kind: "success", message: "Partie publiée (SCHEDULED) — aucun lancement auto" });
-      void partyQuery.refetch();
+      setMeta({
+        status: data.status,
+        updatedAt: data.updatedAt,
+        configVersion: data.configVersion,
+      });
     },
     onError: (e: Error) => setFeedback({ kind: "error", message: e.message }),
   });
@@ -185,9 +229,13 @@ export function PartySetupView({ partyId, mode }: { partyId: string; mode: "crea
       if (!res.success) throw new Error(`${res.error.code}: ${res.error.message}`);
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setFeedback({ kind: "success", message: "Horaire enregistré (ne démarre pas la partie)" });
-      void partyQuery.refetch();
+      setMeta({
+        status: data.status,
+        updatedAt: data.updatedAt,
+        configVersion: data.configVersion,
+      });
     },
     onError: (e: Error) => setFeedback({ kind: "error", message: e.message }),
   });
@@ -198,36 +246,22 @@ export function PartySetupView({ partyId, mode }: { partyId: string; mode: "crea
       if (!res.success) throw new Error(`${res.error.code}: ${res.error.message}`);
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       setFeedback({ kind: "success", message: "Partie annulée" });
-      void partyQuery.refetch();
+      setMeta({
+        status: data.status,
+        updatedAt: data.updatedAt,
+        configVersion: data.configVersion,
+      });
     },
     onError: (e: Error) => setFeedback({ kind: "error", message: e.message }),
   });
-
-  if (!isCreate && partyQuery.isLoading) {
-    return (
-      <AppShell audience="Admin" eyebrow="Configuration" title="Chargement…" subtitle="">
-        <p className="text-sm text-muted-foreground">Chargement de la partie…</p>
-      </AppShell>
-    );
-  }
-
-  if (!isCreate && partyQuery.isError) {
-    return (
-      <AppShell audience="Admin" eyebrow="Configuration" title="Erreur" subtitle="">
-        <p className="text-sm text-rose-300" role="alert">
-          {partyQuery.error instanceof Error ? partyQuery.error.message : "Partie introuvable"}
-        </p>
-      </AppShell>
-    );
-  }
 
   return (
     <AppShell
       audience="Admin"
       eyebrow={isCreate ? "Nouvelle partie" : "Configuration"}
-      title={isCreate ? "Créer un brouillon" : name || partyQuery.data?.name || "Partie"}
+      title={isCreate ? "Créer un brouillon" : name || "Partie"}
       subtitle="Configuration, validation et publication. Aucun timer ne lance le live."
       actions={
         <Button
@@ -244,7 +278,9 @@ export function PartySetupView({ partyId, mode }: { partyId: string; mode: "crea
         {!isCreate ? <PartyAdminNav partyId={partyId} current="setup" /> : null}
         {feedback ? (
           <p
-            className={feedback.kind === "success" ? "text-sm text-emerald-300" : "text-sm text-rose-300"}
+            className={
+              feedback.kind === "success" ? "text-sm text-emerald-300" : "text-sm text-rose-300"
+            }
             role="status"
           >
             {feedback.message}
@@ -378,15 +414,14 @@ export function PartySetupView({ partyId, mode }: { partyId: string; mode: "crea
             <AdminSection title="État">
               <div className="space-y-2 p-4 text-sm">
                 <div className="flex items-center gap-2">
-                  {partyQuery.data ? (
-                    <AdminStatus tone="info">{partyQuery.data.status}</AdminStatus>
+                  {meta.status ? (
+                    <AdminStatus tone="info">{meta.status}</AdminStatus>
                   ) : (
                     <AdminStatus>BROUILLON</AdminStatus>
                   )}
-                  {partyQuery.data ? (
+                  {meta.updatedAt ? (
                     <span className="text-xs text-muted-foreground">
-                      v{partyQuery.data.configVersion} · maj{" "}
-                      {new Date(partyQuery.data.updatedAt).toLocaleString()}
+                      v{meta.configVersion ?? 1} · maj {new Date(meta.updatedAt).toLocaleString()}
                     </span>
                   ) : null}
                 </div>
@@ -420,11 +455,15 @@ export function PartySetupView({ partyId, mode }: { partyId: string; mode: "crea
                     <Button
                       size="sm"
                       onClick={() => publishMutation.mutate()}
-                      disabled={publishMutation.isPending || partyQuery.data?.status !== "DRAFT"}
+                      disabled={publishMutation.isPending || meta.status !== "DRAFT"}
                     >
                       Publier
                     </Button>
-                    <Button size="sm" variant="outline" render={<Link href={`/admin/parties/${partyId}/control`} />}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      render={<Link href={`/admin/parties/${partyId}/control`} />}
+                    >
                       Contrôle
                     </Button>
                   </div>
@@ -443,7 +482,7 @@ export function PartySetupView({ partyId, mode }: { partyId: string; mode: "crea
               </>
             ) : (
               <AdminSection title="Après création">
-                <p className="p-4 text-xs text-muted-foreground flex gap-2">
+                <p className="flex gap-2 p-4 text-xs text-muted-foreground">
                   <CircleAlert size={14} />
                   Enregistrez le brouillon, acquérez le lease, puis publiez depuis setup.
                 </p>
@@ -453,5 +492,60 @@ export function PartySetupView({ partyId, mode }: { partyId: string; mode: "crea
         </div>
       </div>
     </AppShell>
+  );
+}
+
+export function PartySetupView({ partyId, mode }: { partyId: string; mode: "create" | "edit" }) {
+  const isCreate = mode === "create";
+  // Stable per-mount id for create draft codes (avoids Date.now during render).
+  const createCodeSuffix = useId().replace(/:/g, "").slice(0, 8).toUpperCase();
+
+  const partyQuery = useQuery({
+    queryKey: ["admin", "party", partyId],
+    enabled: !isCreate,
+    queryFn: async () => {
+      const res = await getAdminParty(partyId);
+      if (!res.success) throw new Error(`${res.error.code}: ${res.error.message}`);
+      return res.data;
+    },
+  });
+
+  if (isCreate) {
+    return (
+      <PartySetupForm
+        key={`create-${createCodeSuffix}`}
+        partyId={partyId}
+        mode="create"
+        seed={createSeed(`P${createCodeSuffix}`)}
+      />
+    );
+  }
+
+  if (partyQuery.isLoading) {
+    return (
+      <AppShell audience="Admin" eyebrow="Configuration" title="Chargement…" subtitle="">
+        <p className="text-sm text-muted-foreground">Chargement de la partie…</p>
+      </AppShell>
+    );
+  }
+
+  if (partyQuery.isError || !partyQuery.data) {
+    return (
+      <AppShell audience="Admin" eyebrow="Configuration" title="Erreur" subtitle="">
+        <p className="text-sm text-rose-300" role="alert">
+          {partyQuery.error instanceof Error ? partyQuery.error.message : "Partie introuvable"}
+        </p>
+      </AppShell>
+    );
+  }
+
+  // Remount form when server snapshot changes instead of syncing via useEffect.
+  return (
+    <PartySetupForm
+      key={`${partyQuery.data.id}-${partyQuery.data.updatedAt}`}
+      partyId={partyId}
+      mode="edit"
+      seed={seedFromParty(partyQuery.data)}
+    />
   );
 }
