@@ -1,12 +1,21 @@
 /**
- * Deterministic foundation seed for v0.1.
+ * Deterministic foundation seed for v0.1 / production data model.
  *
  * - Upsert by stable unique keys (email, party code, composite uniques).
  * - Safe to run twice: second run re-affirms the same graph without orphans.
- * - Demo password for all seeded users: SeedPass123!
- * - Does not insert compliance/incident models (fields/retention not fixed).
+ * - Demo password for all seeded users: SeedPass123! (test/local only).
+ * - Forbidden when APP_ENV is production or staging.
+ * - Never logs credential values or secret material.
  */
-import { PrismaClient } from "@prisma/client";
+import {
+  EncryptedSecretPurpose,
+  EncryptionKeyStatus,
+  PaymentStatus,
+  PaymentInternalStatus,
+  ProviderServiceKind,
+  RetentionAction,
+  type PrismaClient,
+} from "@prisma/client";
 
 /** Fixed scrypt hash for password "SeedPass123!" (same format as apps/api). */
 export const SEED_PASSWORD_HASH =
@@ -20,6 +29,10 @@ export const SEED = {
   player2: { email: "player2@seed.local", name: "Seed Player Two", role: "PLAYER" },
   partyCode: "SEED-PARTY-01",
   partyName: "Seed Published Party",
+  entryFeeAmount: 500,
+  entryFeeCurrency: "XAF",
+  configVersion: 1,
+  feeVersion: 1,
   walletBalance: 1000,
   walletCurrency: "XAF",
   minigame: "memory_sequence",
@@ -29,6 +42,9 @@ export const SEED = {
   player1TokenHash: "seed-player1-token-hash",
   paymentIdempotencyP1: "seed-wallet-credit-p1",
   paymentIdempotencyP2: "seed-wallet-credit-p2",
+  encryptionKeyId: "seed-key-checkpoint-v1",
+  consentPolicyKey: "privacy",
+  consentPolicyVersion: "1.0.0",
 } as const;
 
 export type SeedResult = {
@@ -44,6 +60,16 @@ export type SeedResult = {
   participationIds: { player1: string; player2: string };
   reRun: boolean;
 };
+
+/**
+ * Block seed in staging/production. Safe for unit tests that pass APP_ENV explicitly.
+ */
+export function assertSeedAllowed(env: NodeJS.ProcessEnv = process.env): void {
+  const appEnv = (env.APP_ENV || "").toLowerCase();
+  if (appEnv === "production" || appEnv === "staging") {
+    throw new Error(`db:seed forbidden when APP_ENV=${appEnv}`);
+  }
+}
 
 async function upsertUserWithRole(
   prisma: PrismaClient,
@@ -93,7 +119,6 @@ async function ensureWallet(
     },
   });
 
-  // Affirm a single credit transaction + ledger for demo finance paths (idempotent).
   const existing = await prisma.paymentTransaction.findUnique({
     where: { idempotencyKey },
   });
@@ -101,9 +126,6 @@ async function ensureWallet(
     return;
   }
 
-  // On first seed only, ensure balance is SEED.walletBalance after credit path.
-  // If wallet already existed with different balance (re-seed after mutations), leave balance as-is
-  // and only create the ledger trace if missing.
   await prisma.$transaction(async (tx) => {
     const again = await tx.paymentTransaction.findUnique({ where: { idempotencyKey } });
     if (again) return;
@@ -111,16 +133,19 @@ async function ensureWallet(
     const transaction = await tx.paymentTransaction.create({
       data: {
         walletId: wallet.id,
+        userId,
         amount: SEED.walletBalance,
         type: "WALLET_CREDIT",
         provider: "SEED",
         reference: idempotencyKey,
         idempotencyKey,
-        status: "SUCCESSFUL",
+        status: PaymentStatus.SUCCESSFUL,
+        internalStatus: PaymentInternalStatus.SUCCEEDED,
+        serviceKind: ProviderServiceKind.COLLECTION,
+        settledAt: new Date(),
       },
     });
 
-    // Only set balance if this is effectively first credit for seed wallet.
     const current = await tx.wallet.findUniqueOrThrow({ where: { id: wallet.id } });
     const nextBalance =
       Number(current.balance) === 0 ? SEED.walletBalance : Number(current.balance);
@@ -133,9 +158,11 @@ async function ensureWallet(
     await tx.ledgerEntry.create({
       data: {
         transactionId: transaction.id,
+        walletId: wallet.id,
         debit: 0,
         credit: SEED.walletBalance,
         balance: nextBalance,
+        balanceAfter: nextBalance,
         reason: "Seed wallet credit",
         idempotencyKey,
       },
@@ -147,6 +174,8 @@ async function ensureWallet(
  * Apply the deterministic seed graph. Safe to call repeatedly.
  */
 export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
+  assertSeedAllowed();
+
   const priorParty = await prisma.party.findUnique({ where: { code: SEED.partyCode } });
   const reRun = !!priorParty;
 
@@ -176,7 +205,6 @@ export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
     SEED.player2.role,
   );
 
-  // Auth sessions for smoke login/session paths (upsert by unique token).
   const sessionExpires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   await prisma.authSession.upsert({
     where: { token: SEED.adminSessionToken },
@@ -216,6 +244,10 @@ export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
       visibility: "public",
       minPlayers: 2,
       maxPlayers: 8,
+      entryFeeAmount: SEED.entryFeeAmount,
+      entryFeeCurrency: SEED.entryFeeCurrency,
+      configVersion: SEED.configVersion,
+      feeVersion: SEED.feeVersion,
       scheduledAt: new Date("2030-01-15T18:00:00.000Z"),
       roundProgram: {
         rounds: [{ number: 1, minigame: SEED.minigame }],
@@ -227,6 +259,10 @@ export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
       visibility: "public",
       minPlayers: 2,
       maxPlayers: 8,
+      entryFeeAmount: SEED.entryFeeAmount,
+      entryFeeCurrency: SEED.entryFeeCurrency,
+      configVersion: SEED.configVersion,
+      feeVersion: SEED.feeVersion,
       scheduledAt: new Date("2030-01-15T18:00:00.000Z"),
       roundProgram: {
         rounds: [{ number: 1, minigame: SEED.minigame }],
@@ -241,6 +277,8 @@ export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
       userId: player1Id,
       role: "player",
       status: "REGISTERED",
+      paymentState: "NONE",
+      admissionState: "PENDING",
       readinessState: "ready",
       connectionState: "disconnected",
       idempotencyKey: "seed-participation-p1",
@@ -249,6 +287,8 @@ export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
       status: "REGISTERED",
       readinessState: "ready",
       role: "player",
+      paymentState: "NONE",
+      admissionState: "PENDING",
     },
   });
 
@@ -259,6 +299,8 @@ export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
       userId: player2Id,
       role: "player",
       status: "REGISTERED",
+      paymentState: "NONE",
+      admissionState: "PENDING",
       readinessState: "ready",
       connectionState: "disconnected",
       idempotencyKey: "seed-participation-p2",
@@ -267,13 +309,52 @@ export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
       status: "REGISTERED",
       readinessState: "ready",
       role: "player",
+      paymentState: "NONE",
+      admissionState: "PENDING",
     },
   });
 
   await ensureWallet(prisma, player1Id, SEED.paymentIdempotencyP1);
   await ensureWallet(prisma, player2Id, SEED.paymentIdempotencyP2);
 
-  // Live access sample for player1.
+  // Dual Fapshi credential refs (env key names only — never secret values).
+  await prisma.providerCredentialRef.upsert({
+    where: {
+      serviceKind_name: {
+        serviceKind: ProviderServiceKind.COLLECTION,
+        name: "fapshi-collection-default",
+      },
+    },
+    create: {
+      serviceKind: ProviderServiceKind.COLLECTION,
+      name: "fapshi-collection-default",
+      envKeyName: "FAPSHI_COLLECTION_API_KEY",
+      provider: "fapshi",
+    },
+    update: {
+      envKeyName: "FAPSHI_COLLECTION_API_KEY",
+      isActive: true,
+    },
+  });
+  await prisma.providerCredentialRef.upsert({
+    where: {
+      serviceKind_name: {
+        serviceKind: ProviderServiceKind.PAYOUT,
+        name: "fapshi-payout-default",
+      },
+    },
+    create: {
+      serviceKind: ProviderServiceKind.PAYOUT,
+      name: "fapshi-payout-default",
+      envKeyName: "FAPSHI_PAYOUT_API_KEY",
+      provider: "fapshi",
+    },
+    update: {
+      envKeyName: "FAPSHI_PAYOUT_API_KEY",
+      isActive: true,
+    },
+  });
+
   await prisma.realtimeConnection.upsert({
     where: { participationId: p1.id },
     create: {
@@ -299,10 +380,14 @@ export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
       number: 1,
       minigame: SEED.minigame,
       status: "SETUP",
+      runtimeVersion: "1.0.0",
+      configVersion: 1,
     },
     update: {
       minigame: SEED.minigame,
       status: "SETUP",
+      runtimeVersion: "1.0.0",
+      configVersion: 1,
     },
   });
 
@@ -323,6 +408,112 @@ export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
       status: "PENDING",
     },
     update: { status: "PENDING" },
+  });
+
+  // Encryption key metadata only (placeholder wrapped material, not a real secret).
+  const encKey = await prisma.encryptionKey.upsert({
+    where: { keyId: SEED.encryptionKeyId },
+    create: {
+      keyId: SEED.encryptionKeyId,
+      purpose: EncryptedSecretPurpose.CHECKPOINT,
+      algorithm: "AES-256-GCM",
+      status: EncryptionKeyStatus.ACTIVE,
+      kmsKeyRef: "seed/local/checkpoint",
+      createdByUserId: adminId,
+      wrappedMaterial: Buffer.from("seed-wrapped-placeholder-not-a-secret"),
+    },
+    update: {
+      status: EncryptionKeyStatus.ACTIVE,
+      kmsKeyRef: "seed/local/checkpoint",
+    },
+  });
+
+  // Ciphertext-only checkpoint (opaque bytes — not cleartext game state).
+  const checkpointCipher = Buffer.from("seed-checkpoint-ciphertext-opaque");
+  const existingCheckpoint = await prisma.roundCheckpoint.findUnique({
+    where: { roundId_version: { roundId: round.id, version: 1 } },
+  });
+  if (!existingCheckpoint) {
+    await prisma.roundCheckpoint.create({
+      data: {
+        roundId: round.id,
+        version: 1,
+        phase: "SETUP",
+        configVersion: 1,
+        runtimeVersion: "1.0.0",
+        payloadCipher: checkpointCipher,
+        payloadHash: "seed-checkpoint-hash",
+        keyId: encKey.id,
+        acceptedInputIds: [],
+        deadlines: {},
+      },
+    });
+  }
+
+  await prisma.minigameManifest.upsert({
+    where: { key_version: { key: SEED.minigame, version: "1.0.0" } },
+    create: {
+      key: SEED.minigame,
+      family: "SOLO",
+      name: "Memory Sequence",
+      version: "1.0.0",
+      enabled: true,
+      production: true,
+      config: { length: 4 },
+    },
+    update: {
+      enabled: true,
+      production: true,
+      family: "SOLO",
+      name: "Memory Sequence",
+    },
+  });
+
+  const retentionRules: Array<{
+    domain: string;
+    entityType: string;
+    retainDays: number;
+    action: RetentionAction;
+  }> = [
+    { domain: "game", entityType: "RoundCheckpoint", retainDays: 90, action: RetentionAction.DELETE },
+    { domain: "game", entityType: "EncryptedSecret", retainDays: 90, action: RetentionAction.DELETE },
+    { domain: "finance", entityType: "PaymentTransaction", retainDays: 2555, action: RetentionAction.KEEP },
+    { domain: "audit", entityType: "AuditLog", retainDays: 2555, action: RetentionAction.KEEP },
+  ];
+  for (const rule of retentionRules) {
+    await prisma.retentionPolicyRule.upsert({
+      where: {
+        domain_entityType: { domain: rule.domain, entityType: rule.entityType },
+      },
+      create: {
+        domain: rule.domain,
+        entityType: rule.entityType,
+        retainDays: rule.retainDays,
+        action: rule.action,
+        active: true,
+      },
+      update: {
+        retainDays: rule.retainDays,
+        action: rule.action,
+        active: true,
+      },
+    });
+  }
+
+  await prisma.consentRecord.upsert({
+    where: {
+      userId_policyKey_policyVersion: {
+        userId: player1Id,
+        policyKey: SEED.consentPolicyKey,
+        policyVersion: SEED.consentPolicyVersion,
+      },
+    },
+    create: {
+      userId: player1Id,
+      policyKey: SEED.consentPolicyKey,
+      policyVersion: SEED.consentPolicyVersion,
+    },
+    update: {},
   });
 
   const prov1 = await prisma.provisionalScore.upsert({
@@ -333,12 +524,14 @@ export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
       score: 10,
       rank: 1,
       status: "PENDING",
+      evidenceHash: "seed-evidence-p1",
       evidence: { source: "seed" },
     },
     update: {
       score: 10,
       rank: 1,
       status: "PENDING",
+      evidenceHash: "seed-evidence-p1",
     },
   });
   const prov2 = await prisma.provisionalScore.upsert({
@@ -349,16 +542,17 @@ export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
       score: 8,
       rank: 2,
       status: "PENDING",
+      evidenceHash: "seed-evidence-p2",
       evidence: { source: "seed" },
     },
     update: {
       score: 8,
       rank: 2,
       status: "PENDING",
+      evidenceHash: "seed-evidence-p2",
     },
   });
 
-  // One ScoreReview sample for admin verification path (idempotent: only if none).
   const reviewCount = await prisma.scoreReview.count({
     where: { provisionalScoreId: prov1.id },
   });
@@ -375,7 +569,6 @@ export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
     });
   }
 
-  // Published score for player1 (scoring smoke); unique on provisionalScoreId.
   await prisma.publishedScore.upsert({
     where: { provisionalScoreId: prov1.id },
     create: {
@@ -385,16 +578,17 @@ export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
       score: 10,
       rank: 1,
       publishedBy: adminId,
+      evidenceHash: "seed-evidence-p1",
     },
     update: {
       score: 10,
       rank: 1,
       publishedBy: adminId,
+      evidenceHash: "seed-evidence-p1",
     },
   });
   void prov2;
 
-  // Announcement (content) — separate from delivery.
   const existingAnnouncement = await prisma.announcement.findFirst({
     where: { partyId: party.id, title: "Seed lobby announcement" },
   });
@@ -409,7 +603,6 @@ export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
     });
   }
 
-  // Notification job + DeliveryLog for player1 (delivery path sample).
   let job = await prisma.notificationJob.findFirst({
     where: {
       userId: player1Id,
@@ -424,6 +617,7 @@ export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
         payload: { partyCode: SEED.partyCode, source: "seed" },
         status: "SENT",
         sentAt: new Date(),
+        idempotencyKey: "seed-notif-p1-lobby",
       },
     });
   } else {
@@ -454,6 +648,7 @@ export async function runSeed(prisma: PrismaClient): Promise<SeedResult> {
       action: reRun ? "SEED_RERUN" : "SEED_APPLY",
       entity: "Party",
       entityId: party.id,
+      result: "SUCCESS",
       metadata: { partyCode: SEED.partyCode, source: "packages/db/src/seed.ts" },
     },
   });

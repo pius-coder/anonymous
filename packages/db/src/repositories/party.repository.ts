@@ -14,6 +14,11 @@ export function createParty(data: CreatePartyData): Promise<Party> {
       maxPlayers: data.maxPlayers,
       roundProgram: (data.roundProgram ?? undefined) as Prisma.InputJsonValue | undefined,
       scheduledAt: data.scheduledAt,
+      entryFeeAmount: data.entryFeeAmount,
+      entryFeeCurrency: data.entryFeeCurrency ?? "XAF",
+      configVersion: data.configVersion ?? 1,
+      feeVersion: data.feeVersion ?? 1,
+      description: data.description,
     },
   });
 }
@@ -42,6 +47,11 @@ export type UpdatePartyData = {
   maxPlayers?: number;
   roundProgram?: unknown;
   scheduledAt?: Date;
+  entryFeeAmount?: number | null;
+  entryFeeCurrency?: string;
+  configVersion?: number;
+  feeVersion?: number;
+  description?: string | null;
 };
 
 export function updateParty(

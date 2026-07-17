@@ -1,11 +1,13 @@
 /**
  * CLI entry for `pnpm db:seed`.
  * Seed graph implementation lives in `src/seed.ts` (package rootDir).
+ * Never prints password hashes, tokens, or provider credential values.
  */
 import { PrismaClient } from "@prisma/client";
-import { runSeed, SEED } from "../src/seed.js";
+import { assertSeedAllowed, runSeed, SEED } from "../src/seed.js";
 
 async function main() {
+  assertSeedAllowed();
   const prisma = new PrismaClient();
   try {
     const result = await runSeed(prisma);
@@ -14,6 +16,7 @@ async function main() {
         ? "Seed re-run complete (upsert; graph re-affirmed)."
         : "Seed applied (first run).",
     );
+    // Local/test only: emails and party code — no passwords, tokens, or API keys.
     console.log(
       JSON.stringify(
         {
@@ -25,8 +28,8 @@ async function main() {
             SEED.player1.email,
             SEED.player2.email,
           ],
-          password: "SeedPass123!",
           reRun: result.reRun,
+          note: "Demo credentials are documented in packages/db/ARCHITECTURE.md for local/test only.",
         },
         null,
         2,

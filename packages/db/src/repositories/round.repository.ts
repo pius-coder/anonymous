@@ -16,6 +16,8 @@ export function createRound(data: CreateRoundData): Promise<Round> {
       minigame: data.minigame,
       status: data.status ?? "SETUP",
       deadline: data.deadline,
+      runtimeVersion: data.runtimeVersion,
+      configVersion: data.configVersion,
     },
   });
 }

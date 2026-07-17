@@ -55,7 +55,7 @@ describe("L1 paymentRepository (mocked prisma) idempotency persistence", () => {
     });
 
     expect(prismaMock.paymentTransaction.create).toHaveBeenCalledWith({
-      data: {
+      data: expect.objectContaining({
         walletId: "wallet-1",
         amount: 1500,
         type: "ACCESS_FEE",
@@ -63,7 +63,9 @@ describe("L1 paymentRepository (mocked prisma) idempotency persistence", () => {
         reference: "provider-reference",
         idempotencyKey: "idem-payment-1",
         status: "SUCCESSFUL",
-      },
+        currency: "XAF",
+        serviceKind: "COLLECTION",
+      }),
     });
   });
 
@@ -90,14 +92,15 @@ describe("L1 paymentRepository (mocked prisma) idempotency persistence", () => {
     });
 
     expect(prismaMock.ledgerEntry.create).toHaveBeenCalledWith({
-      data: {
+      data: expect.objectContaining({
         transactionId: "payment-1",
         debit: 1500,
         credit: 0,
         balance: 3500,
+        balanceAfter: 3500,
         reason: "Entry fee",
         idempotencyKey: "idem-ledger-1",
-      },
+      }),
     });
   });
 
@@ -115,7 +118,12 @@ describe("L1 paymentRepository (mocked prisma) idempotency persistence", () => {
 describe("paymentRepository transactional finance operations", () => {
   it("creates wallet debit payment, balance update and ledger in one serializable transaction", async () => {
     txMock.paymentTransaction.findUnique.mockResolvedValueOnce(null);
-    txMock.wallet.findUnique.mockResolvedValueOnce({ id: "wallet-1", balance: 5000 });
+    txMock.wallet.findUnique.mockResolvedValueOnce({
+      id: "wallet-1",
+      balance: 5000,
+      isFrozen: false,
+      userId: "user-1",
+    });
     txMock.paymentTransaction.create.mockResolvedValueOnce({ id: "payment-1", amount: 1500 });
     txMock.wallet.update.mockResolvedValueOnce({ id: "wallet-1", balance: 3500 });
     txMock.ledgerEntry.create.mockResolvedValueOnce({ id: "ledger-1" });
@@ -141,7 +149,7 @@ describe("paymentRepository transactional finance operations", () => {
     });
     expect(txMock.wallet.update).toHaveBeenCalledWith({
       where: { id: "wallet-1" },
-      data: { balance: { decrement: 1500 } },
+      data: { balance: { decrement: 1500 }, version: { increment: 1 } },
     });
     expect(txMock.ledgerEntry.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -177,7 +185,12 @@ describe("paymentRepository transactional finance operations", () => {
 
   it("rejects insufficient wallet balance before creating a transaction", async () => {
     txMock.paymentTransaction.findUnique.mockResolvedValueOnce(null);
-    txMock.wallet.findUnique.mockResolvedValueOnce({ id: "wallet-1", balance: 100 });
+    txMock.wallet.findUnique.mockResolvedValueOnce({
+      id: "wallet-1",
+      balance: 100,
+      isFrozen: false,
+      userId: "user-1",
+    });
 
     await expect(paymentRepository.createWalletDebitPayment({
       walletId: "wallet-1",
@@ -211,11 +224,15 @@ describe("paymentRepository transactional finance operations", () => {
 
     expect(txMock.paymentTransaction.update).toHaveBeenCalledWith({
       where: { id: "payment-1" },
-      data: { status: "SUCCESSFUL", reference: "provider-ref" },
+      data: expect.objectContaining({
+        status: "SUCCESSFUL",
+        reference: "provider-ref",
+        internalStatus: "SUCCEEDED",
+      }),
     });
     expect(txMock.wallet.update).toHaveBeenCalledWith({
       where: { id: "wallet-1" },
-      data: { balance: { increment: 1500 } },
+      data: { balance: { increment: 1500 }, version: { increment: 1 } },
     });
     expect(txMock.ledgerEntry.create).toHaveBeenCalledWith({
       data: expect.objectContaining({

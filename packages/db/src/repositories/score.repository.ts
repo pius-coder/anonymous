@@ -1,5 +1,12 @@
-import { Prisma } from "@prisma/client";
-import type { ProvisionalScore, PublishedScore, ScoreReview } from "@prisma/client";
+import {
+  LedgerDirection,
+  LedgerType,
+  PaymentInternalStatus,
+  PaymentStatus,
+  Prisma,
+  ProviderServiceKind,
+} from "@prisma/client";
+import type { ProvisionalScore, PublishedScore, ScoreReview, LedgerEntry } from "@prisma/client";
 import { prisma } from "../prisma.js";
 import type { CreateProvisionalScoreData, CreateScoreReviewData } from "./types.js";
 
@@ -11,6 +18,7 @@ export function createProvisionalScore(data: CreateProvisionalScoreData): Promis
       score: data.score ?? 0,
       status: data.status ?? "PENDING",
       evidence: (data.evidence ?? undefined) as Prisma.InputJsonValue | undefined,
+      evidenceHash: data.evidenceHash,
     },
   });
 }
@@ -229,4 +237,188 @@ export async function createScoreReviewAndUpdateProvisional(
 
     return { review, provisional: updated };
   });
+}
+
+export type PublishRoundWithGainsRow = PublishRoundScoreRow & {
+  /** Optional prize credit for this participation's wallet. */
+  prizeAmount?: number;
+  walletId?: string;
+  userId?: string;
+};
+
+export type PublishRoundWithGainsResult = PublishRoundScoresResult & {
+  gains: LedgerEntry[];
+  auditLogId: string | null;
+};
+
+/**
+ * Atomically publish scores, post prize gains (idempotent), and write audit.
+ * Compensable later via createCompensationLedgerEntry if needed.
+ */
+export async function publishRoundScoresWithGainsAndAudit(input: {
+  roundId: string;
+  publishedBy: string;
+  rows: PublishRoundWithGainsRow[];
+  provisionalStatus?: string;
+  correlationId?: string;
+  _attempt?: number;
+}): Promise<PublishRoundWithGainsResult> {
+  const attempt = input._attempt ?? 0;
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        const existing = await tx.publishedScore.findMany({
+          where: { roundId: input.roundId },
+          orderBy: { rank: "asc" },
+        });
+        if (existing.length > 0) {
+          const audit = await tx.auditLog.findFirst({
+            where: {
+              entity: "Round",
+              entityId: input.roundId,
+              action: "SCORES_PUBLISHED",
+            },
+            orderBy: { createdAt: "desc" },
+          });
+          return {
+            alreadyPublished: true,
+            published: existing,
+            gains: [],
+            auditLogId: audit?.id ?? null,
+          };
+        }
+
+        const published: PublishedScore[] = [];
+        const gains: LedgerEntry[] = [];
+
+        for (const row of input.rows) {
+          const created = await tx.publishedScore.create({
+            data: {
+              provisionalScoreId: row.provisionalScoreId,
+              roundId: input.roundId,
+              participationId: row.participationId,
+              score: row.score,
+              rank: row.rank,
+              publishedBy: input.publishedBy,
+            },
+          });
+          published.push(created);
+
+          await tx.provisionalScore.update({
+            where: { id: row.provisionalScoreId },
+            data: {
+              status: input.provisionalStatus ?? "PUBLISHED",
+              reviewedBy: input.publishedBy,
+              reviewedAt: new Date(),
+              rank: row.rank,
+            },
+          });
+
+          if (row.prizeAmount && row.prizeAmount > 0 && row.walletId) {
+            const prizeKey = `prize:${input.roundId}:${row.participationId}`;
+            const existingTx = await tx.paymentTransaction.findUnique({
+              where: { idempotencyKey: prizeKey },
+              include: { ledgerEntry: true },
+            });
+            if (existingTx?.ledgerEntry) {
+              gains.push(existingTx.ledgerEntry);
+            } else {
+              const payment = await tx.paymentTransaction.create({
+                data: {
+                  walletId: row.walletId,
+                  userId: row.userId,
+                  amount: row.prizeAmount,
+                  type: "PRIZE",
+                  provider: "SYSTEM",
+                  idempotencyKey: prizeKey,
+                  status: PaymentStatus.SUCCESSFUL,
+                  internalStatus: PaymentInternalStatus.SUCCEEDED,
+                  serviceKind: ProviderServiceKind.PAYOUT,
+                  settledAt: new Date(),
+                },
+              });
+              const wallet = await tx.wallet.update({
+                where: { id: row.walletId },
+                data: {
+                  balance: { increment: row.prizeAmount },
+                  version: { increment: 1 },
+                },
+              });
+              const ledger = await tx.ledgerEntry.create({
+                data: {
+                  transactionId: payment.id,
+                  walletId: row.walletId,
+                  debit: 0,
+                  credit: row.prizeAmount,
+                  balance: wallet.balance,
+                  balanceAfter: wallet.balance,
+                  reason: `Prize round ${input.roundId}`,
+                  idempotencyKey: prizeKey,
+                  direction: LedgerDirection.CREDIT,
+                  ledgerType: LedgerType.PRIZE,
+                },
+              });
+              gains.push(ledger);
+            }
+          }
+        }
+
+        const audit = await tx.auditLog.create({
+          data: {
+            userId: input.publishedBy,
+            action: "SCORES_PUBLISHED",
+            entity: "Round",
+            entityId: input.roundId,
+            result: "SUCCESS",
+            correlationId: input.correlationId,
+            reason: "Atomic score publication with gains",
+            metadata: {
+              publishedCount: published.length,
+              gainsCount: gains.length,
+            },
+          },
+        });
+
+        return {
+          alreadyPublished: false,
+          published,
+          gains,
+          auditLogId: audit.id,
+        };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const isConflict =
+      (error instanceof Prisma.PrismaClientKnownRequestError &&
+        (error.code === "P2002" || error.code === "P2034")) ||
+      /could not serialize|40001/i.test(message);
+    if (isConflict) {
+      const published = await prisma.publishedScore.findMany({
+        where: { roundId: input.roundId },
+        orderBy: { rank: "asc" },
+      });
+      if (published.length > 0) {
+        const audit = await prisma.auditLog.findFirst({
+          where: {
+            entity: "Round",
+            entityId: input.roundId,
+            action: "SCORES_PUBLISHED",
+          },
+          orderBy: { createdAt: "desc" },
+        });
+        return {
+          alreadyPublished: true,
+          published,
+          gains: [],
+          auditLogId: audit?.id ?? null,
+        };
+      }
+      if (attempt < 12) {
+        return publishRoundScoresWithGainsAndAudit({ ...input, _attempt: attempt + 1 });
+      }
+    }
+    throw error;
+  }
 }
