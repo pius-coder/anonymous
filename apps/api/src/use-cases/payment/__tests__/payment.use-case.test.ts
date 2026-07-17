@@ -9,8 +9,11 @@ const dbMocks = vi.hoisted(() => ({
     findTransactionById: vi.fn(),
     findTransactionByIdempotencyKey: vi.fn(),
     createPaymentTransaction: vi.fn(),
+    createCheckoutPayment: vi.fn(),
     updateTransactionStatus: vi.fn(),
     settlePaymentWebhook: vi.fn(),
+    ingestProviderWebhook: vi.fn(),
+    applyWebhookSettlement: vi.fn(),
     findWalletById: vi.fn(),
     listLedgerEntriesByUserId: vi.fn(),
     listTransactionsByWallet: vi.fn(),
@@ -180,6 +183,9 @@ describe("payWithWallet", () => {
       amount: 1500,
       reason: "Entry fee",
       idempotencyKey: "idem-wallet-01",
+      partyId: undefined,
+      participationId: undefined,
+      userId: "user-1",
     });
     expect(result.payment).toMatchObject({ id: "payment-1", status: "SUCCESSFUL" });
     expect(result.amount).toBe(1500);
@@ -203,8 +209,59 @@ describe("payWithWallet", () => {
 });
 
 describe("handlePaymentWebhook", () => {
-  it("settles a TOP_UP webhook through the idempotent repository operation", async () => {
-    dbMocks.paymentRepository.findTransactionById.mockResolvedValueOnce({
+  it("settles ACCESS_FEE via inbox + applyWebhookSettlement (PAID path)", async () => {
+    dbMocks.paymentRepository.findTransactionById.mockResolvedValue({
+      id: "payment-1",
+      walletId: "wallet-1",
+      amount: 2500,
+      type: "ACCESS_FEE",
+      provider: "FAPSHI",
+      reference: null,
+      status: "PENDING",
+      participationId: "part-1",
+      serviceKind: "COLLECTION",
+      createdAt: new Date("2026-07-15T10:00:00.000Z"),
+    });
+    dbMocks.paymentRepository.ingestProviderWebhook.mockResolvedValue({
+      inbox: { id: "inbox-1", inboxStatus: "RECEIVED" },
+      duplicate: false,
+    });
+    dbMocks.paymentRepository.applyWebhookSettlement.mockResolvedValue({
+      payment: {
+        id: "payment-1",
+        walletId: "wallet-1",
+        amount: 2500,
+        type: "ACCESS_FEE",
+        provider: "FAPSHI",
+        reference: "provider-ref",
+        status: "SUCCESSFUL",
+        createdAt: new Date("2026-07-15T10:00:00.000Z"),
+      },
+      applied: true,
+    });
+
+    const result = await handlePaymentWebhook({
+      transactionId: "payment-1",
+      status: "SUCCESS",
+      providerReference: "provider-ref",
+      signature: "valid",
+    });
+
+    expect(dbMocks.paymentRepository.ingestProviderWebhook).toHaveBeenCalled();
+    expect(dbMocks.paymentRepository.applyWebhookSettlement).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inboxId: "inbox-1",
+        transactionId: "payment-1",
+        wireStatus: "SUCCESSFUL",
+        admitOnSuccess: false,
+      }),
+    );
+    expect(dbMocks.paymentRepository.settlePaymentWebhook).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ id: "payment-1", status: "SUCCESSFUL" });
+  });
+
+  it("settles TOP_UP without participation via settlePaymentWebhook", async () => {
+    dbMocks.paymentRepository.findTransactionById.mockResolvedValue({
       id: "payment-1",
       walletId: "wallet-1",
       amount: 1500,
@@ -212,9 +269,15 @@ describe("handlePaymentWebhook", () => {
       provider: "FAPSHI",
       reference: null,
       status: "PENDING",
+      participationId: null,
+      serviceKind: "COLLECTION",
       createdAt: new Date("2026-07-15T10:00:00.000Z"),
     });
-    dbMocks.paymentRepository.settlePaymentWebhook.mockResolvedValueOnce({
+    dbMocks.paymentRepository.ingestProviderWebhook.mockResolvedValue({
+      inbox: { id: "inbox-2", inboxStatus: "RECEIVED" },
+      duplicate: false,
+    });
+    dbMocks.paymentRepository.settlePaymentWebhook.mockResolvedValue({
       id: "payment-1",
       walletId: "wallet-1",
       amount: 1500,
@@ -237,47 +300,11 @@ describe("handlePaymentWebhook", () => {
       status: "SUCCESSFUL",
       providerReference: "provider-ref",
     });
-    expect(result).toMatchObject({ id: "payment-1", status: "SUCCESSFUL" });
-  });
-
-  it("marks ACCESS_FEE successful without wallet credit side effects", async () => {
-    dbMocks.paymentRepository.findTransactionById.mockResolvedValueOnce({
-      id: "payment-1",
-      walletId: "wallet-1",
-      amount: 2500,
-      type: "ACCESS_FEE",
-      provider: "FAPSHI",
-      reference: null,
-      status: "PENDING",
-      createdAt: new Date("2026-07-15T10:00:00.000Z"),
-    });
-    dbMocks.paymentRepository.updateTransactionStatus.mockResolvedValueOnce({
-      id: "payment-1",
-      walletId: "wallet-1",
-      amount: 2500,
-      type: "ACCESS_FEE",
-      provider: "FAPSHI",
-      reference: "provider-ref",
-      status: "SUCCESSFUL",
-      createdAt: new Date("2026-07-15T10:00:00.000Z"),
-    });
-
-    await handlePaymentWebhook({
-      transactionId: "payment-1",
-      status: "SUCCESS",
-      providerReference: "provider-ref",
-      signature: "valid",
-    });
-
-    expect(dbMocks.paymentRepository.settlePaymentWebhook).not.toHaveBeenCalled();
-    expect(dbMocks.paymentRepository.updateTransactionStatus).toHaveBeenCalledWith(
-      "payment-1",
-      expect.objectContaining({ status: "SUCCESSFUL" }),
-    );
+    expect(result.status).toBe("SUCCESSFUL");
   });
 
   it("returns terminal transactions without replaying settlement side effects", async () => {
-    dbMocks.paymentRepository.findTransactionById.mockResolvedValueOnce({
+    dbMocks.paymentRepository.findTransactionById.mockResolvedValue({
       id: "payment-1",
       walletId: "wallet-1",
       amount: 1500,
@@ -295,6 +322,7 @@ describe("handlePaymentWebhook", () => {
       signature: "valid",
     });
 
+    expect(dbMocks.paymentRepository.ingestProviderWebhook).not.toHaveBeenCalled();
     expect(dbMocks.paymentRepository.settlePaymentWebhook).not.toHaveBeenCalled();
   });
 
@@ -316,7 +344,7 @@ describe("handlePaymentWebhook", () => {
 
 describe("reconcilePayment", () => {
   it("closes PENDING as FAILED and writes audit metadata", async () => {
-    dbMocks.paymentRepository.findTransactionById.mockResolvedValueOnce({
+    dbMocks.paymentRepository.findTransactionById.mockResolvedValue({
       id: "payment-1",
       walletId: "wallet-1",
       amount: 1000,
@@ -326,7 +354,7 @@ describe("reconcilePayment", () => {
       status: "PENDING",
       createdAt: new Date("2026-07-15T10:00:00.000Z"),
     });
-    dbMocks.paymentRepository.updateTransactionStatus.mockResolvedValueOnce({
+    dbMocks.paymentRepository.updateTransactionStatus.mockResolvedValue({
       id: "payment-1",
       walletId: "wallet-1",
       amount: 1000,
@@ -336,7 +364,7 @@ describe("reconcilePayment", () => {
       status: "FAILED",
       createdAt: new Date("2026-07-15T10:00:00.000Z"),
     });
-    dbMocks.auditRepository.createAuditLog.mockResolvedValueOnce({});
+    dbMocks.auditRepository.createAuditLog.mockResolvedValue({});
 
     const result = await reconcilePayment("payment-1", "admin-1", "provider timeout");
     expect(result.status).toBe("FAILED");

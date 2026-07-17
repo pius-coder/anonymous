@@ -24,13 +24,17 @@ const initiatePaymentSchema = z.object({
   /** Client may send amount for TOP_UP only; ACCESS_FEE always uses server catalog. */
   amount: z.number().positive().optional(),
   idempotencyKey: z.string().min(8),
+  partyId: z.string().min(1).optional(),
+  participationId: z.string().min(1).optional(),
 });
 
 const webhookSchema = z.object({
   transactionId: z.string().min(1),
-  status: z.enum(["SUCCESS", "FAILED", "PENDING"]),
+  status: z.enum(["SUCCESS", "SUCCESSFUL", "FAILED", "PENDING", "EXPIRED"]),
   providerReference: z.string().min(1),
   signature: z.string().min(1),
+  externalEventId: z.string().min(1).optional(),
+  providerTransId: z.string().min(1).optional(),
 });
 
 const payWithWalletSchema = z.object({
@@ -40,6 +44,8 @@ const payWithWalletSchema = z.object({
   /** Optional client hint — ignored for ACCESS_FEE (server amount). */
   amount: z.number().positive().optional(),
   idempotencyKey: z.string().min(8),
+  partyId: z.string().min(1).optional(),
+  participationId: z.string().min(1).optional(),
 });
 
 const paymentIdParamSchema = z.object({
@@ -65,6 +71,8 @@ paymentRouter.post("/payments/initiate", requireAuth, zValidator("json", initiat
       currency: input.currency,
       requestedAmount: input.amount,
       idempotencyKey: input.idempotencyKey,
+      partyId: input.partyId,
+      participationId: input.participationId,
     });
     return successResponse(c, result, 201);
   } catch (err) {
@@ -80,6 +88,8 @@ paymentRouter.post("/payments/webhook/fapshi", zValidator("json", webhookSchema)
       status: payload.status,
       providerReference: payload.providerReference,
       signature: payload.signature,
+      externalEventId: payload.externalEventId,
+      providerTransId: payload.providerTransId,
     });
     return successResponse(c, result);
   } catch (err) {
@@ -98,6 +108,8 @@ paymentRouter.post("/payments/wallet/pay", requireAuth, zValidator("json", payWi
       reason: input.reason,
       requestedAmount: input.amount,
       idempotencyKey: input.idempotencyKey,
+      partyId: input.partyId,
+      participationId: input.participationId,
     });
     return successResponse(c, result, 201);
   } catch (err) {

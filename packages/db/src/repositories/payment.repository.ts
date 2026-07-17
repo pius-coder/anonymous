@@ -163,27 +163,122 @@ export function updateTransactionStatus(
   });
 }
 
-export function listAllTransactions(filter: ListTransactionsFilter = {}): Promise<PaymentTransaction[]> {
-  const skip = filter.skip ?? 0;
-  const take = filter.take ?? 50;
+function buildTransactionWhere(
+  filter: ListTransactionsFilter,
+): Prisma.PaymentTransactionWhereInput {
   const where: Prisma.PaymentTransactionWhereInput = {};
   if (filter.status) where.status = asPaymentStatus(filter.status);
   if (filter.walletId) where.walletId = filter.walletId;
+  if (filter.serviceKind) where.serviceKind = filter.serviceKind;
+  if (filter.type) where.type = filter.type;
+  if (filter.userId) where.userId = filter.userId;
+  if (filter.createdAfter) where.createdAt = { gte: filter.createdAfter };
+  return where;
+}
+
+export function listAllTransactions(filter: ListTransactionsFilter = {}): Promise<PaymentTransaction[]> {
+  const skip = filter.skip ?? 0;
+  const take = filter.take ?? 50;
   return prisma.paymentTransaction.findMany({
-    where,
+    where: buildTransactionWhere(filter),
     orderBy: { createdAt: "desc" },
     skip,
     take,
   });
 }
 
-export function countTransactions(
-  filter: Pick<ListTransactionsFilter, "status" | "walletId"> = {},
-): Promise<number> {
-  const where: Prisma.PaymentTransactionWhereInput = {};
-  if (filter.status) where.status = asPaymentStatus(filter.status);
-  if (filter.walletId) where.walletId = filter.walletId;
-  return prisma.paymentTransaction.count({ where });
+export function countTransactions(filter: ListTransactionsFilter = {}): Promise<number> {
+  return prisma.paymentTransaction.count({ where: buildTransactionWhere(filter) });
+}
+
+/** Cursor-style page for reconciliation workers (oldest PENDING first). */
+export function listPendingForReconciliation(input: {
+  skip?: number;
+  take?: number;
+  serviceKind?: ProviderServiceKind;
+}): Promise<PaymentTransaction[]> {
+  return prisma.paymentTransaction.findMany({
+    where: {
+      status: PaymentStatus.PENDING,
+      ...(input.serviceKind ? { serviceKind: input.serviceKind } : {}),
+    },
+    orderBy: { createdAt: "asc" },
+    skip: input.skip ?? 0,
+    take: input.take ?? 50,
+  });
+}
+
+export function listReconciliations(filter: {
+  status?: ReconciliationStatus;
+  skip?: number;
+  take?: number;
+}): Promise<PaymentReconciliation[]> {
+  return prisma.paymentReconciliation.findMany({
+    where: filter.status ? { status: filter.status } : undefined,
+    orderBy: { createdAt: "desc" },
+    skip: filter.skip ?? 0,
+    take: filter.take ?? 50,
+  });
+}
+
+export function findReconciliationById(id: string): Promise<PaymentReconciliation | null> {
+  return prisma.paymentReconciliation.findUnique({ where: { id } });
+}
+
+export function findOpenReconciliationForPayment(
+  paymentId: string,
+): Promise<PaymentReconciliation | null> {
+  return prisma.paymentReconciliation.findFirst({
+    where: {
+      paymentId,
+      status: { in: [ReconciliationStatus.PENDING, ReconciliationStatus.MISMATCH] },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export function countLedgerEntries(filter: { createdAfter?: Date } = {}): Promise<number> {
+  return prisma.ledgerEntry.count({
+    where: filter.createdAfter ? { createdAt: { gte: filter.createdAfter } } : undefined,
+  });
+}
+
+export function sumLedgerCredits(filter: { createdAfter?: Date } = {}): Promise<number> {
+  return prisma.ledgerEntry
+    .aggregate({
+      where: filter.createdAfter ? { createdAt: { gte: filter.createdAfter } } : undefined,
+      _sum: { credit: true },
+    })
+    .then((r) => Number(r._sum.credit ?? 0));
+}
+
+export function sumLedgerDebits(filter: { createdAfter?: Date } = {}): Promise<number> {
+  return prisma.ledgerEntry
+    .aggregate({
+      where: filter.createdAfter ? { createdAt: { gte: filter.createdAfter } } : undefined,
+      _sum: { debit: true },
+    })
+    .then((r) => Number(r._sum.debit ?? 0));
+}
+
+export function countPaidParticipations(): Promise<number> {
+  return prisma.partyParticipation.count({
+    where: { paymentState: "PAID" },
+  });
+}
+
+export function listWallets(filter: { skip?: number; take?: number } = {}): Promise<Wallet[]> {
+  return prisma.wallet.findMany({
+    orderBy: { updatedAt: "desc" },
+    skip: filter.skip ?? 0,
+    take: filter.take ?? 50,
+  });
+}
+
+export function sumWalletBalances(): Promise<number> {
+  return prisma.wallet
+    .aggregate({ _sum: { balance: true } })
+    .then((r) => Number(r._sum.balance ?? 0));
 }
 
 export function createLedgerEntryFull(data: CreateLedgerEntryFullData): Promise<LedgerEntry> {

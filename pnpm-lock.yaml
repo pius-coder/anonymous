@@ -311,6 +311,9 @@ importers:
       '@session-jeu/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@session-jeu/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@session-jeu/whatsapp-gateway':
         specifier: workspace:*
         version: link:../whatsapp-gateway
