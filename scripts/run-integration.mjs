@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * L3/L4 integration: disposable infra → empty migrate → API + Colyseus → harness tests → teardown.
+ * L3/L4 integration: disposable infra → empty migrate → API + Colyseus (+ worker) → harness → teardown.
  * Guarantees teardown even after failures.
  */
 import { spawnSync } from "node:child_process";
@@ -19,6 +19,7 @@ import {
 } from "./lib/infra.mjs";
 
 const TIMEOUT_MS = Number(process.env.INTEGRATION_TIMEOUT_MS || 300_000);
+const WITH_WORKER = process.env.INTEGRATION_WITH_WORKER !== "0";
 
 async function main() {
   const env = resolveWorktreeEnv();
@@ -48,15 +49,25 @@ async function main() {
     infraStarted = true;
     migrateEmptyDb(env);
 
-    const childEnv = toChildEnv(env);
+    const childEnv = {
+      ...toChildEnv(env),
+      APP_ENV: "test",
+      TEST_LEVEL: "L3-L4",
+    };
 
-    // Ensure workspace packages are built for runtime imports
     safeLog("[integration] building dependencies");
-    const build = spawnSync(
-      "pnpm",
-      ["exec", "turbo", "run", "build", "--filter=@session-jeu/api...", "--filter=@session-jeu/game-server..."],
-      { cwd: ROOT, env: childEnv, stdio: "inherit" },
-    );
+    const filters = [
+      "--filter=@session-jeu/api...",
+      "--filter=@session-jeu/game-server...",
+      "--filter=@session-jeu/config",
+    ];
+    if (WITH_WORKER) filters.push("--filter=@session-jeu/worker...");
+
+    const build = spawnSync("pnpm", ["exec", "turbo", "run", "build", ...filters], {
+      cwd: ROOT,
+      env: childEnv,
+      stdio: "inherit",
+    });
     if (build.status !== 0) {
       throw new Error("dependency build failed");
     }
@@ -78,14 +89,29 @@ async function main() {
       }),
     );
 
+    if (WITH_WORKER) {
+      services.push(
+        spawnService({
+          name: "worker",
+          command: "pnpm",
+          args: ["--filter", "@session-jeu/worker", "exec", "tsx", "src/index.ts"],
+          env: {
+            ...childEnv,
+            WORKER_AUTOSTART: "1",
+            // Real Redis from harness — no fake queue
+          },
+        }),
+      );
+    }
+
     await waitForHttpOk(`${env.API_URL}/health`, 90_000);
     await waitForPort(Number(env.GAME_SERVER_PORT), env.TEST_HOST, 90_000);
-    safeLog("[integration] services ready");
+    safeLog("[integration] services ready (api + colyseus" + (WITH_WORKER ? " + worker" : "") + ")");
 
     const testEnv = {
       ...childEnv,
-      // Vitest files should not re-listen; they call live servers over the network.
       HARNESS_MODE: "1",
+      INTEGRATION_WITH_WORKER: WITH_WORKER ? "1" : "0",
     };
 
     const vitest = spawnSync(

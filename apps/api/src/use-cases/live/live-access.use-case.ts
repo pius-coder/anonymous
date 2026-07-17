@@ -1,10 +1,18 @@
 import { randomUUID, randomBytes } from "node:crypto";
+import { isStrictDeployEnv, resolveAppEnv } from "@session-jeu/config";
 import { partyRepository, participationRepository, realtimeRepository } from "@session-jeu/db";
 import { hashOpaqueToken } from "@session-jeu/shared";
 
 const LIVE_TOKEN_TTL_MS = 60_000;
-const ALLOWED_PARTY_STATUSES = ["PREPARATION_LOCKED", "ROUND_SETUP", "ROUND_BRIEFING", "ROUND_ACTIVE", "ROUND_CLOSING", "VERIFICATION", "RESULTS_PUBLISHED"];
-const DEFAULT_LIVE_SERVER_URL = "ws://localhost:3002";
+const ALLOWED_PARTY_STATUSES = [
+  "PREPARATION_LOCKED",
+  "ROUND_SETUP",
+  "ROUND_BRIEFING",
+  "ROUND_ACTIVE",
+  "ROUND_CLOSING",
+  "VERIFICATION",
+  "RESULTS_PUBLISHED",
+];
 
 export class LiveAccessUseCaseError extends Error {
   readonly code: string;
@@ -32,6 +40,19 @@ export type CreateLiveAccessOutput = {
 
 function generateLiveToken(): string {
   return randomBytes(32).toString("base64url");
+}
+
+function resolveLiveServerUrl(): string {
+  if (process.env.GAME_WS_URL) return process.env.GAME_WS_URL;
+  if (process.env.LIVE_SERVER_URL) return process.env.LIVE_SERVER_URL;
+  if (isStrictDeployEnv(resolveAppEnv())) {
+    throw new LiveAccessUseCaseError(
+      "LIVE_ENDPOINT_REQUIRED",
+      "GAME_WS_URL is required in staging/production",
+      500,
+    );
+  }
+  return "ws://localhost:3002";
 }
 
 export async function createLiveAccess(input: CreateLiveAccessInput): Promise<CreateLiveAccessOutput> {
@@ -70,7 +91,7 @@ export async function createLiveAccess(input: CreateLiveAccessInput): Promise<Cr
   return {
     connectionToken: accessToken,
     roomId: input.partyId,
-    endpoint: process.env.LIVE_SERVER_URL ?? DEFAULT_LIVE_SERVER_URL,
+    endpoint: resolveLiveServerUrl(),
     expiresAt: connection.tokenExpiresAt.toISOString(),
   };
 }

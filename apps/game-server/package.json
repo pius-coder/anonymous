@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@colyseus/schema": "^4.0.27",
+    "@session-jeu/config": "workspace:*",
     "@session-jeu/db": "workspace:^",
     "@session-jeu/game-engine": "workspace:^",
     "@session-jeu/shared": "workspace:*",

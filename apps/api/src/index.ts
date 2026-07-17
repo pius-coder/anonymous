@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { connectNodeAdapter } from "@connectrpc/connect-node";
 import { getRequestListener } from "@hono/node-server";
 import { Hono } from "hono";
+import { assertBootEnv } from "@session-jeu/config";
 import type { AppEnv } from "./app-env.js";
 import { authRouter } from "./routes/auth.js";
 import { meRouter } from "./routes/me.js";
@@ -41,6 +42,9 @@ app.route("/v1", roundRouter);
 const port = Number(process.env.PORT) || 3001;
 
 if (process.env.NODE_ENV !== "test") {
+  // Fail-fast before opening a port (P-SEQ-00). Local/test remain permissive.
+  assertBootEnv("api");
+
   const honoListener = getRequestListener(app.fetch);
   const requestListener = connectNodeAdapter({
     routes: registerRpcRoutes,

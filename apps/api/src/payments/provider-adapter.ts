@@ -2,7 +2,9 @@
  * Payment provider adapter (Fapshi-compatible port).
  * Does not call a real remote SDK unless FAPSHI_API_URL + FAPSHI_API_KEY are set.
  * Ownership: A-PAYMENT may own this adapter; contracts/schema/worker remain out of scope.
+ * P-SEQ-00: never emit fapshi-local references in staging/production.
  */
+import { isStrictDeployEnv, resolveAppEnv } from "@session-jeu/config";
 
 export type ExternalInitiateInput = {
   transactionId: string;
@@ -61,7 +63,11 @@ export async function initiateExternalCheckout(
     };
   }
 
-  // Foundation / offline adapter: no remote call, stable references for tests.
+  // Foundation / offline adapter: local/test only — never staging/production.
+  if (isStrictDeployEnv(resolveAppEnv())) {
+    throw new Error("PROVIDER_NOT_CONFIGURED");
+  }
+
   return {
     checkoutUrl: `/payments/checkout/${input.transactionId}`,
     providerReference: `fapshi-local-${input.transactionId}`,
@@ -71,6 +77,9 @@ export async function initiateExternalCheckout(
 
 export function verifyWebhookSignature(signature: string, secret: string | undefined): boolean {
   if (!secret) {
+    if (isStrictDeployEnv(resolveAppEnv())) {
+      return false;
+    }
     // When secret is unset (local/dev), accept any non-empty signature so tests
     // can exercise the happy path; production must set FAPSHI_WEBHOOK_SECRET.
     return signature.length > 0;
