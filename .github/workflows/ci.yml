@@ -138,10 +138,17 @@ jobs:
         run: pnpm lint
       - name: Build
         run: pnpm build
+        env:
+          # next build sets NODE_ENV=production; APP_ENV remains test so local defaults stay valid
+          APP_ENV: test
+          API_URL: http://127.0.0.1:3001
+          GAME_WS_URL: ws://127.0.0.1:3002
       - name: Production incomplete env must fail
         run: |
           set +e
-          APP_ENV=production NODE_ENV=production \
+          env -u DATABASE_URL -u REDIS_URL -u API_URL -u GAME_WS_URL \
+            -u FAPSHI_BASE_URL -u FAPSHI_API_USER -u FAPSHI_API_KEY -u FAPSHI_WEBHOOK_SECRET \
+            APP_ENV=production NODE_ENV=production \
             node scripts/validate-env.mjs --service api
           code=$?
           set -e

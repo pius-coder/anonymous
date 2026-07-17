@@ -3,7 +3,8 @@ import { networkInterfaces } from "node:os";
 
 function resolveApiUrl(): string {
   if (process.env.API_URL) return process.env.API_URL;
-  const appEnv = (process.env.APP_ENV || process.env.NODE_ENV || "local").toLowerCase();
+  // Deployment env only — never treat NODE_ENV=production (next build) as APP_ENV=production.
+  const appEnv = (process.env.APP_ENV || "local").toLowerCase();
   if (appEnv === "production" || appEnv === "staging" || appEnv === "prod") {
     throw new Error("API_URL is required in staging/production (no localhost default)");
   }
