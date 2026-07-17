@@ -7,6 +7,7 @@ Cette documentation est la source de verite de reconstruction. Elle ne valide pa
 1. `00-audit/` decrit l'etat observe, les erreurs et la matrice KEEP/REWRITE/DELETE/UNKNOWN.
    Pour l'etat **code v0.1 actuel** : `00-audit/v0.1-current-state.md`.
 2. `01-product/` fixe le vocabulaire, les acteurs, le cycle de vie produit et le catalogue des mini-jeux.
+   Les six rulebooks signes du premier lancement sont dans `01-product/rulebooks/`.
 3. `02-ux/` separe les parcours administrateur, joueur et observateur lecture seule.
 4. `03-architecture/` decrit la cible technique, les frontieres, le temps reel, Protobuf et les UML par theme.
 5. `04-layers/` donne le canevas d'ajout, modification et suppression par couche.
@@ -34,6 +35,8 @@ Pour terminer v0.1 avec plusieurs agents/worktrees, lire dans cet ordre :
   Figma-like des ecrans, composants et Sheets. Ces documents decrivent les comportements humains
   reels et le shell plein ecran sans scroll de page.
 - Le catalogue des 120 mini-jeux est restaure comme inventaire produit dans `01-product/minigame-catalog.md`; chaque mini-jeu reste a revalider avant implementation.
+- Les six cles du premier lancement sont ratifiees (`DEC-P-SEQ-01-RATIFY`) avec rulebooks `APPROVED`
+  v1.0.0 ; ADR `03-architecture/decisions/0003-six-minigame-rulebook-freeze.md`.
 - Le code source legacy a ete supprime de la fondation `v0.1` apres demande explicite de nettoyage immediat, tout en conservant les packages, applications, lockfiles, configurations et tests de socle.
 
 ## Audit HEAD legacy
