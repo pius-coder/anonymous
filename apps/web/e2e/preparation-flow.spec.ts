@@ -104,7 +104,8 @@ test.describe("L5 preparation flow", () => {
       await expect(adminPage.getByText("Annonce E2E préparation").last()).toBeVisible();
 
       const playerPage = await playerContext.newPage();
-      await playerPage.goto(`/parties/${partyCode}/lobby`);
+      const lobbyResponse = await playerPage.goto(`/parties/${partyCode}/lobby`);
+      expect(lobbyResponse?.status()).toBe(200);
       await expect(playerPage.getByText("Annonce E2E préparation")).toBeVisible();
       await playerPage.getByRole("button", { name: "Je suis présent" }).click();
       await expect(playerPage.getByRole("button", { name: "Présence confirmée" })).toBeDisabled();

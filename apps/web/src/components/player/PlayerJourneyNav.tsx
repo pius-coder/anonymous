@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Check, ChevronRight } from "lucide-react";
-import type { UiParty } from "@/lib/ui-data";
 
 const steps = [
   { key: "participation", label: "Inscription" },
@@ -13,7 +12,13 @@ const steps = [
 
 type Step = (typeof steps)[number]["key"];
 
-export function PlayerJourneyNav({ party, current }: { party: UiParty; current: Step }) {
+type PlayerJourneyNavProps = { current: Step } & (
+  { partyCode: string; party?: never } | { party: { code: string }; partyCode?: never }
+);
+
+export function PlayerJourneyNav(props: PlayerJourneyNavProps) {
+  const { current } = props;
+  const partyCode = "partyCode" in props ? props.partyCode : props.party.code;
   const currentIndex = steps.findIndex((step) => step.key === current);
 
   return (
@@ -26,7 +31,7 @@ export function PlayerJourneyNav({ party, current }: { party: UiParty; current: 
             <li className="flex items-center" key={step.key}>
               <Link
                 className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${isCurrent ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
-                href={`/parties/${party.code}/${step.key}`}
+                href={`/parties/${partyCode}/${step.key}`}
                 aria-current={isCurrent ? "step" : undefined}
               >
                 <span className="grid size-5 place-items-center rounded-full border text-xs">
