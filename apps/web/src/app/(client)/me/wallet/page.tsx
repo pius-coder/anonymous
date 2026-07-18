@@ -1,7 +1,9 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight, Plus, ShieldCheck, WalletCards } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Download, ShieldCheck, WalletCards } from "lucide-react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { AppShell } from "@/components/ui/AppShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +19,11 @@ import {
 } from "@/components/ui/table";
 import { formatXaf, paymentApi } from "@/services/payment/payment-api";
 
+const PAGE_SIZE = 20;
+
 export default function WalletPage() {
+  const [skip, setSkip] = useState(0);
+
   const walletQuery = useQuery({
     queryKey: ["wallet", "me"],
     queryFn: async () => {
@@ -25,20 +31,24 @@ export default function WalletPage() {
       if (!res.success) throw new Error(res.error.message);
       return res.data;
     },
+    staleTime: 30_000,
   });
 
   const ledgerQuery = useQuery({
-    queryKey: ["wallet", "ledger"],
+    queryKey: ["wallet", "ledger", skip],
     queryFn: async () => {
-      const res = await paymentApi.getLedger();
+      const res = await paymentApi.getLedger(skip, PAGE_SIZE);
       if (!res.success) throw new Error(res.error.message);
       return res.data;
     },
+    staleTime: 15_000,
   });
 
   const balance = walletQuery.data?.balance;
   const currency = walletQuery.data?.currency ?? "XAF";
-  const entries = ledgerQuery.data ?? [];
+  const entries = ledgerQuery.data?.items ?? [];
+  const total = ledgerQuery.data?.total ?? 0;
+  const hasMore = skip + PAGE_SIZE < total;
 
   return (
     <AppShell
@@ -47,17 +57,29 @@ export default function WalletPage() {
       title="Portefeuille"
       subtitle="Solde et mouvements lus depuis le ledger serveur."
       actions={
-        <Button disabled title="Rechargement via initiate TOP_UP (parcours dédié)">
-          <Plus /> Recharger
-        </Button>
+        <div className="wallet-header-actions">
+          <Button render={<Link href="/me/wallet/transactions" />} variant="outline" size="sm">
+            <Download className="h-4 w-4" /> Historique
+          </Button>
+          <Button render={<Link href="/me/wallet/export" />} variant="outline" size="sm">
+            <Download className="h-4 w-4" /> Exporter
+          </Button>
+        </div>
       }
     >
+      {walletQuery.isStale && !walletQuery.isFetching ? (
+        <p className="text-xs text-muted-foreground mb-2" role="status">
+          Données en cours de rafraîchissement…
+        </p>
+      ) : null}
       <div className="wallet-layout">
         <Card className="wallet-balance-card">
           <CardHeader>
             <CardDescription>Solde disponible</CardDescription>
             <CardTitle className="wallet-balance">
-              {walletQuery.isLoading ? "…" : balance !== undefined ? (
+              {walletQuery.isLoading ? (
+                "…"
+              ) : balance !== undefined ? (
                 <>
                   {balance.toLocaleString("fr-FR")} <small>{currency}</small>
                 </>
@@ -68,7 +90,7 @@ export default function WalletPage() {
           </CardHeader>
           <CardContent>
             <div className="wallet-actions">
-              <Button variant="secondary" disabled>
+              <Button variant="secondary" disabled title="Rechargement bientôt disponible">
                 <ArrowDownLeft /> Déposer
               </Button>
               <Button variant="outline" disabled>
@@ -128,38 +150,69 @@ export default function WalletPage() {
               <PageState kind="empty" title="Aucun mouvement" message="Le ledger est vide." />
             ) : null}
             {entries.length > 0 ? (
-              <div className="table-scroll" data-scroll-region="wallet-ledger">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Motif</TableHead>
-                      <TableHead className="text-right">Débit</TableHead>
-                      <TableHead className="text-right">Crédit</TableHead>
-                      <TableHead className="text-right">Solde</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {entries.map((entry) => (
-                      <TableRow key={entry.id}>
-                        <TableCell className="text-muted-foreground">
-                          {new Date(entry.createdAt).toLocaleString("fr-FR")}
-                        </TableCell>
-                        <TableCell>{entry.reason}</TableCell>
-                        <TableCell className="text-right">
-                          {entry.debit > 0 ? formatXaf(entry.debit) : "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {entry.credit > 0 ? formatXaf(entry.credit) : "—"}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatXaf(entry.balance)}
-                        </TableCell>
+              <>
+                <div className="table-scroll" data-scroll-region="wallet-ledger">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Motif</TableHead>
+                        <TableHead className="text-right">Débit</TableHead>
+                        <TableHead className="text-right">Crédit</TableHead>
+                        <TableHead className="text-right">Solde</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {entries.map((entry) => (
+                        <TableRow
+                          key={entry.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() =>
+                            (window.location.href = `/me/wallet/transactions/${entry.transactionId}`)
+                          }
+                        >
+                          <TableCell className="text-muted-foreground">
+                            {new Date(entry.createdAt).toLocaleString("fr-FR")}
+                          </TableCell>
+                          <TableCell>{entry.reason}</TableCell>
+                          <TableCell className="text-right">
+                            {entry.debit > 0 ? formatXaf(entry.debit) : "—"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {entry.credit > 0 ? formatXaf(entry.credit) : "—"}
+                          </TableCell>
+                          <TableCell className="text-right font-medium">
+                            {formatXaf(entry.balance)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="flex items-center justify-between px-4 py-3 border-t">
+                  <span className="text-sm text-muted-foreground">
+                    {skip + 1}–{Math.min(skip + PAGE_SIZE, total)} sur {total}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={skip === 0}
+                      onClick={() => setSkip(Math.max(0, skip - PAGE_SIZE))}
+                    >
+                      Précédent
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!hasMore}
+                      onClick={() => setSkip(skip + PAGE_SIZE)}
+                    >
+                      Suivant
+                    </Button>
+                  </div>
+                </div>
+              </>
             ) : null}
           </CardContent>
         </Card>

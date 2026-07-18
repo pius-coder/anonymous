@@ -25,6 +25,7 @@ import type {
   CreateLedgerEntryFullData,
   ListTransactionsFilter,
   IngestWebhookData,
+  PaginatedQuery,
 } from "./types.js";
 
 function asPaymentStatus(status: PaymentStatus | string | undefined): PaymentStatus {
@@ -61,7 +62,9 @@ export function updateWalletBalance(id: string, balance: number): Promise<Wallet
   return prisma.wallet.update({ where: { id }, data: { balance } });
 }
 
-export function createPaymentTransaction(data: CreatePaymentTransactionData): Promise<PaymentTransaction> {
+export function createPaymentTransaction(
+  data: CreatePaymentTransactionData,
+): Promise<PaymentTransaction> {
   const status = asPaymentStatus(data.status);
   return prisma.paymentTransaction.create({
     data: {
@@ -115,12 +118,48 @@ export function createLedgerEntry(
   });
 }
 
-export function listLedgerEntriesByWallet(walletId: string): Promise<LedgerEntry[]> {
+export function listLedgerEntriesByWallet(
+  walletId: string,
+  pag?: PaginatedQuery,
+): Promise<LedgerEntry[]> {
   return prisma.ledgerEntry.findMany({
     where: {
       OR: [{ walletId }, { transaction: { walletId } }],
     },
     orderBy: { createdAt: "desc" },
+    skip: pag?.skip ?? 0,
+    take: pag?.take ?? 50,
+  });
+}
+
+export function countLedgerEntriesByWallet(walletId: string): Promise<number> {
+  return prisma.ledgerEntry.count({
+    where: {
+      OR: [{ walletId }, { transaction: { walletId } }],
+    },
+  });
+}
+
+export function listTransactionsByWalletPaginated(
+  walletId: string,
+  pag?: PaginatedQuery,
+): Promise<PaymentTransaction[]> {
+  return prisma.paymentTransaction.findMany({
+    where: { walletId },
+    orderBy: { createdAt: "desc" },
+    skip: pag?.skip ?? 0,
+    take: pag?.take ?? 50,
+  });
+}
+
+export function countTransactionsByWallet(walletId: string): Promise<number> {
+  return prisma.paymentTransaction.count({ where: { walletId } });
+}
+
+export function findTransactionByIdWithWallet(id: string): Promise<PaymentTransaction | null> {
+  return prisma.paymentTransaction.findUnique({
+    where: { id },
+    include: { wallet: true },
   });
 }
 
@@ -132,11 +171,15 @@ export function findTransactionByReference(reference: string): Promise<PaymentTr
   return prisma.paymentTransaction.findFirst({ where: { reference } });
 }
 
-export function findTransactionByIdempotencyKey(idempotencyKey: string): Promise<PaymentTransaction | null> {
+export function findTransactionByIdempotencyKey(
+  idempotencyKey: string,
+): Promise<PaymentTransaction | null> {
   return prisma.paymentTransaction.findUnique({ where: { idempotencyKey } });
 }
 
-export function findTransactionByProviderTransId(providerTransId: string): Promise<PaymentTransaction | null> {
+export function findTransactionByProviderTransId(
+  providerTransId: string,
+): Promise<PaymentTransaction | null> {
   return prisma.paymentTransaction.findFirst({ where: { providerTransId } });
 }
 
@@ -182,7 +225,9 @@ function buildTransactionWhere(
   return where;
 }
 
-export function listAllTransactions(filter: ListTransactionsFilter = {}): Promise<PaymentTransaction[]> {
+export function listAllTransactions(
+  filter: ListTransactionsFilter = {},
+): Promise<PaymentTransaction[]> {
   const skip = filter.skip ?? 0;
   const take = filter.take ?? 50;
   return prisma.paymentTransaction.findMany({
@@ -309,16 +354,23 @@ export function findLedgerEntryByTransactionId(transactionId: string): Promise<L
   return prisma.ledgerEntry.findUnique({ where: { transactionId } });
 }
 
-export function findLedgerEntryByIdempotencyKey(idempotencyKey: string): Promise<LedgerEntry | null> {
+export function findLedgerEntryByIdempotencyKey(
+  idempotencyKey: string,
+): Promise<LedgerEntry | null> {
   return prisma.ledgerEntry.findUnique({ where: { idempotencyKey } });
 }
 
-export function listLedgerEntriesByUserId(userId: string): Promise<LedgerEntry[]> {
+export function listLedgerEntriesByUserId(
+  userId: string,
+  pag?: PaginatedQuery,
+): Promise<LedgerEntry[]> {
   return prisma.ledgerEntry.findMany({
     where: {
       OR: [{ wallet: { userId } }, { transaction: { wallet: { userId } } }],
     },
     orderBy: { createdAt: "desc" },
+    skip: pag?.skip ?? 0,
+    take: pag?.take ?? 50,
   });
 }
 
@@ -480,44 +532,47 @@ export async function createCheckoutPayment(input: {
   credentialRefId?: string;
   provider?: string;
 }): Promise<PaymentTransaction> {
-  return prisma.$transaction(async (tx) => {
-    const existing = await tx.paymentTransaction.findUnique({
-      where: { idempotencyKey: input.idempotencyKey },
-    });
-    if (existing) return existing;
+  return prisma.$transaction(
+    async (tx) => {
+      const existing = await tx.paymentTransaction.findUnique({
+        where: { idempotencyKey: input.idempotencyKey },
+      });
+      if (existing) return existing;
 
-    const payment = await tx.paymentTransaction.create({
-      data: {
-        walletId: input.walletId,
-        userId: input.userId,
-        partyId: input.partyId,
-        participationId: input.participationId,
-        amount: input.amount,
-        currency: input.currency ?? "XAF",
-        type: "ENTRY_FEE",
-        provider: input.provider ?? "fapshi",
-        providerExternalId: input.providerExternalId,
-        idempotencyKey: input.idempotencyKey,
-        status: PaymentStatus.PENDING,
-        internalStatus: PaymentInternalStatus.AWAITING_PROVIDER,
-        wireStatus: FapshiWireStatus.CREATED,
-        checkoutUrl: input.checkoutUrl,
-        expiresAt: input.expiresAt,
-        serviceKind: ProviderServiceKind.COLLECTION,
-        credentialRefId: input.credentialRefId,
-      },
-    });
+      const payment = await tx.paymentTransaction.create({
+        data: {
+          walletId: input.walletId,
+          userId: input.userId,
+          partyId: input.partyId,
+          participationId: input.participationId,
+          amount: input.amount,
+          currency: input.currency ?? "XAF",
+          type: "ENTRY_FEE",
+          provider: input.provider ?? "fapshi",
+          providerExternalId: input.providerExternalId,
+          idempotencyKey: input.idempotencyKey,
+          status: PaymentStatus.PENDING,
+          internalStatus: PaymentInternalStatus.AWAITING_PROVIDER,
+          wireStatus: FapshiWireStatus.CREATED,
+          checkoutUrl: input.checkoutUrl,
+          expiresAt: input.expiresAt,
+          serviceKind: ProviderServiceKind.COLLECTION,
+          credentialRefId: input.credentialRefId,
+        },
+      });
 
-    await tx.partyParticipation.update({
-      where: { id: input.participationId },
-      data: {
-        paymentState: "PAYMENT_PENDING",
-        paymentTransactionId: payment.id,
-      },
-    });
+      await tx.partyParticipation.update({
+        where: { id: input.participationId },
+        data: {
+          paymentState: "PAYMENT_PENDING",
+          paymentTransactionId: payment.id,
+        },
+      });
 
-    return payment;
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      return payment;
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  );
 }
 
 /**
@@ -526,48 +581,51 @@ export async function createCheckoutPayment(input: {
 export async function ingestProviderWebhook(
   data: IngestWebhookData,
 ): Promise<{ inbox: ProviderWebhookInbox; duplicate: boolean }> {
-  return prisma.$transaction(async (tx) => {
-    const existing = await tx.providerWebhookInbox.findUnique({
-      where: {
-        provider_externalEventId: {
-          provider: data.provider,
-          externalEventId: data.externalEventId,
-        },
-      },
-    });
-    if (existing) {
-      return { inbox: existing, duplicate: true };
-    }
-
-    try {
-      const inbox = await tx.providerWebhookInbox.create({
-        data: {
-          provider: data.provider,
-          externalEventId: data.externalEventId,
-          providerTransId: data.providerTransId,
-          wireStatus: data.wireStatus ?? FapshiWireStatus.UNSPECIFIED,
-          inboxStatus: WebhookInboxStatus.RECEIVED,
-          paymentId: data.paymentId,
-          redactedSummary: data.redactedSummary,
-          serviceKind: data.serviceKind ?? ProviderServiceKind.COLLECTION,
+  return prisma.$transaction(
+    async (tx) => {
+      const existing = await tx.providerWebhookInbox.findUnique({
+        where: {
+          provider_externalEventId: {
+            provider: data.provider,
+            externalEventId: data.externalEventId,
+          },
         },
       });
-      return { inbox, duplicate: false };
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        const again = await tx.providerWebhookInbox.findUnique({
-          where: {
-            provider_externalEventId: {
-              provider: data.provider,
-              externalEventId: data.externalEventId,
-            },
+      if (existing) {
+        return { inbox: existing, duplicate: true };
+      }
+
+      try {
+        const inbox = await tx.providerWebhookInbox.create({
+          data: {
+            provider: data.provider,
+            externalEventId: data.externalEventId,
+            providerTransId: data.providerTransId,
+            wireStatus: data.wireStatus ?? FapshiWireStatus.UNSPECIFIED,
+            inboxStatus: WebhookInboxStatus.RECEIVED,
+            paymentId: data.paymentId,
+            redactedSummary: data.redactedSummary,
+            serviceKind: data.serviceKind ?? ProviderServiceKind.COLLECTION,
           },
         });
-        if (again) return { inbox: again, duplicate: true };
+        return { inbox, duplicate: false };
+      } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+          const again = await tx.providerWebhookInbox.findUnique({
+            where: {
+              provider_externalEventId: {
+                provider: data.provider,
+                externalEventId: data.externalEventId,
+              },
+            },
+          });
+          if (again) return { inbox: again, duplicate: true };
+        }
+        throw error;
       }
-      throw error;
-    }
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  );
 }
 
 /**
@@ -584,115 +642,123 @@ export async function applyWebhookSettlement(input: {
 }): Promise<{ payment: PaymentTransaction; applied: boolean }> {
   const attempt = input._attempt ?? 0;
   try {
-  return await prisma.$transaction(async (tx) => {
-    const inbox = await tx.providerWebhookInbox.findUnique({ where: { id: input.inboxId } });
-    if (!inbox) {
-      throw new Error("WEBHOOK_INBOX_NOT_FOUND");
-    }
-    if (
-      inbox.inboxStatus === WebhookInboxStatus.APPLIED ||
-      inbox.inboxStatus === WebhookInboxStatus.DUPLICATE
-    ) {
-      const payment = await tx.paymentTransaction.findUniqueOrThrow({
-        where: { id: input.transactionId },
-      });
-      return { payment, applied: false };
-    }
+    return await prisma.$transaction(
+      async (tx) => {
+        const inbox = await tx.providerWebhookInbox.findUnique({ where: { id: input.inboxId } });
+        if (!inbox) {
+          throw new Error("WEBHOOK_INBOX_NOT_FOUND");
+        }
+        if (
+          inbox.inboxStatus === WebhookInboxStatus.APPLIED ||
+          inbox.inboxStatus === WebhookInboxStatus.DUPLICATE
+        ) {
+          const payment = await tx.paymentTransaction.findUniqueOrThrow({
+            where: { id: input.transactionId },
+          });
+          return { payment, applied: false };
+        }
 
-    const transaction = await tx.paymentTransaction.findUnique({
-      where: { id: input.transactionId },
-      include: { ledgerEntry: true },
-    });
-    if (!transaction) {
-      throw new Error("PAYMENT_NOT_FOUND");
-    }
+        const transaction = await tx.paymentTransaction.findUnique({
+          where: { id: input.transactionId },
+          include: { ledgerEntry: true },
+        });
+        if (!transaction) {
+          throw new Error("PAYMENT_NOT_FOUND");
+        }
 
-    if (
-      transaction.status === PaymentStatus.SUCCESSFUL ||
-      transaction.status === PaymentStatus.FAILED ||
-      transaction.status === PaymentStatus.EXPIRED
-    ) {
-      await tx.providerWebhookInbox.update({
-        where: { id: input.inboxId },
-        data: {
-          inboxStatus: WebhookInboxStatus.DUPLICATE,
-          processedAt: new Date(),
-          paymentId: transaction.id,
-          providerTransId: input.providerTransId ?? inbox.providerTransId,
-          wireStatus: input.wireStatus,
-        },
-      });
-      return { payment: transaction, applied: false };
-    }
+        if (
+          transaction.status === PaymentStatus.SUCCESSFUL ||
+          transaction.status === PaymentStatus.FAILED ||
+          transaction.status === PaymentStatus.EXPIRED
+        ) {
+          await tx.providerWebhookInbox.update({
+            where: { id: input.inboxId },
+            data: {
+              inboxStatus: WebhookInboxStatus.DUPLICATE,
+              processedAt: new Date(),
+              paymentId: transaction.id,
+              providerTransId: input.providerTransId ?? inbox.providerTransId,
+              wireStatus: input.wireStatus,
+            },
+          });
+          return { payment: transaction, applied: false };
+        }
 
-    const success = input.wireStatus === FapshiWireStatus.SUCCESSFUL;
-    const failed = input.wireStatus === FapshiWireStatus.FAILED;
-    const expired = input.wireStatus === FapshiWireStatus.EXPIRED;
+        const success = input.wireStatus === FapshiWireStatus.SUCCESSFUL;
+        const failed = input.wireStatus === FapshiWireStatus.FAILED;
+        const expired = input.wireStatus === FapshiWireStatus.EXPIRED;
 
-    const nextStatus = success
-      ? PaymentStatus.SUCCESSFUL
-      : failed
-        ? PaymentStatus.FAILED
-        : expired
-          ? PaymentStatus.EXPIRED
-          : PaymentStatus.PENDING;
+        const nextStatus = success
+          ? PaymentStatus.SUCCESSFUL
+          : failed
+            ? PaymentStatus.FAILED
+            : expired
+              ? PaymentStatus.EXPIRED
+              : PaymentStatus.PENDING;
 
-    const nextInternal = success
-      ? PaymentInternalStatus.SUCCEEDED
-      : failed
-        ? PaymentInternalStatus.FAILED
-        : expired
-          ? PaymentInternalStatus.EXPIRED
-          : PaymentInternalStatus.PROVIDER_PENDING;
+        const nextInternal = success
+          ? PaymentInternalStatus.SUCCEEDED
+          : failed
+            ? PaymentInternalStatus.FAILED
+            : expired
+              ? PaymentInternalStatus.EXPIRED
+              : PaymentInternalStatus.PROVIDER_PENDING;
 
-    const updated = await tx.paymentTransaction.update({
-      where: { id: transaction.id },
-      data: {
-        status: nextStatus,
-        internalStatus: nextInternal,
-        wireStatus: input.wireStatus,
-        providerTransId: input.providerTransId ?? transaction.providerTransId,
-        settledAt: success ? new Date() : transaction.settledAt,
+        const updated = await tx.paymentTransaction.update({
+          where: { id: transaction.id },
+          data: {
+            status: nextStatus,
+            internalStatus: nextInternal,
+            wireStatus: input.wireStatus,
+            providerTransId: input.providerTransId ?? transaction.providerTransId,
+            settledAt: success ? new Date() : transaction.settledAt,
+          },
+        });
+
+        if (
+          success &&
+          transaction.walletId &&
+          !transaction.ledgerEntry &&
+          transaction.type !== "ACCESS_FEE"
+        ) {
+          // Collection success for provider path: do not auto-credit wallet for entry fees.
+          // Prize/credit types may credit; entry fee only links admission.
+        }
+
+        if (success && input.admitOnSuccess && transaction.participationId) {
+          await tx.partyParticipation.update({
+            where: { id: transaction.participationId },
+            data: {
+              paymentState: "PAID",
+              admissionState: "ADMITTED",
+              paymentTransactionId: transaction.id,
+            },
+          });
+        } else if (success && transaction.participationId) {
+          await tx.partyParticipation.update({
+            where: { id: transaction.participationId },
+            data: {
+              paymentState: "PAID",
+              paymentTransactionId: transaction.id,
+            },
+          });
+        }
+
+        await tx.providerWebhookInbox.update({
+          where: { id: input.inboxId },
+          data: {
+            inboxStatus: WebhookInboxStatus.APPLIED,
+            processedAt: new Date(),
+            paymentId: transaction.id,
+            providerTransId: input.providerTransId ?? inbox.providerTransId,
+            wireStatus: input.wireStatus,
+          },
+        });
+
+        return { payment: updated, applied: true };
       },
-    });
-
-    if (success && transaction.walletId && !transaction.ledgerEntry && transaction.type !== "ACCESS_FEE") {
-      // Collection success for provider path: do not auto-credit wallet for entry fees.
-      // Prize/credit types may credit; entry fee only links admission.
-    }
-
-    if (success && input.admitOnSuccess && transaction.participationId) {
-      await tx.partyParticipation.update({
-        where: { id: transaction.participationId },
-        data: {
-          paymentState: "PAID",
-          admissionState: "ADMITTED",
-          paymentTransactionId: transaction.id,
-        },
-      });
-    } else if (success && transaction.participationId) {
-      await tx.partyParticipation.update({
-        where: { id: transaction.participationId },
-        data: {
-          paymentState: "PAID",
-          paymentTransactionId: transaction.id,
-        },
-      });
-    }
-
-    await tx.providerWebhookInbox.update({
-      where: { id: input.inboxId },
-      data: {
-        inboxStatus: WebhookInboxStatus.APPLIED,
-        processedAt: new Date(),
-        paymentId: transaction.id,
-        providerTransId: input.providerTransId ?? inbox.providerTransId,
-        wireStatus: input.wireStatus,
-      },
-    });
-
-    return { payment: updated, applied: true };
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const isSerialize =
@@ -711,64 +777,67 @@ export async function settlePaymentWebhook(input: {
   status: string;
   providerReference: string;
 }): Promise<PaymentTransaction | null> {
-  return prisma.$transaction(async (tx) => {
-    const transaction = await tx.paymentTransaction.findUnique({
-      where: { id: input.transactionId },
-      include: { ledgerEntry: true },
-    });
-    if (!transaction) {
-      return null;
-    }
-    if (
-      transaction.status === PaymentStatus.SUCCESSFUL ||
-      transaction.status === PaymentStatus.FAILED
-    ) {
-      return transaction;
-    }
-
-    const status = asPaymentStatus(input.status);
-    const updated = await tx.paymentTransaction.update({
-      where: { id: input.transactionId },
-      data: {
-        status,
-        reference: input.providerReference,
-        internalStatus:
-          status === PaymentStatus.SUCCESSFUL
-            ? PaymentInternalStatus.SUCCEEDED
-            : status === PaymentStatus.FAILED
-              ? PaymentInternalStatus.FAILED
-              : PaymentInternalStatus.PROVIDER_PENDING,
-        settledAt: status === PaymentStatus.SUCCESSFUL ? new Date() : undefined,
-      },
-    });
-
-    if (
-      status === PaymentStatus.SUCCESSFUL &&
-      transaction.type !== "WALLET_CREDIT" &&
-      !transaction.ledgerEntry &&
-      transaction.walletId
-    ) {
-      const updatedWallet = await tx.wallet.update({
-        where: { id: transaction.walletId },
-        data: { balance: { increment: Number(transaction.amount) }, version: { increment: 1 } },
+  return prisma.$transaction(
+    async (tx) => {
+      const transaction = await tx.paymentTransaction.findUnique({
+        where: { id: input.transactionId },
+        include: { ledgerEntry: true },
       });
-      await tx.ledgerEntry.create({
+      if (!transaction) {
+        return null;
+      }
+      if (
+        transaction.status === PaymentStatus.SUCCESSFUL ||
+        transaction.status === PaymentStatus.FAILED
+      ) {
+        return transaction;
+      }
+
+      const status = asPaymentStatus(input.status);
+      const updated = await tx.paymentTransaction.update({
+        where: { id: input.transactionId },
         data: {
-          transactionId: transaction.id,
-          walletId: transaction.walletId,
-          debit: 0,
-          credit: Number(transaction.amount),
-          balance: updatedWallet.balance,
-          balanceAfter: updatedWallet.balance,
-          reason: "Paiement externe reçu",
-          direction: LedgerDirection.CREDIT,
-          ledgerType: LedgerType.WALLET_CREDIT,
+          status,
+          reference: input.providerReference,
+          internalStatus:
+            status === PaymentStatus.SUCCESSFUL
+              ? PaymentInternalStatus.SUCCEEDED
+              : status === PaymentStatus.FAILED
+                ? PaymentInternalStatus.FAILED
+                : PaymentInternalStatus.PROVIDER_PENDING,
+          settledAt: status === PaymentStatus.SUCCESSFUL ? new Date() : undefined,
         },
       });
-    }
 
-    return updated;
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      if (
+        status === PaymentStatus.SUCCESSFUL &&
+        transaction.type !== "WALLET_CREDIT" &&
+        !transaction.ledgerEntry &&
+        transaction.walletId
+      ) {
+        const updatedWallet = await tx.wallet.update({
+          where: { id: transaction.walletId },
+          data: { balance: { increment: Number(transaction.amount) }, version: { increment: 1 } },
+        });
+        await tx.ledgerEntry.create({
+          data: {
+            transactionId: transaction.id,
+            walletId: transaction.walletId,
+            debit: 0,
+            credit: Number(transaction.amount),
+            balance: updatedWallet.balance,
+            balanceAfter: updatedWallet.balance,
+            reason: "Paiement externe reçu",
+            direction: LedgerDirection.CREDIT,
+            ledgerType: LedgerType.WALLET_CREDIT,
+          },
+        });
+      }
+
+      return updated;
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  );
 }
 
 /**
@@ -817,51 +886,52 @@ export async function createCompensationLedgerEntry(input: {
   reason: string;
   idempotencyKey: string;
 }): Promise<LedgerEntry> {
-  return prisma.$transaction(async (tx) => {
-    const existing = await tx.ledgerEntry.findUnique({
-      where: { idempotencyKey: input.idempotencyKey },
-    });
-    if (existing) return existing;
+  return prisma.$transaction(
+    async (tx) => {
+      const existing = await tx.ledgerEntry.findUnique({
+        where: { idempotencyKey: input.idempotencyKey },
+      });
+      if (existing) return existing;
 
-    const original = await tx.ledgerEntry.findUnique({ where: { id: input.originalLedgerId } });
-    if (!original) throw new Error("LEDGER_ENTRY_NOT_FOUND");
+      const original = await tx.ledgerEntry.findUnique({ where: { id: input.originalLedgerId } });
+      if (!original) throw new Error("LEDGER_ENTRY_NOT_FOUND");
 
-    const already = await tx.ledgerEntry.findUnique({
-      where: { compensationOfId: input.originalLedgerId },
-    });
-    if (already) return already;
+      const already = await tx.ledgerEntry.findUnique({
+        where: { compensationOfId: input.originalLedgerId },
+      });
+      if (already) return already;
 
-    const wallet = await tx.wallet.findUnique({ where: { id: input.walletId } });
-    if (!wallet) throw new Error("WALLET_NOT_FOUND");
+      const wallet = await tx.wallet.findUnique({ where: { id: input.walletId } });
+      if (!wallet) throw new Error("WALLET_NOT_FOUND");
 
-    // Reverse: original debit → compensation credit (and vice versa).
-    const wasDebit = Number(original.debit) > 0;
-    const updatedWallet = await tx.wallet.update({
-      where: { id: input.walletId },
-      data: {
-        balance: wasDebit
-          ? { increment: input.amount }
-          : { decrement: input.amount },
-        version: { increment: 1 },
-      },
-    });
+      // Reverse: original debit → compensation credit (and vice versa).
+      const wasDebit = Number(original.debit) > 0;
+      const updatedWallet = await tx.wallet.update({
+        where: { id: input.walletId },
+        data: {
+          balance: wasDebit ? { increment: input.amount } : { decrement: input.amount },
+          version: { increment: 1 },
+        },
+      });
 
-    return tx.ledgerEntry.create({
-      data: {
-        transactionId: input.transactionId,
-        walletId: input.walletId,
-        debit: wasDebit ? 0 : input.amount,
-        credit: wasDebit ? input.amount : 0,
-        balance: updatedWallet.balance,
-        balanceAfter: updatedWallet.balance,
-        reason: input.reason,
-        idempotencyKey: input.idempotencyKey,
-        direction: wasDebit ? LedgerDirection.CREDIT : LedgerDirection.DEBIT,
-        ledgerType: LedgerType.COMPENSATION,
-        compensationOfId: input.originalLedgerId,
-      },
-    });
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+      return tx.ledgerEntry.create({
+        data: {
+          transactionId: input.transactionId,
+          walletId: input.walletId,
+          debit: wasDebit ? 0 : input.amount,
+          credit: wasDebit ? input.amount : 0,
+          balance: updatedWallet.balance,
+          balanceAfter: updatedWallet.balance,
+          reason: input.reason,
+          idempotencyKey: input.idempotencyKey,
+          direction: wasDebit ? LedgerDirection.CREDIT : LedgerDirection.DEBIT,
+          ledgerType: LedgerType.COMPENSATION,
+          compensationOfId: input.originalLedgerId,
+        },
+      });
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+  );
 }
 
 export function upsertProviderCredentialRef(input: {

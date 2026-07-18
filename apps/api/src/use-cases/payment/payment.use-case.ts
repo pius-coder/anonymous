@@ -1,13 +1,6 @@
 import { paymentRepository, auditRepository } from "@session-jeu/db";
-import {
-  FAPSHI_PROVIDER,
-  mapFapshiWireToPaymentStatus,
-  PAYMENT_ERRORS,
-} from "@session-jeu/shared";
-import {
-  resolveServerAmount,
-  type PaymentPurpose,
-} from "../../payments/server-amount.js";
+import { FAPSHI_PROVIDER, mapFapshiWireToPaymentStatus, PAYMENT_ERRORS } from "@session-jeu/shared";
+import { resolveServerAmount, type PaymentPurpose } from "../../payments/server-amount.js";
 import {
   generateProviderExternalId,
   initiateExternalCheckout,
@@ -137,6 +130,13 @@ export type LedgerEntryDetail = {
   balance: number;
   reason: string;
   createdAt: string;
+};
+
+export type PaginatedResult<T> = {
+  items: T[];
+  total: number;
+  skip: number;
+  take: number;
 };
 
 /** Official Fapshi webhook ingest (header secret + wire body). */
@@ -298,8 +298,7 @@ export async function initiatePayment(input: InitiatePaymentInput): Promise<Paym
 
   const type = purpose === "TOP_UP" ? "TOP_UP" : "ACCESS_FEE";
   const providerExternalId = generateProviderExternalId();
-  const admissionCheckout =
-    purpose === "ACCESS_FEE" && !!input.partyId && !!input.participationId;
+  const admissionCheckout = purpose === "ACCESS_FEE" && !!input.partyId && !!input.participationId;
 
   let transaction;
   try {
@@ -376,11 +375,13 @@ export async function initiatePayment(input: InitiatePaymentInput): Promise<Paym
       });
       mapProviderError(err);
     }
-    await paymentRepository.updateTransactionStatus(transaction.id, {
-      status: "FAILED",
-      internalStatus: "FAILED",
-      wireStatus: "FAILED",
-    }).catch(() => {});
+    await paymentRepository
+      .updateTransactionStatus(transaction.id, {
+        status: "FAILED",
+        internalStatus: "FAILED",
+        wireStatus: "FAILED",
+      })
+      .catch(() => {});
     mapProviderError(err);
   }
 }
@@ -512,10 +513,7 @@ export async function verifyAndSettleCollection(input: {
   }
 
   // For non-terminal wire, update wire/pending only.
-  if (
-    providerStatus.status === "CREATED" ||
-    providerStatus.status === "PENDING"
-  ) {
+  if (providerStatus.status === "CREATED" || providerStatus.status === "PENDING") {
     const updated = await paymentRepository.updateTransactionStatus(payment.id, {
       status: mapFapshiWireToPaymentStatus(providerStatus.status),
       wireStatus: toPrismaWireStatus(providerStatus.status),
@@ -544,9 +542,7 @@ export async function verifyAndSettleCollection(input: {
 /**
  * Recoverable reconciliation when webhook was lost (Fapshi does not retry).
  */
-export async function reconcileCollectionFromProvider(
-  paymentId: string,
-): Promise<PaymentDetail> {
+export async function reconcileCollectionFromProvider(paymentId: string): Promise<PaymentDetail> {
   const transaction = await paymentRepository.findTransactionById(paymentId);
   if (!transaction) {
     throw new PaymentUseCaseError(
@@ -717,16 +713,145 @@ export async function getMyWallet(userId: string): Promise<WalletDetail> {
   return getOrCreateWallet(userId);
 }
 
-export async function listMyLedger(userId: string): Promise<LedgerEntryDetail[]> {
-  const entries = await paymentRepository.listLedgerEntriesByUserId(userId);
-  return entries.map(toLedgerEntryDetail);
+export async function listMyLedger(
+  userId: string,
+  skip = 0,
+  take = 50,
+): Promise<PaginatedResult<LedgerEntryDetail>> {
+  const wallet = await paymentRepository.findWalletByUserId(userId);
+  if (!wallet) return { items: [], total: 0, skip, take };
+  const [entries, total] = await Promise.all([
+    paymentRepository.listLedgerEntriesByWallet(wallet.id, { skip, take }),
+    paymentRepository.countLedgerEntriesByWallet(wallet.id),
+  ]);
+  return { items: entries.map(toLedgerEntryDetail), total, skip, take };
 }
 
-export async function listMyPayments(userId: string): Promise<PaymentDetail[]> {
+export async function listMyPayments(
+  userId: string,
+  skip = 0,
+  take = 50,
+): Promise<PaginatedResult<PaymentDetail>> {
+  const wallet = await paymentRepository.findWalletByUserId(userId);
+  if (!wallet) return { items: [], total: 0, skip, take };
+  const [txs, total] = await Promise.all([
+    paymentRepository.listTransactionsByWalletPaginated(wallet.id, { skip, take }),
+    paymentRepository.countTransactionsByWallet(wallet.id),
+  ]);
+  return { items: txs.map((t) => toPaymentDetail(t)), total, skip, take };
+}
+
+export type TransactionDetail = {
+  id: string;
+  walletId: string | null;
+  amount: number;
+  type: string;
+  provider: string | null;
+  reference: string | null;
+  status: string;
+  internalStatus: string;
+  wireStatus: string;
+  checkoutUrl: string | null;
+  expiresAt: string | null;
+  settledAt: string | null;
+  serviceKind: string;
+  partyId: string | null;
+  participationId: string | null;
+  idempotencyKey: string | null;
+  providerTransId: string | null;
+  providerExternalId: string | null;
+  createdAt: string;
+};
+
+export async function getTransactionDetail(
+  paymentId: string,
+  userId: string,
+): Promise<TransactionDetail> {
+  const transaction = await paymentRepository.findTransactionById(paymentId);
+  if (!transaction) {
+    throw new PaymentUseCaseError(
+      PAYMENT_ERRORS.PAYMENT_NOT_FOUND.code,
+      PAYMENT_ERRORS.PAYMENT_NOT_FOUND.message,
+      PAYMENT_ERRORS.PAYMENT_NOT_FOUND.status,
+    );
+  }
+  const ownsViaUser = transaction.userId === userId;
+  let ownsViaWallet = false;
+  if (transaction.walletId) {
+    const wallet = await paymentRepository.findWalletById(transaction.walletId);
+    ownsViaWallet = !!wallet && wallet.userId === userId;
+  }
+  if (!ownsViaUser && !ownsViaWallet) {
+    throw new PaymentUseCaseError(
+      PAYMENT_ERRORS.PAYMENT_NOT_FOUND.code,
+      PAYMENT_ERRORS.PAYMENT_NOT_FOUND.message,
+      PAYMENT_ERRORS.PAYMENT_NOT_FOUND.status,
+    );
+  }
+  return {
+    id: transaction.id,
+    walletId: transaction.walletId,
+    amount: Number(transaction.amount),
+    type: transaction.type,
+    provider: transaction.provider,
+    reference: transaction.reference,
+    status: String(transaction.status),
+    internalStatus: String(transaction.internalStatus),
+    wireStatus: String(transaction.wireStatus),
+    checkoutUrl: transaction.checkoutUrl,
+    expiresAt: transaction.expiresAt?.toISOString() ?? null,
+    settledAt: transaction.settledAt?.toISOString() ?? null,
+    serviceKind: String(transaction.serviceKind),
+    partyId: transaction.partyId ?? null,
+    participationId: transaction.participationId ?? null,
+    idempotencyKey: transaction.idempotencyKey ?? null,
+    providerTransId: transaction.providerTransId ?? null,
+    providerExternalId: transaction.providerExternalId ?? null,
+    createdAt: transaction.createdAt.toISOString(),
+  };
+}
+
+export async function exportMyTransactions(userId: string): Promise<PaymentDetail[]> {
   const wallet = await paymentRepository.findWalletByUserId(userId);
   if (!wallet) return [];
   const txs = await paymentRepository.listTransactionsByWallet(wallet.id);
   return txs.map((t) => toPaymentDetail(t));
+}
+
+export type WalletMetrics = {
+  balance: number;
+  ledgerCreditSum: number;
+  ledgerDebitSum: number;
+  mismatched: boolean;
+  transactionCount: number;
+};
+
+export async function getWalletMetrics(userId: string): Promise<WalletMetrics> {
+  const wallet = await paymentRepository.findWalletByUserId(userId);
+  if (!wallet) {
+    return {
+      balance: 0,
+      ledgerCreditSum: 0,
+      ledgerDebitSum: 0,
+      mismatched: false,
+      transactionCount: 0,
+    };
+  }
+  const [entries, txCount] = await Promise.all([
+    paymentRepository.listLedgerEntriesByWallet(wallet.id),
+    paymentRepository.countTransactionsByWallet(wallet.id),
+  ]);
+  const ledgerCreditSum = entries.reduce((s, e) => s + Number(e.credit), 0);
+  const ledgerDebitSum = entries.reduce((s, e) => s + Number(e.debit), 0);
+  const balance = Number(wallet.balance);
+  const ledgerNet = ledgerCreditSum - ledgerDebitSum;
+  return {
+    balance,
+    ledgerCreditSum,
+    ledgerDebitSum,
+    mismatched: Math.abs(balance - ledgerNet) > 0.01,
+    transactionCount: txCount,
+  };
 }
 
 export type AdminPaymentListResult = {
@@ -776,13 +901,15 @@ export async function reconcilePayment(
   if (transaction.providerTransId) {
     try {
       const settled = await reconcileCollectionFromProvider(paymentId);
-      await auditRepository.createAuditLog({
-        userId: adminUserId,
-        action: "PAYMENT_RECONCILE",
-        entity: "PaymentTransaction",
-        entityId: paymentId,
-        metadata: { reason: reason ?? "provider_status", mode: "provider" },
-      }).catch(() => {});
+      await auditRepository
+        .createAuditLog({
+          userId: adminUserId,
+          action: "PAYMENT_RECONCILE",
+          entity: "PaymentTransaction",
+          entityId: paymentId,
+          metadata: { reason: reason ?? "provider_status", mode: "provider" },
+        })
+        .catch(() => {});
       return settled;
     } catch {
       // fall through to admin close only when explicitly requested via reason flag
@@ -795,13 +922,15 @@ export async function reconcilePayment(
     internalStatus: "FAILED",
   });
 
-  await auditRepository.createAuditLog({
-    userId: adminUserId,
-    action: "PAYMENT_RECONCILE",
-    entity: "PaymentTransaction",
-    entityId: paymentId,
-    metadata: { reason: reason ?? "manual_reconcile", previousStatus: "PENDING" },
-  }).catch(() => {});
+  await auditRepository
+    .createAuditLog({
+      userId: adminUserId,
+      action: "PAYMENT_RECONCILE",
+      entity: "PaymentTransaction",
+      entityId: paymentId,
+      metadata: { reason: reason ?? "manual_reconcile", previousStatus: "PENDING" },
+    })
+    .catch(() => {});
 
   return toPaymentDetail(updated);
 }
@@ -839,13 +968,15 @@ export async function initiateTransfer(input: {
     status: "PENDING",
   });
 
-  await auditRepository.createAuditLog({
-    userId: input.actorUserId,
-    action: "PAYMENT_TRANSFER_INITIATE",
-    entity: "PaymentTransaction",
-    entityId: transaction.id,
-    metadata: { destination: input.destinationReference },
-  }).catch(() => {});
+  await auditRepository
+    .createAuditLog({
+      userId: input.actorUserId,
+      action: "PAYMENT_TRANSFER_INITIATE",
+      entity: "PaymentTransaction",
+      entityId: transaction.id,
+      metadata: { destination: input.destinationReference },
+    })
+    .catch(() => {});
 
   return { transferId: transaction.id };
 }

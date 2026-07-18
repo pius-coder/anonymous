@@ -106,9 +106,12 @@ describe("paymentService Connect transport (L4)", () => {
       currency: "XAF",
       createdAt: "2026-07-15T10:00:00.000Z",
     });
-    useCaseMocks.listMyLedger.mockResolvedValueOnce([]);
+    useCaseMocks.listMyLedger.mockResolvedValueOnce({ items: [], total: 0, skip: 0, take: 20 });
 
-    const result = await paymentService.getWallet!({ playerId: { value: "user-1" } } as never, context);
+    const result = await paymentService.getWallet!(
+      { playerId: { value: "user-1" } } as never,
+      context,
+    );
 
     expect(result.wallet?.walletId).toBe("w1");
     expect(result.wallet?.balance?.units).toBe(BigInt(1000));

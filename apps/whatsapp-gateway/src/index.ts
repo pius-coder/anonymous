@@ -4,26 +4,29 @@ export type {
   SendFailure,
   SendResult,
   SendSuccess,
+  WhatsAppProviderConfig,
 } from "./provider/types.js";
 export { FakeNotificationProvider } from "./provider/fake.js";
 export {
   ProductionWhatsAppProvider,
   createProductionProviderFromEnv,
-  type ProductionProviderConfig,
+  type WhatsAppProviderConfig,
+  type WhatsAppProviderOptions,
 } from "./provider/production.js";
+export type { WhatsAppProviderConfig as WhatsAppProviderConfigAlias } from "./provider/types.js";
 export { redactForLog, redactPhone, redactText } from "./redaction.js";
 
 export type WhatsAppGatewayFoundation = {
   service: "whatsapp-gateway";
   foundation: "v0.1";
-  providerIntegration: "contractual-fake-or-unconfigured-production";
+  providerIntegration: "contractual-whatsapp-cloud-api";
 };
 
 export function getWhatsAppGatewayFoundation(): WhatsAppGatewayFoundation {
   return {
     service: "whatsapp-gateway",
     foundation: "v0.1",
-    providerIntegration: "contractual-fake-or-unconfigured-production",
+    providerIntegration: "contractual-whatsapp-cloud-api",
   };
 }
 

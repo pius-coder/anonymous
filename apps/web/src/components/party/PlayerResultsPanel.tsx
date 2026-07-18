@@ -51,7 +51,8 @@ export function PlayerResultsPanel({ partyId, partyCode, preferWaiting = false }
   const scores = resultsQuery.data?.finalScores ?? [];
   const published = scores.length > 0 && Boolean(resultsQuery.data?.publishedAt);
   const waiting = preferWaiting || !published;
-  const ledgerPrize = (ledgerQuery.data ?? []).find(
+  const ledgerEntries = ledgerQuery.data?.items ?? [];
+  const ledgerPrize = ledgerEntries.find(
     (entry) =>
       entry.credit > 0 &&
       entry.reason.toLowerCase().includes("prize round") &&

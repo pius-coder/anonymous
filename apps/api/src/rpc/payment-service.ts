@@ -8,11 +8,7 @@ import {
   listMyLedger,
   listMyPayments,
 } from "../use-cases/payment/payment.use-case.js";
-import {
-  connectCodeFromHttpStatus,
-  requireRpcRole,
-  requireRpcUser,
-} from "./auth-context.js";
+import { connectCodeFromHttpStatus, requireRpcRole, requireRpcUser } from "./auth-context.js";
 
 /**
  * ConnectRPC PaymentService implementation.
@@ -72,7 +68,7 @@ export const paymentService: Partial<ServiceImpl<typeof PaymentV1.PaymentService
     const amountUnits = request.amount ? Number(request.amount.units) : undefined;
     const currency = request.amount?.currency || "XAF";
     const provider = (request.provider || "FAPSHI").toUpperCase();
-    const purpose = provider === "WALLET" ? "ACCESS_FEE" as const : "TOP_UP" as const;
+    const purpose = provider === "WALLET" ? ("ACCESS_FEE" as const) : ("TOP_UP" as const);
 
     try {
       const result = await initiatePayment({
@@ -80,10 +76,7 @@ export const paymentService: Partial<ServiceImpl<typeof PaymentV1.PaymentService
         purpose,
         currency,
         requestedAmount: amountUnits,
-        idempotencyKey: correlationKey(
-          request.correlationId,
-          `pay-${user.id}-${amountUnits ?? 0}`,
-        ),
+        idempotencyKey: correlationKey(request.correlationId, `pay-${user.id}-${amountUnits ?? 0}`),
       });
       return {
         paymentId: result.id,
@@ -106,10 +99,7 @@ export const paymentService: Partial<ServiceImpl<typeof PaymentV1.PaymentService
         userId: playerId,
         amount,
         destinationReference: request.destinationReference || "",
-        idempotencyKey: correlationKey(
-          request.correlationId,
-          `xfer-${playerId}-${amount}`,
-        ),
+        idempotencyKey: correlationKey(request.correlationId, `xfer-${playerId}-${amount}`),
         actorUserId: actor.id,
       });
       return { transferId: result.transferId };
@@ -127,7 +117,7 @@ export const paymentService: Partial<ServiceImpl<typeof PaymentV1.PaymentService
     }
     try {
       const wallet = await getMyWallet(playerId);
-      const ledger = await listMyLedger(playerId);
+      const ledger = await listMyLedger(playerId, 0, 20);
       return {
         wallet: {
           walletId: wallet.id,
@@ -135,15 +125,13 @@ export const paymentService: Partial<ServiceImpl<typeof PaymentV1.PaymentService
           balance: toMoney(wallet.balance, wallet.currency),
           currency: wallet.currency,
         },
-        recentEntries: ledger.slice(0, 20).map((entry) => ({
+        recentEntries: ledger.items.map((entry) => ({
           id: entry.id,
           walletId: wallet.id,
           amount: toMoney(entry.credit > 0 ? entry.credit : entry.debit, wallet.currency),
           balanceAfter: toMoney(entry.balance, wallet.currency),
           direction:
-            entry.credit > 0
-              ? PaymentV1.LedgerDirection.CREDIT
-              : PaymentV1.LedgerDirection.DEBIT,
+            entry.credit > 0 ? PaymentV1.LedgerDirection.CREDIT : PaymentV1.LedgerDirection.DEBIT,
           type: PaymentV1.LedgerType.ENTRY_FEE,
           description: entry.reason,
           idempotencyKey: "",
@@ -162,11 +150,10 @@ export const paymentService: Partial<ServiceImpl<typeof PaymentV1.PaymentService
       await requireRpcRole(context, "FINANCE", "SUPER_ADMIN");
     }
     try {
-      const payments = await listMyPayments(playerId);
       const pageSize = request.pageSize > 0 ? Math.min(request.pageSize, 100) : 30;
-      const page = payments.slice(0, pageSize);
+      const payments = await listMyPayments(playerId, 0, pageSize);
       return {
-        payments: page.map((p) => ({
+        payments: payments.items.map((p) => ({
           id: p.id,
           playerId: { value: playerId },
           amount: toMoney(p.amount),
@@ -177,7 +164,7 @@ export const paymentService: Partial<ServiceImpl<typeof PaymentV1.PaymentService
           createdAt: toTimestamp(p.createdAt),
           updatedAt: toTimestamp(p.createdAt),
         })),
-        nextPageToken: payments.length > pageSize ? String(pageSize) : "",
+        nextPageToken: payments.items.length >= pageSize ? String(payments.skip + pageSize) : "",
       };
     } catch (error) {
       handleUseCaseError(error);

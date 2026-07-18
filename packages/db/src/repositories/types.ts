@@ -135,6 +135,17 @@ export type CreateNotificationJobData = {
   maxAttempts?: number;
 };
 
+export type CreateNotificationTemplateData = {
+  key: string;
+  version?: number;
+  channel: string;
+  language: string;
+  templateName: string;
+  bodyTemplate: string;
+  titleTemplate?: string;
+  isActive?: boolean;
+};
+
 export type CreateDeliveryLogData = {
   jobId: string;
   channel: string;
@@ -196,6 +207,11 @@ export type CreateLedgerEntryFullData = {
   direction?: LedgerDirection;
   ledgerType?: LedgerType;
   compensationOfId?: string;
+};
+
+export type PaginatedQuery = {
+  skip?: number;
+  take?: number;
 };
 
 export type ListTransactionsFilter = {

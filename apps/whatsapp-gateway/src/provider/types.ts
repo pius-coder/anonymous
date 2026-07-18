@@ -33,3 +33,10 @@ export interface NotificationProvider {
   readonly name: string;
   send(message: NotificationMessage): Promise<SendResult>;
 }
+
+export type WhatsAppProviderConfig = {
+  token: string;
+  phoneNumberId: string;
+  businessAccountId?: string;
+  apiVersion?: string;
+};

@@ -6,12 +6,7 @@
 import { api } from "@/lib/api";
 
 export type PaymentStatus =
-  | "CREATED"
-  | "PENDING"
-  | "SUCCESSFUL"
-  | "FAILED"
-  | "EXPIRED"
-  | "REFUNDED";
+  "CREATED" | "PENDING" | "SUCCESSFUL" | "FAILED" | "EXPIRED" | "REFUNDED";
 
 export type PaymentDetail = {
   id: string;
@@ -43,6 +38,34 @@ export type LedgerEntryDetail = {
   balance: number;
   reason: string;
   createdAt: string;
+};
+
+export type PaginatedResult<T> = {
+  items: T[];
+  total: number;
+  skip: number;
+  take: number;
+};
+
+export type TransactionDetail = PaymentDetail & {
+  walletId: string | null;
+  internalStatus: string | null;
+  wireStatus: string | null;
+  checkoutUrl: string | null;
+  expiresAt: string | null;
+  settledAt: string | null;
+  serviceKind: string | null;
+  partyId: string | null;
+  participationId: string | null;
+  idempotencyKey: string | null;
+};
+
+export type WalletMetrics = {
+  balance: number;
+  ledgerCreditSum: number;
+  ledgerDebitSum: number;
+  mismatched: boolean;
+  transactionCount: number;
 };
 
 export type AdminPaymentList = {
@@ -115,8 +138,24 @@ export const paymentApi = {
     return api<WalletDetail>("/v1/wallet");
   },
 
-  getLedger() {
-    return api<LedgerEntryDetail[]>("/v1/wallet/ledger");
+  getLedger(skip = 0, take = 50) {
+    return api<PaginatedResult<LedgerEntryDetail>>(`/v1/wallet/ledger?skip=${skip}&take=${take}`);
+  },
+
+  getTransactions(skip = 0, take = 50) {
+    return api<PaginatedResult<PaymentDetail>>(`/v1/wallet/transactions?skip=${skip}&take=${take}`);
+  },
+
+  getTransactionDetail(id: string) {
+    return api<TransactionDetail>(`/v1/wallet/transactions/${encodeURIComponent(id)}`);
+  },
+
+  exportPlayerTransactions() {
+    return api<PaymentDetail[]>("/v1/wallet/export");
+  },
+
+  getWalletMetrics() {
+    return api<WalletMetrics>("/v1/wallet/metrics");
   },
 
   listAdminPayments(params?: { skip?: number; take?: number; status?: string }) {

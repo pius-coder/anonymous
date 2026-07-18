@@ -20,7 +20,8 @@ const useCaseMocks = vi.hoisted(() => ({
 
 // Use real app with auth middleware; unauthenticated paths still return 401.
 vi.mock("../../use-cases/payment/payment.use-case.js", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../use-cases/payment/payment.use-case.js")>();
+  const actual =
+    await importOriginal<typeof import("../../use-cases/payment/payment.use-case.js")>();
   return {
     ...actual,
     initiatePayment: useCaseMocks.initiatePayment,
@@ -89,7 +90,35 @@ describe("GET /v1/wallet", () => {
 
 describe("GET /v1/wallet/ledger", () => {
   it("returns 401 without session", async () => {
-    const res = await app.request("/v1/wallet/ledger");
+    const res = await app.request("/v1/wallet/ledger?skip=0&take=10");
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("GET /v1/wallet/transactions", () => {
+  it("returns 401 without session", async () => {
+    const res = await app.request("/v1/wallet/transactions");
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("GET /v1/wallet/transactions/:id", () => {
+  it("returns 401 without session", async () => {
+    const res = await app.request("/v1/wallet/transactions/tx-1");
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("GET /v1/wallet/export", () => {
+  it("returns 401 without session", async () => {
+    const res = await app.request("/v1/wallet/export");
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("GET /v1/wallet/metrics", () => {
+  it("returns 401 without session", async () => {
+    const res = await app.request("/v1/wallet/metrics");
     expect(res.status).toBe(401);
   });
 });
