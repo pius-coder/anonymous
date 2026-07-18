@@ -1,15 +1,17 @@
 import { expect, test } from "@playwright/test";
 
+const SEEDED_ROOM_CODE = "SEED-PARTY-01";
+
 /**
  * Hors E2E live Colyseus.
  *
- * This suite intentionally validates the local room shell + keyboard/mobile chrome
- * in "Aperçu local" when CreateLiveAccess is unavailable (no participation / non-live party).
- * It must NOT be treated as proof of realtime reconnection or authoritative room sync.
+ * The player route is now guarded by real participation + payment state.
+ * This suite validates that a newly created account cannot bypass the room guard
+ * and does not receive the local preview shell for a published code.
  *
  * Live multi-service proof lives in `live-smoke.spec.ts` (fails if Colyseus is down).
  */
-test("mounts, controls and remounts the fullscreen Phaser room (local preview only)", async ({ page }) => {
+test("blocks room access without an eligible paid participation", async ({ page }) => {
   const email = `room-e2e-${Date.now()}-${Math.random().toString(36).slice(2)}@noya.test`;
   const runtimeErrors: string[] = [];
 
@@ -33,19 +35,14 @@ test("mounts, controls and remounts the fullscreen Phaser room (local preview on
   await expect(page).toHaveURL(/\/parties$/);
 
   for (let visit = 0; visit < 2; visit += 1) {
-    await page.goto("/parties/AURORA-21/room");
-    const canvas = page.locator("canvas");
-    await expect(canvas).toBeVisible();
-    await expect(page.getByLabel("Ouvrir les paramètres")).toBeVisible();
-    await expect(page.getByLabel("État réseau: Aperçu local")).toBeVisible();
-    expect(await canvas.evaluate((element) => {
-      const target = element as HTMLCanvasElement;
-      return target.width > 0 && target.height > 0;
-    })).toBe(true);
-    await page.keyboard.press("ArrowRight");
-    await page.getByLabel("Voir les joueurs").click();
-    await expect(page.getByRole("heading", { name: "Présents" })).toBeVisible();
-    await page.keyboard.press("Escape");
+    await page.goto(`/parties/${SEEDED_ROOM_CODE}/room`);
+    await expect(page.locator("canvas")).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: /Participation active requise|Paiement requis|Accès refusé/i }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /Ouvrir l’inscription|Finaliser le paiement|Reprendre le parcours/i }),
+    ).toBeVisible();
     await page.goto("/parties");
   }
 

@@ -19,6 +19,10 @@ export function registerCommandHandler(type: string, handler: CommandHandler): v
   handlers.set(type, handler);
 }
 
+export function isCompetitiveCommandType(type: string): boolean {
+  return type !== "snapshot:request";
+}
+
 export function dispatchCommand(
   state: LiveRoomState,
   client: Client,
@@ -38,7 +42,7 @@ export function dispatchCommand(
     return { accepted: false, error: "PLAYER_DISCONNECTED" };
   }
 
-  if (!canSubmitPlayerCommand(player.role) && command.type !== "snapshot:request") {
+  if (!canSubmitPlayerCommand(player.role) && isCompetitiveCommandType(command.type)) {
     return { accepted: false, error: "ROLE_NOT_ALLOWED" };
   }
 

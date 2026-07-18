@@ -1,6 +1,6 @@
 import { partyRepository, participationRepository, userRepository } from "@session-jeu/db";
-import { canRegister, cancelParticipation as domainCancelParticipation, ParticipationStatus, InvalidTransitionError } from "@session-jeu/game-engine";
-import type { Game, GameParticipation } from "@session-jeu/game-engine";
+import { cancelParticipation as domainCancelParticipation, ParticipationStatus, InvalidTransitionError } from "@session-jeu/game-engine";
+import type { GameParticipation } from "@session-jeu/game-engine";
 
 export class ParticipationUseCaseError extends Error {
   readonly code: string;
@@ -110,30 +110,6 @@ function toParticipationDetail(p: {
 
 function getPartyOrThrow(code: string) {
   return partyRepository.findPartyByCode(code);
-}
-
-function toDomainGame(p: {
-  id: string;
-  code: string;
-  name: string;
-  status: string;
-  scheduledAt: Date | null;
-  visibility: string;
-  minPlayers: number | null;
-  maxPlayers: number | null;
-  roundProgram: unknown;
-}): Game {
-  return {
-    id: p.id,
-    code: p.code,
-    name: p.name,
-    status: 0 as never,
-    scheduledAt: p.scheduledAt,
-    visibility: p.visibility,
-    minPlayers: p.minPlayers,
-    maxPlayers: p.maxPlayers,
-    roundProgram: p.roundProgram,
-  };
 }
 
 const STATUS_MAP: Record<string, ParticipationStatus> = {

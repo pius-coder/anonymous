@@ -309,20 +309,32 @@ describe("live room state and commands", () => {
   it("filters readonly snapshots and protects admin snapshots by role", () => {
     const state = makeState();
     const playerClient = makeClient("session-1");
-    addLivePlayer(state, playerClient);
+    const player = addLivePlayer(state, playerClient);
+    player.status = "finished_round";
     const observerClient = makeClient("session-2");
-    addLivePlayer(state, observerClient, "readObserver");
+    const observer = addLivePlayer(state, observerClient, "readObserver");
+    observer.status = "disconnected";
 
     const readonlySnapshot = getReadonlySnapshot(state);
     expect(readonlySnapshot).toMatchObject({
       partyId: "party-1",
+      currentPhase: "active",
       connectedCount: 2,
       playerCount: 2,
+      publishedResultsAvailable: false,
     });
     expect(Object.hasOwn(readonlySnapshot, "players")).toBe(false);
     expect(Object.hasOwn(readonlySnapshot, "userId")).toBe(false);
     expect(Object.hasOwn(readonlySnapshot, "payload")).toBe(false);
     expect(Object.hasOwn(readonlySnapshot, "answer")).toBe(false);
+    expect(JSON.stringify(readonlySnapshot)).not.toMatch(/token|provisional|role|userId/i);
+    expect(readonlySnapshot.participants).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: "Participant 1", status: "Terminé" }),
+        expect.objectContaining({ label: "Participant 2", status: "Déconnecté" }),
+      ]),
+    );
+    expect(readonlySnapshot.timeline.length).toBeGreaterThan(0);
 
     const adminSnapshot = getAdminSnapshot(state);
     expect(adminSnapshot.players[0]).toHaveProperty("userId");
@@ -337,5 +349,23 @@ describe("live room state and commands", () => {
       accepted: false,
       error: "ROLE_NOT_ALLOWED",
     });
+  });
+
+  it("rejects observer competitive commands without mutating competitive state", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const state = makeState();
+    const observerClient = makeClient("session-observer");
+    addLivePlayer(state, observerClient, "readObserver").status = "connected";
+
+    const beforePlayers = state.players.size;
+    const result = dispatchCommand(state, observerClient, {
+      type: "room:move",
+      payload: { sequence: 1, x: 1, y: 0 },
+    });
+
+    expect(result).toMatchObject({ accepted: false, error: "ROLE_NOT_ALLOWED" });
+    expect(state.players.size).toBe(beforePlayers);
+    expect(warnSpy).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
   });
 });

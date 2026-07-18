@@ -238,6 +238,55 @@ async function run(): Promise<void> {
       await colyseus.cleanup();
     }
 
+    // observer readonly snapshot + malicious competitive command refused and logged
+    {
+      tokenPayload.participation.role = "READ_OBSERVER";
+      tokenPayload.participation.status = "READY";
+
+      const room = (await colyseus.createRoom("game_room", {
+        partyId: "party-live",
+      })) as GameRoom;
+
+      const client = await colyseus.connectTo(room, {
+        partyId: "party-live",
+        connectionToken: "observer-live-token",
+      });
+
+      const snapshotWait = client.waitForMessage("snapshot:readonly", 5_000);
+      client.send("snapshot:request", { audience: "observer" });
+      const snapshot = await snapshotWait;
+      const snapshotJson = JSON.stringify(snapshot);
+      assert(Array.isArray(snapshot.participants), "readonly participants array");
+      assert(Array.isArray(snapshot.timeline), "readonly timeline array");
+      assert(!snapshotJson.includes("connectionToken"), "no token in readonly snapshot");
+      assert(!snapshotJson.match(/provisional|role|userId/i), "no private fields in readonly snapshot");
+
+      const warnMessages: unknown[] = [];
+      const originalWarn = console.warn;
+      console.warn = (...args: unknown[]) => {
+        warnMessages.push(args);
+      };
+
+      try {
+        const rejectedWait = client.waitForMessage("command:rejected", 5_000);
+        client.send("room:move", { sequence: 1, x: 1, y: 0 });
+        const rejected = await rejectedWait;
+        assert(rejected.type === "room:move", "observer reject type");
+        assert(rejected.error === "ROLE_NOT_ALLOWED", "observer competitive command refused");
+        assert(warnMessages.length === 1, "observer refusal logged once");
+        const warnText = JSON.stringify(warnMessages[0]);
+        assert(warnText.includes("observer-command-refused"), "observer refusal log tag");
+        assert(room.state.players.size === 1, "observer refusal does not mutate room population");
+        console.log("ok: observer readonly no-leak + refusal logged");
+      } finally {
+        console.warn = originalWarn;
+        tokenPayload.participation.role = "PLAYER";
+        tokenPayload.participation.status = "PLAYING";
+      }
+
+      await colyseus.cleanup();
+    }
+
     // join without token refused
     {
       const room = (await colyseus.createRoom("game_room", {

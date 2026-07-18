@@ -12,7 +12,11 @@ import {
   persistReconnect,
   persistReconnecting,
 } from "../handlers/connection-handler.js";
-import { dispatchCommand, type CommandMessage } from "../handlers/command-dispatcher.js";
+import {
+  dispatchCommand,
+  isCompetitiveCommandType,
+  type CommandMessage,
+} from "../handlers/command-dispatcher.js";
 import {
   handleRoundCommandAsync,
   registerRoundHandlers,
@@ -117,6 +121,21 @@ export class GameRoom extends Room<{ state: LiveRoomState }> {
     }
 
     if (!result.accepted) {
+      const player = this.state.players.get(client.sessionId);
+      if (
+        result.error === "ROLE_NOT_ALLOWED" &&
+        player &&
+        !isPlayerRole(player.role) &&
+        isCompetitiveCommandType(command.type)
+      ) {
+        console.warn("[observer-command-refused]", {
+          partyId: this.state.partyId,
+          sessionId: client.sessionId,
+          role: player.role,
+          commandType: command.type,
+          error: result.error,
+        });
+      }
       client.send("command:rejected", { type: command.type, error: result.error });
     } else if (result.acknowledge !== false) {
       client.send("command:accepted", {

@@ -1,4 +1,3 @@
-import { getObserverParty } from "@/components/observer/observer-data";
 import { ObserverResults } from "@/components/observer/ObserverResults";
 import { AppShell } from "@/components/ui/AppShell";
 
@@ -8,7 +7,6 @@ export default async function ObserverResultsPage({
   params: Promise<{ partyId: string }>;
 }) {
   const { partyId } = await params;
-  const party = getObserverParty(decodeURIComponent(partyId));
   return (
     <AppShell
       audience="Observateur"
@@ -16,7 +14,7 @@ export default async function ObserverResultsPage({
       title="Résultats publics"
       subtitle="Seule la version publiée est accessible à l’audience observateur."
     >
-      <ObserverResults party={party} />
+      <ObserverResults partyId={decodeURIComponent(partyId)} />
     </AppShell>
   );
 }
