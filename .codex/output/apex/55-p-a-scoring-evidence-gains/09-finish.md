@@ -7,4 +7,6 @@
 
 ## Pull Request Creation
 
-_PR creation process will be logged here..._
+- Branch pushed: `apex/p-a-scoring`
+- Base branch: `v0.1`
+- Pull request created: https://github.com/pius-coder/anonymous/pull/44
