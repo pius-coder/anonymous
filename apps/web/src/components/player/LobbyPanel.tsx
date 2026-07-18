@@ -24,6 +24,7 @@ import {
   leavePreparation,
   markPresent,
   markReady,
+  type PreparationSelfState,
   type PreparationState,
 } from "@/services/preparationClient";
 
@@ -31,6 +32,13 @@ const STALE_MS = 15_000;
 
 function readinessOf(state: PreparationState | undefined, userIdHint?: string) {
   if (!state) return { present: false, ready: false, status: "unknown" as const };
+  if (state.self) {
+    return {
+      present: state.self.status === "PRESENT" || state.self.status === "READY",
+      ready: state.self.status === "READY",
+      status: state.self.status,
+    };
+  }
   // Prefer self row when user id unknown — UI may not have session id; use first matching READY/PRESENT aggregate for current user via last mutation.
   const self = userIdHint ? state.participants.find((p) => p.userId === userIdHint) : undefined;
   if (self) {
@@ -41,6 +49,29 @@ function readinessOf(state: PreparationState | undefined, userIdHint?: string) {
     };
   }
   return { present: false, ready: false, status: "unknown" as const };
+}
+
+function axisLabel(value: string | undefined) {
+  switch (value) {
+    case "NONE":
+      return "Non requis";
+    case "PAID":
+      return "Confirmé";
+    case "PENDING":
+      return "En attente";
+    case "ADMITTED":
+      return "Accès validé";
+    case "NOT_ADMITTED":
+      return "Non admis";
+    case "connected":
+      return "Connecté";
+    case "disconnected":
+      return "Hors ligne";
+    case "reconnecting":
+      return "Reconnexion";
+    default:
+      return value ?? "Inconnu";
+  }
 }
 
 export function LobbyPanel({ partyCode }: { partyCode: string }) {
@@ -158,6 +189,7 @@ export function LobbyPanel({ partyCode }: { partyCode: string }) {
 
   const state = prepQuery.data;
   const emptyParticipants = !state?.participants.length;
+  const selfAccess: PreparationSelfState | undefined = state?.self;
 
   return (
     <div className="space-y-4">
@@ -218,20 +250,38 @@ export function LobbyPanel({ partyCode }: { partyCode: string }) {
                 Présence et état prêt sont deux confirmations distinctes et idempotentes.
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-3">
-              <StatusTile
-                icon={UserCheck}
-                label="Présence"
-                value={present ? "Confirmée" : "À confirmer"}
-                done={present}
-              />
-              <StatusTile icon={Check} label="Prêt" value={ready ? "Oui" : "Non"} done={ready} />
-              <StatusTile
-                icon={ShieldCheck}
-                label="Lobby"
-                value={emptyParticipants ? "Vide" : `${state?.stats.ready ?? 0} prêts`}
-                done={!emptyParticipants}
-              />
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <StatusTile
+                  icon={UserCheck}
+                  label="Présence"
+                  value={present ? "Confirmée" : "À confirmer"}
+                  done={present}
+                />
+                <StatusTile icon={Check} label="Prêt" value={ready ? "Oui" : "Non"} done={ready} />
+                <StatusTile
+                  icon={ShieldCheck}
+                  label="Lobby"
+                  value={emptyParticipants ? "Vide" : `${state?.stats.ready ?? 0} prêts`}
+                  done={!emptyParticipants}
+                />
+              </div>
+              {selfAccess ? (
+                <dl className="grid gap-2 text-sm sm:grid-cols-3">
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <dt className="text-xs text-muted-foreground">Paiement</dt>
+                    <dd className="font-medium">{axisLabel(selfAccess.paymentState)}</dd>
+                  </div>
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <dt className="text-xs text-muted-foreground">Admission</dt>
+                    <dd className="font-medium">{axisLabel(selfAccess.admissionState)}</dd>
+                  </div>
+                  <div className="rounded-md border bg-muted/30 p-3">
+                    <dt className="text-xs text-muted-foreground">Connexion</dt>
+                    <dd className="font-medium">{axisLabel(selfAccess.connectionState)}</dd>
+                  </div>
+                </dl>
+              ) : null}
             </CardContent>
           </Card>
           {emptyParticipants ? (

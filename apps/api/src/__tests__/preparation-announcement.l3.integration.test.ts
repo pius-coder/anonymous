@@ -179,4 +179,30 @@ describe.skipIf(!runL3)("L3 preparation atomicity / idempotence", () => {
     expect(party?.status).toBe("PREPARATION_LOCKED");
     expect(party?.status).not.toBe("ROUND_ACTIVE");
   });
+
+  it("rejects unpaid players from joining the lobby on paid parties", async () => {
+    await prisma.party.update({
+      where: { id: partyId },
+      data: {
+        entryFeeAmount: 500,
+        entryFeeCurrency: "XAF",
+      },
+    });
+    await prisma.partyParticipation.updateMany({
+      where: { partyId, userId: playerId },
+      data: {
+        status: "REGISTERED",
+        paymentState: "NONE",
+        admissionState: "PENDING",
+        readinessState: "offline",
+      },
+    });
+
+    await openPreparation({ partyId, userId: adminId });
+
+    await expect(markPresent({ partyId, userId: playerId })).rejects.toMatchObject({
+      code: "PAYMENT_REQUIRED",
+      httpStatus: 403,
+    });
+  });
 });
