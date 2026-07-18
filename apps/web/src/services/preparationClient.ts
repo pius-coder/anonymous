@@ -24,10 +24,20 @@ export type PreparationAnnouncement = {
   createdAt: string;
 };
 
+export type PreparationSelfState = {
+  id: string;
+  status: string;
+  readinessState: string;
+  paymentState: string;
+  admissionState: string;
+  connectionState: string;
+};
+
 export type PreparationState = {
   partyId: string;
   status: string;
   selfUserId?: string;
+  self?: PreparationSelfState;
   participants: PreparationParticipant[];
   announcements: PreparationAnnouncement[];
   stats: {

@@ -66,6 +66,14 @@ export type LeavePreparationInput = {
 export type PreparationStateOutput = {
   partyId: string;
   status: string;
+  self?: {
+    id: string;
+    status: string;
+    readinessState: string;
+    paymentState: string;
+    admissionState: string;
+    connectionState: string;
+  };
   participants: Array<{
     id: string;
     userId: string;
@@ -117,6 +125,73 @@ const PRESENT_ALREADY = new Set(["PRESENT", "READY"]);
 const READY_ALREADY = new Set(["READY"]);
 const CANCELLED = new Set(["ABANDONED", "CANCELLED"]);
 const ABSENT_STATUSES = new Set(["REGISTERED", "PAID", "INVITED"]);
+const REVOKED_ADMISSION_STATES = new Set(["REVOKED", "DENIED", "BLOCKED", "RELEASED"]);
+
+function decimalToNumber(value: unknown): number {
+  if (value == null) return 0;
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  if (typeof value === "object" && value !== null && "toNumber" in value) {
+    try {
+      return Number((value as { toNumber: () => number }).toNumber());
+    } catch {
+      return 0;
+    }
+  }
+  return 0;
+}
+
+function partyRequiresPayment(party: { entryFeeAmount?: unknown }): boolean {
+  return decimalToNumber(party.entryFeeAmount) > 0;
+}
+
+function assertLobbyAccess(
+  party: { entryFeeAmount?: unknown },
+  participation: {
+    status: string;
+    paymentState?: string;
+    admissionState?: string;
+  },
+): void {
+  if (CANCELLED.has(participation.status)) {
+    throw new PreparationUseCaseError(
+      "PARTICIPATION_CANCELLED",
+      "Votre participation a été annulée",
+      422,
+    );
+  }
+
+  if (REVOKED_ADMISSION_STATES.has(participation.admissionState ?? "")) {
+    throw new PreparationUseCaseError(
+      "LOBBY_ACCESS_REVOKED",
+      "Votre accès au lobby a été révoqué",
+      403,
+    );
+  }
+
+  if (!partyRequiresPayment(party)) {
+    return;
+  }
+
+  if (participation.paymentState !== "PAID") {
+    throw new PreparationUseCaseError(
+      "PAYMENT_REQUIRED",
+      "Paiement requis avant l'accès au lobby",
+      403,
+    );
+  }
+
+  if (participation.admissionState !== "ADMITTED") {
+    throw new PreparationUseCaseError(
+      "ADMISSION_REQUIRED",
+      "Admission requise avant l'accès au lobby",
+      403,
+    );
+  }
+}
 
 function toDomainParticipation(p: {
   id: string;
@@ -219,13 +294,7 @@ export async function markPresent(
     throw new PreparationUseCaseError("PARTICIPATION_NOT_FOUND", "Participation introuvable", 404);
   }
 
-  if (CANCELLED.has(participation.status)) {
-    throw new PreparationUseCaseError(
-      "PARTICIPATION_CANCELLED",
-      "Votre participation a été annulée",
-      422,
-    );
-  }
+  assertLobbyAccess(party, participation);
 
   // Idempotent present (and already-ready is still present).
   if (PRESENT_ALREADY.has(participation.status)) {
@@ -236,7 +305,11 @@ export async function markPresent(
     };
   }
 
-  if (!PRESENT_ELIGIBLE.has(participation.status)) {
+  const presentEligible = partyRequiresPayment(party)
+    ? participation.status === "PAID"
+    : PRESENT_ELIGIBLE.has(participation.status);
+
+  if (!presentEligible) {
     throw new PreparationUseCaseError(
       "NOT_ELIGIBLE",
       "Participation non éligible pour signaler la présence",
@@ -286,13 +359,7 @@ export async function markReady(
     throw new PreparationUseCaseError("PARTICIPATION_NOT_FOUND", "Participation introuvable", 404);
   }
 
-  if (CANCELLED.has(participation.status)) {
-    throw new PreparationUseCaseError(
-      "PARTICIPATION_CANCELLED",
-      "Votre participation a été annulée",
-      422,
-    );
-  }
+  assertLobbyAccess(party, participation);
 
   // Idempotent ready.
   if (READY_ALREADY.has(participation.status)) {
@@ -517,13 +584,7 @@ export async function leavePreparation(input: LeavePreparationInput): Promise<{ 
     throw new PreparationUseCaseError("PARTICIPATION_NOT_FOUND", "Participation introuvable", 404);
   }
 
-  if (CANCELLED.has(participation.status)) {
-    throw new PreparationUseCaseError(
-      "PARTICIPATION_CANCELLED",
-      "Votre participation a été annulée",
-      422,
-    );
-  }
+  assertLobbyAccess(party, participation);
 
   // Idempotent leave: already offline/registered.
   if (participation.status === "REGISTERED" && participation.readinessState === "offline") {
@@ -540,6 +601,7 @@ export async function leavePreparation(input: LeavePreparationInput): Promise<{ 
 
 export async function getPreparationState(input: {
   partyId: string;
+  userId?: string;
 }): Promise<PreparationStateOutput> {
   const party = await partyRepository.findPartyById(input.partyId);
   if (!party) {
@@ -552,6 +614,21 @@ export async function getPreparationState(input: {
   ]);
 
   const activeParticipations = participations.filter((p) => p.status !== "ABANDONED");
+  const selfParticipation = input.userId
+    ? activeParticipations.find((p) => p.userId === input.userId) ??
+      participations.find((p) => p.userId === input.userId)
+    : undefined;
+
+  if (input.userId) {
+    if (!selfParticipation) {
+      throw new PreparationUseCaseError(
+        "PARTICIPATION_NOT_FOUND",
+        "Participation introuvable",
+        404,
+      );
+    }
+    assertLobbyAccess(party, selfParticipation);
+  }
 
   const participants = activeParticipations.map((p) => ({
     id: p.id,
@@ -579,6 +656,16 @@ export async function getPreparationState(input: {
   return {
     partyId: input.partyId,
     status: party.status,
+    self: selfParticipation
+      ? {
+          id: selfParticipation.id,
+          status: selfParticipation.status,
+          readinessState: selfParticipation.readinessState,
+          paymentState: selfParticipation.paymentState,
+          admissionState: selfParticipation.admissionState,
+          connectionState: selfParticipation.connectionState,
+        }
+      : undefined,
     participants,
     announcements: announcements.map((a) => ({
       id: a.id,

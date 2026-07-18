@@ -12,6 +12,8 @@ import {
   Users,
   WalletCards,
 } from "lucide-react";
+import { getMyParticipation } from "@/services/participation/participationAdapter";
+import { getPlayerJourneyState, nextPlayerHref } from "@/services/player/player-journey";
 import { getPublicPartyByCode, sessionQueryKeys } from "@/services/session/sessionAdapter";
 import type { PublicPartyDetail } from "@/services/session/types";
 import { PublicShell } from "@/components/public/PublicShell";
@@ -47,6 +49,22 @@ export function PartyDetailView({
       if (code === "PARTY_NOT_FOUND" || code === "PARTY_INACCESSIBLE") return false;
       return failureCount < 2;
     },
+  });
+
+  const myParticipationQuery = useQuery({
+    queryKey: ["participation", "mine", code, "detail-cta"],
+    queryFn: async () => {
+      const result = await getMyParticipation(code);
+      if (!result.success) {
+        if (result.error.code === "UNAUTHENTICATED") {
+          return null;
+        }
+        throw Object.assign(new Error(result.error.message), { code: result.error.code });
+      }
+      return result.data;
+    },
+    retry: false,
+    staleTime: 10_000,
   });
 
   if (detailQuery.isLoading) {
@@ -120,6 +138,26 @@ export function PartyDetailView({
   const capacity = Math.max(party.capacity, 0);
   const full = capacity > 0 && party.players >= capacity;
   const progress = capacity > 0 ? Math.min(100, (party.players / capacity) * 100) : 0;
+  const journeyState = getPlayerJourneyState(party, myParticipationQuery.data ?? null);
+  const ctaHref = nextPlayerHref(party, myParticipationQuery.data ?? null);
+  const ctaLabel =
+    journeyState === "payment-required"
+      ? "Finaliser mon paiement"
+      : journeyState === "preparation-ready"
+        ? "Ouvrir la préparation"
+        : journeyState === "live-ready"
+          ? "Entrer dans la room"
+          : journeyState === "results"
+            ? "Voir mes résultats"
+            : journeyState === "already-registered"
+              ? "Voir mon inscription"
+              : journeyState === "cancelled"
+                ? "Réserver à nouveau"
+                : full || journeyState === "full"
+                  ? "Partie complète"
+                  : journeyState === "closed"
+                    ? "Inscriptions fermées"
+                    : "Réserver ma place";
 
   return (
     <PublicShell>
@@ -152,7 +190,7 @@ export function PartyDetailView({
                   <Badge variant={full ? "secondary" : "default"}>
                     {full ? "Complet" : "Places ouvertes"}
                   </Badge>
-                  <Badge variant="outline">{party.entryFee}</Badge>
+                  <Badge variant="outline">{party.entryFeeLabel}</Badge>
                 </div>
                 <CardTitle className="font-head text-2xl">{party.name}</CardTitle>
                 <CardDescription>
@@ -168,14 +206,16 @@ export function PartyDetailView({
                   value={`${party.players}/${capacity || "—"} joueurs`}
                 />
                 <Fact icon={Gamepad2} label="Jeu vedette" value={party.game} />
-                <Fact icon={WalletCards} label="Entrée" value={party.entryFee} />
+                <Fact icon={WalletCards} label="Entrée" value={party.entryFeeLabel} />
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
                 <CardTitle>Parcours de la session</CardTitle>
-                <CardDescription>Les étapes visibles côté joueur.</CardDescription>
+                <CardDescription>
+                  {party.description || "Les étapes visibles côté joueur."}
+                </CardDescription>
               </CardHeader>
               <CardContent className="journey-list">
                 {[
@@ -227,21 +267,24 @@ export function PartyDetailView({
               </div>
               <div className="booking-total">
                 <span>Montant à confirmer</span>
-                <strong>{party.entryFee}</strong>
+                <strong>{party.entryFeeLabel}</strong>
               </div>
               <Button
-                render={<Link href={`/parties/${party.code}/participation`} />}
+                render={<Link href={ctaHref} />}
                 className="w-full"
                 size="lg"
-                disabled={full}
+                disabled={journeyState === "full" || journeyState === "closed"}
               >
-                {full ? "Partie complète" : "Réserver ma place"} <ArrowRight />
+                {ctaLabel} <ArrowRight />
               </Button>
               <Button render={<Link href="/parties" />} className="mt-2 w-full" variant="outline">
                 Retour au catalogue
               </Button>
               <p className="booking-safety">
                 <ShieldCheck /> Capacité et permission vérifiées côté serveur.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Tarif {party.entryFeeCurrency} · config v{party.configVersion} · fee v{party.feeVersion} · fuseau {party.timeZone}
               </p>
             </CardContent>
           </Card>

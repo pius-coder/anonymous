@@ -31,6 +31,12 @@ export type PublicPartyListItem = {
   minPlayers: number | null;
   maxPlayers: number | null;
   participantCount: number;
+  roundProgram: unknown;
+  description: string | null;
+  entryFeeAmount: number | null;
+  entryFeeCurrency: string;
+  configVersion: number;
+  feeVersion: number;
 };
 
 export type PublicPartyDetail = {
@@ -45,6 +51,11 @@ export type PublicPartyDetail = {
   roundProgram: unknown;
   participantCount: number;
   createdAt: string;
+  description: string | null;
+  entryFeeAmount: number | null;
+  entryFeeCurrency: string;
+  configVersion: number;
+  feeVersion: number;
 };
 
 export type AdminPartyDetail = {
@@ -303,6 +314,12 @@ export async function listPublicParties(input: ListPublicPartiesInput = {}): Pro
       minPlayers: p.minPlayers,
       maxPlayers: p.maxPlayers,
       participantCount: participantCounts[i],
+      roundProgram: p.roundProgram,
+      description: p.description ?? null,
+      entryFeeAmount: decimalToNumber(p.entryFeeAmount),
+      entryFeeCurrency: p.entryFeeCurrency ?? "XAF",
+      configVersion: p.configVersion ?? 1,
+      feeVersion: p.feeVersion ?? 1,
     })),
     total,
   } satisfies ListPublicPartiesResult;
@@ -333,6 +350,11 @@ export async function getPublicParty(input: { code: string }): Promise<PublicPar
     roundProgram: party.roundProgram,
     participantCount,
     createdAt: party.createdAt.toISOString(),
+    description: party.description ?? null,
+    entryFeeAmount: decimalToNumber(party.entryFeeAmount),
+    entryFeeCurrency: party.entryFeeCurrency ?? "XAF",
+    configVersion: party.configVersion ?? 1,
+    feeVersion: party.feeVersion ?? 1,
   } satisfies PublicPartyDetail;
 }
 
@@ -361,6 +383,11 @@ export async function getPublicPartyById(input: { id: string }): Promise<PublicP
     roundProgram: party.roundProgram,
     participantCount,
     createdAt: party.createdAt.toISOString(),
+    description: party.description ?? null,
+    entryFeeAmount: decimalToNumber(party.entryFeeAmount),
+    entryFeeCurrency: party.entryFeeCurrency ?? "XAF",
+    configVersion: party.configVersion ?? 1,
+    feeVersion: party.feeVersion ?? 1,
   } satisfies PublicPartyDetail;
 }
 

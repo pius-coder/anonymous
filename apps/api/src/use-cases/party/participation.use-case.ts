@@ -1,6 +1,6 @@
 import { partyRepository, participationRepository, userRepository } from "@session-jeu/db";
-import { canRegister, cancelParticipation as domainCancelParticipation, ParticipationStatus, InvalidTransitionError } from "@session-jeu/game-engine";
-import type { Game, GameParticipation } from "@session-jeu/game-engine";
+import { cancelParticipation as domainCancelParticipation, ParticipationStatus, InvalidTransitionError } from "@session-jeu/game-engine";
+import type { GameParticipation } from "@session-jeu/game-engine";
 
 export class ParticipationUseCaseError extends Error {
   readonly code: string;
@@ -32,14 +32,34 @@ export type ParticipationDetail = {
   userId: string;
   role: string;
   status: string;
+  paymentState: string;
+  admissionState: string;
   readinessState: string;
   connectionState: string;
   createdAt: string;
+  expiresAt: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
 };
 
 export type AdminParticipationDetail = ParticipationDetail & {
   userName: string | null;
   userEmail: string;
+};
+
+export type MyTicketDetail = ParticipationDetail & {
+  partyCode: string;
+  partyName: string;
+  partyStatus: string;
+  partyDescription: string | null;
+  scheduledAt: string | null;
+  minPlayers: number | null;
+  maxPlayers: number | null;
+  roundProgram: unknown;
+  entryFeeAmount: number | null;
+  entryFeeCurrency: string;
+  configVersion: number;
+  feeVersion: number;
 };
 
 export type CancelParticipationInput = {
@@ -62,9 +82,14 @@ function toParticipationDetail(p: {
   userId: string;
   role: string;
   status: string;
+  paymentState: string;
+  admissionState: string;
   readinessState: string;
   connectionState: string;
   createdAt: Date;
+  expiresAt: Date | null;
+  cancelledAt: Date | null;
+  cancellationReason: string | null;
 }): ParticipationDetail {
   return {
     id: p.id,
@@ -72,38 +97,19 @@ function toParticipationDetail(p: {
     userId: p.userId,
     role: p.role,
     status: p.status,
+    paymentState: p.paymentState,
+    admissionState: p.admissionState,
     readinessState: p.readinessState,
     connectionState: p.connectionState,
     createdAt: p.createdAt.toISOString(),
+    expiresAt: p.expiresAt?.toISOString() ?? null,
+    cancelledAt: p.cancelledAt?.toISOString() ?? null,
+    cancellationReason: p.cancellationReason ?? null,
   };
 }
 
 function getPartyOrThrow(code: string) {
   return partyRepository.findPartyByCode(code);
-}
-
-function toDomainGame(p: {
-  id: string;
-  code: string;
-  name: string;
-  status: string;
-  scheduledAt: Date | null;
-  visibility: string;
-  minPlayers: number | null;
-  maxPlayers: number | null;
-  roundProgram: unknown;
-}): Game {
-  return {
-    id: p.id,
-    code: p.code,
-    name: p.name,
-    status: 0 as never,
-    scheduledAt: p.scheduledAt,
-    visibility: p.visibility,
-    minPlayers: p.minPlayers,
-    maxPlayers: p.maxPlayers,
-    roundProgram: p.roundProgram,
-  };
 }
 
 const STATUS_MAP: Record<string, ParticipationStatus> = {
@@ -170,71 +176,24 @@ export async function registerForParty(input: RegisterForPartyInput): Promise<Pa
     throw new ParticipationUseCaseError("PARTY_NOT_REGISTRABLE", "Cette partie n'accepte plus d'inscriptions", 422);
   }
 
-  if (input.idempotencyKey) {
-    const existingByIdempotency = await participationRepository.findParticipationByIdempotencyKey(input.idempotencyKey);
-    if (existingByIdempotency) {
-      return toParticipationDetail(existingByIdempotency);
-    }
-  }
-
-  const existing = await participationRepository.findParticipation(party.id, input.userId);
-  if (existing) {
-    // Idempotent: already holding a seat.
-    if (existing.status !== "ABANDONED") {
-      return toParticipationDetail(existing);
-    }
-    // Reactivate a previously cancelled seat only if capacity allows.
-    const currentCount = await participationRepository.countActiveByPartyId(party.id);
-    const domainGame = toDomainGame(party);
-    const capacity = canRegister(domainGame, currentCount);
-    if (!capacity.allowed) {
-      throw new ParticipationUseCaseError(
-        "PARTY_FULL",
-        capacity.reason === "PARTY_FULL" ? "Cette partie est complète" : "Inscription impossible",
-        422,
-      );
-    }
-    const reactivated = await participationRepository.reactivateParticipation(existing.id);
-    return toParticipationDetail(reactivated);
-  }
-
-  const currentCount = await participationRepository.countActiveByPartyId(party.id);
-  const domainGame = toDomainGame(party);
-  const capacity = canRegister(domainGame, currentCount);
-  if (!capacity.allowed) {
-    throw new ParticipationUseCaseError(
-      "PARTY_FULL",
-      capacity.reason === "PARTY_FULL" ? "Cette partie est complète" : "Inscription impossible",
-      422,
-    );
-  }
-
   const expiresAt = party.scheduledAt ?? new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const result = await participationRepository.tryRegisterWithCapacity({
+    partyId: party.id,
+    userId: input.userId,
+    role: "player",
+    status: "REGISTERED",
+    idempotencyKey: input.idempotencyKey,
+    expiresAt,
+  });
 
-  try {
-    const created = await participationRepository.createParticipation({
-      partyId: party.id,
-      userId: input.userId,
-      role: "player",
-      status: "REGISTERED",
-      idempotencyKey: input.idempotencyKey,
-      expiresAt,
-    });
-    return toParticipationDetail(created);
-  } catch (err) {
-    // Concurrent double-submit: unique (partyId, userId) or idempotency key race.
-    const raced = await participationRepository.findParticipation(party.id, input.userId);
-    if (raced) {
-      return toParticipationDetail(raced);
+  if (!result.ok) {
+    if (result.reason === "CAPACITY_FULL") {
+      throw new ParticipationUseCaseError("PARTY_FULL", "Cette partie est complète", 422);
     }
-    if (input.idempotencyKey) {
-      const byKey = await participationRepository.findParticipationByIdempotencyKey(input.idempotencyKey);
-      if (byKey) {
-        return toParticipationDetail(byKey);
-      }
-    }
-    throw err;
+    throw new ParticipationUseCaseError("PARTY_NOT_FOUND", "Partie introuvable", 404);
   }
+
+  return toParticipationDetail(result.participation);
 }
 
 export async function cancelMyParticipation(input: CancelParticipationInput): Promise<ParticipationDetail> {
@@ -325,6 +284,55 @@ export async function listPartyParticipations(input: ListPartyParticipationsInpu
       ...toParticipationDetail(p),
       userName: user?.name ?? null,
       userEmail: user?.email ?? "inconnu",
+    };
+  });
+}
+
+function decimalToNumber(value: unknown): number | null {
+  if (value == null) return null;
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+  if (typeof value === "object" && value !== null && "toNumber" in value) {
+    try {
+      return (value as { toNumber: () => number }).toNumber();
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+export async function listMyTickets(userId: string): Promise<MyTicketDetail[]> {
+  const participations = await participationRepository.listParticipationsByUser(userId);
+  if (participations.length === 0) {
+    return [];
+  }
+
+  const parties = await Promise.all(
+    participations.map((participation) => partyRepository.findPartyById(participation.partyId)),
+  );
+
+  return participations.flatMap((participation, index) => {
+    const party = parties[index];
+    if (!party) return [];
+
+    return {
+      ...toParticipationDetail(participation),
+      partyCode: party.code,
+      partyName: party.name,
+      partyStatus: party.status,
+      partyDescription: party.description ?? null,
+      scheduledAt: party.scheduledAt?.toISOString() ?? null,
+      minPlayers: party.minPlayers,
+      maxPlayers: party.maxPlayers,
+      roundProgram: party.roundProgram,
+      entryFeeAmount: decimalToNumber(party.entryFeeAmount),
+      entryFeeCurrency: party.entryFeeCurrency ?? "XAF",
+      configVersion: party.configVersion ?? 1,
+      feeVersion: party.feeVersion ?? 1,
     };
   });
 }

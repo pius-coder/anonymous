@@ -15,12 +15,7 @@ import {
   getSupportSnapshot,
 } from "../projections/live-projections.js";
 
-export {
-  getAdminSnapshot,
-  getPlayerSnapshotForClient,
-  getReadonlySnapshot,
-  getSupportSnapshot,
-} from "../projections/live-projections.js";
+export * from "../projections/live-projections.js";
 
 function handleSnapshotRequest(
   state: LiveRoomState,

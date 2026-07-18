@@ -1,13 +1,16 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CalendarClock, Gamepad2, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { listPublicParties } from "@/services/session/sessionAdapter";
 import { PublicShell } from "@/components/public/PublicShell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { uiParties } from "@/lib/ui-data";
 
-export default function HomePage() {
-  const featured = uiParties.filter((party) => party.status !== "review").slice(0, 3);
+export const revalidate = 60;
+
+export default async function HomePage() {
+  const featuredResult = await listPublicParties({ skip: 0, take: 3 });
+  const featured = featuredResult.success ? featuredResult.data.parties.slice(0, 3) : [];
 
   return (
     <PublicShell>
@@ -53,7 +56,7 @@ export default function HomePage() {
             {featured.map((party) => (
               <article key={party.id} className="grid min-h-64 content-between border-2 border-border bg-card p-5 shadow-sm">
                 <div>
-                  <div className="flex items-center justify-between gap-3"><Badge variant="outline">{party.entryFee}</Badge><span className="font-mono text-xs text-muted-foreground">{party.code}</span></div>
+                  <div className="flex items-center justify-between gap-3"><Badge variant="outline">{party.entryFeeLabel}</Badge><span className="font-mono text-xs text-muted-foreground">{party.code}</span></div>
                   <h3 className="mt-5 font-head text-xl font-bold">{party.name}</h3>
                   <div className="mt-5 grid gap-3 text-sm text-muted-foreground">
                     <span className="flex items-center gap-2"><Gamepad2 size={17} /> {party.game}</span>

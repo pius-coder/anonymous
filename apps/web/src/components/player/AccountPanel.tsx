@@ -21,8 +21,17 @@ export function AccountPanel() {
         message="Nous vérifions votre session."
       />
     );
-  const name = user?.name || "Aya M.";
-  const email = user?.email || "ay••@noya.cm";
+  if (!user) {
+    return (
+      <PageState
+        kind="denied"
+        title="Connexion requise"
+        message="Connectez-vous pour consulter votre compte joueur."
+      />
+    );
+  }
+  const name = user.name || user.email;
+  const email = user.email;
   return (
     <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
       <Card>

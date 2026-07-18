@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
@@ -11,7 +11,10 @@ import {
   Smartphone,
   WalletCards,
 } from "lucide-react";
-import type { UiParty } from "@/lib/ui-data";
+import { trackAnalyticsEvent } from "@/lib/analytics";
+import { getMyParticipation, isCancelledParticipation } from "@/services/participation/participationAdapter";
+import { getPlayerJourneyState, nextPlayerHref } from "@/services/player/player-journey";
+import { getPublicPartyByCode, sessionQueryKeys } from "@/services/session/sessionAdapter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,13 +61,35 @@ function isOfficialCheckoutUrl(url: string): boolean {
   }
 }
 
-export function PaymentPanel({ party }: { party: UiParty }) {
+export function PaymentPanel({ partyCode }: { partyCode: string }) {
+  const code = decodeURIComponent(partyCode).toUpperCase();
   const [method, setMethod] = useState<Method>("mobile");
   const [phase, setPhase] = useState<UiPhase>("idle");
   const [payment, setPayment] = useState<PaymentDetail | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [idempotencyKey] = useState(() => paymentApi.newIdempotencyKey(`party-${party.code}`));
+  const [idempotencyKey] = useState(() => paymentApi.newIdempotencyKey(`party-${code}`));
   const pollStartedAt = useRef<number | null>(null);
+
+  const partyQuery = useQuery({
+    queryKey: sessionQueryKeys.detail(code),
+    queryFn: async () => {
+      const res = await getPublicPartyByCode(code);
+      if (!res.success) throw Object.assign(new Error(res.error.message), { code: res.error.code });
+      return res.data;
+    },
+    staleTime: 20_000,
+  });
+
+  const participationQuery = useQuery({
+    queryKey: ["participation", "mine", code, "payment"],
+    queryFn: async () => {
+      const res = await getMyParticipation(code);
+      if (!res.success) throw Object.assign(new Error(res.error.message), { code: res.error.code });
+      return res.data;
+    },
+    retry: false,
+    staleTime: 10_000,
+  });
 
   const walletQuery = useQuery({
     queryKey: ["wallet", "me"],
@@ -76,11 +101,11 @@ export function PaymentPanel({ party }: { party: UiParty }) {
     staleTime: 15_000,
   });
 
-  const applyServerPayment = useCallback((detail: PaymentDetail) => {
+  function applyServerPayment(detail: PaymentDetail) {
     setPayment(detail);
     const next = phaseFromServerStatus(detail.status);
     if (next) setPhase(next);
-  }, []);
+  }
 
   const pollStatus = useQuery({
     queryKey: ["payment-status", payment?.id],
@@ -109,11 +134,16 @@ export function PaymentPanel({ party }: { party: UiParty }) {
   });
 
   const initiateMutation = useMutation({
+    scope: { id: `payment-initiate-${code}` },
     mutationFn: async () => {
+      const party = partyQuery.data;
+      const participation = participationQuery.data;
       const res = await paymentApi.initiate({
         purpose: "ACCESS_FEE",
-        productCode: party.code,
+        productCode: code,
         idempotencyKey,
+        partyId: party?.id,
+        participationId: participation?.id,
       });
       if (!res.success) throw new Error(res.error.message);
       return res.data;
@@ -122,6 +152,7 @@ export function PaymentPanel({ party }: { party: UiParty }) {
       pollStartedAt.current = Date.now();
       applyServerPayment(data);
       if (data.status === "PENDING" || data.status === "CREATED") setPhase("pending");
+      trackAnalyticsEvent("player.payment.initiated", { partyCode: code, method });
       // Open official Fapshi hosted checkout (server-returned link only; never invent).
       if (data.checkoutUrl && isOfficialCheckoutUrl(data.checkoutUrl)) {
         window.location.assign(data.checkoutUrl);
@@ -134,17 +165,23 @@ export function PaymentPanel({ party }: { party: UiParty }) {
   });
 
   const walletPayMutation = useMutation({
+    scope: { id: `payment-wallet-${code}` },
     mutationFn: async () => {
+      const party = partyQuery.data;
+      const participation = participationQuery.data;
       const res = await paymentApi.payWithWallet({
-        productCode: party.code,
-        reason: `Droit d'entrée ${party.code}`,
+        productCode: code,
+        reason: `Droit d'entrée ${code}`,
         idempotencyKey: `${idempotencyKey}-wallet`,
+        partyId: party?.id,
+        participationId: participation?.id,
       });
       if (!res.success) throw new Error(res.error.message);
       return res.data;
     },
     onSuccess: (data) => {
       applyServerPayment(data.payment);
+      trackAnalyticsEvent("player.payment.wallet_paid", { partyCode: code });
       void walletQuery.refetch();
     },
     onError: (err: Error) => {
@@ -177,6 +214,12 @@ export function PaymentPanel({ party }: { party: UiParty }) {
     pollStartedAt.current = Date.now();
     void pollStatus.refetch().then((result) => {
       if (result.data) applyServerPayment(result.data);
+      if (result.data) {
+        trackAnalyticsEvent("player.payment.verified", {
+          partyCode: code,
+          status: result.data.status,
+        });
+      }
       else if (result.error) {
         setErrorMessage((result.error as Error).message);
         setPhase("retry");
@@ -194,6 +237,10 @@ export function PaymentPanel({ party }: { party: UiParty }) {
   const serverAmount = payment?.amount ?? polled?.amount;
   const displayPayment = payment ?? polled ?? null;
   const walletBalance = walletQuery.data?.balance;
+  const party = partyQuery.data;
+  const participation = participationQuery.data ?? null;
+  const journeyState = party ? getPlayerJourneyState(party, participation) : null;
+  const cancelled = isCancelledParticipation(participation);
   const methods = [
     {
       id: "mobile" as const,
@@ -214,7 +261,74 @@ export function PaymentPanel({ party }: { party: UiParty }) {
   ];
 
   const amountLabel =
-    serverAmount !== undefined ? formatXaf(serverAmount) : party.entryFee;
+    serverAmount !== undefined
+      ? formatXaf(serverAmount)
+      : party?.entryFeeLabel ?? "Montant en cours de chargement";
+
+  if (partyQuery.isLoading || participationQuery.isLoading) {
+    return (
+      <PageState
+        kind="loading"
+        title="Chargement du paiement"
+        message="Vérification de la partie, de votre participation et du montant serveur…"
+      />
+    );
+  }
+
+  if (partyQuery.isError) {
+    return (
+      <PageState
+        kind="error"
+        title="Paiement indisponible"
+        message={partyQuery.error instanceof Error ? partyQuery.error.message : "Impossible de charger la partie."}
+        action={<Button render={<Link href="/parties" />}>Retour au catalogue</Button>}
+      />
+    );
+  }
+
+  if (participationQuery.isError) {
+    const codeValue = (participationQuery.error as { code?: string }).code;
+    return (
+      <PageState
+        kind={codeValue === "UNAUTHENTICATED" ? "denied" : "error"}
+        title={codeValue === "UNAUTHENTICATED" ? "Connexion requise" : "Paiement indisponible"}
+        message={
+          participationQuery.error instanceof Error
+            ? participationQuery.error.message
+            : "Impossible de charger votre participation."
+        }
+        action={<Button render={<Link href={`/parties/${code}/participation`} />}>Voir mon inscription</Button>}
+      />
+    );
+  }
+
+  if (!party || !participation || cancelled) {
+    return (
+      <PageState
+        kind="denied"
+        title="Participation requise"
+        message="Vous devez disposer d’une participation active avant de payer cette partie."
+        action={<Button render={<Link href={`/parties/${code}/participation`} />}>Ouvrir l’inscription</Button>}
+      />
+    );
+  }
+
+  if (participation.paymentState === "PAID" || journeyState === "preparation-ready" || journeyState === "live-ready" || journeyState === "results") {
+    return (
+      <div className="space-y-4">
+        <PageState
+          kind="success"
+          title="Paiement déjà confirmé"
+          message="Votre participation est déjà payée. Vous pouvez reprendre le parcours joueur sans second débit."
+          action={
+            <Button render={<Link href={nextPlayerHref(party, participation)} />}>
+              Continuer <ArrowRight />
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
@@ -333,7 +447,7 @@ export function PaymentPanel({ party }: { party: UiParty }) {
             <Button
               className="w-full"
               size="lg"
-              render={<Link href={`/parties/${party.code}/lobby`} />}
+              render={<Link href={nextPlayerHref(party, { ...participation, paymentState: "PAID" })} />}
             >
               Accéder à la préparation <ArrowRight />
             </Button>
@@ -349,6 +463,10 @@ export function PaymentPanel({ party }: { party: UiParty }) {
           <div className="flex justify-between border-b pb-3 text-sm">
             <span>{party.name}</span>
             <strong>{amountLabel}</strong>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span>Version</span>
+            <strong>config v{party.configVersion} · fee v{party.feeVersion}</strong>
           </div>
           <div className="flex justify-between text-sm">
             <span>Total (serveur)</span>

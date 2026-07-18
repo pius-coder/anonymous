@@ -8,13 +8,11 @@ const dbMocks = vi.hoisted(() => ({
   participationRepository: {
     findParticipation: vi.fn(),
     findParticipationById: vi.fn(),
-    findParticipationByIdempotencyKey: vi.fn(),
-    countByPartyId: vi.fn(),
-    countActiveByPartyId: vi.fn(),
-    createParticipation: vi.fn(),
+    tryRegisterWithCapacity: vi.fn(),
     cancelParticipation: vi.fn(),
     reactivateParticipation: vi.fn(),
     listParticipationsByParty: vi.fn(),
+    listParticipationsByUser: vi.fn(),
     updateParticipation: vi.fn(),
   },
   userRepository: {
@@ -49,18 +47,26 @@ function participationRow(overrides: Record<string, unknown> = {}) {
     userId: "user-1",
     role: "player",
     status: "REGISTERED",
+    paymentState: "NONE",
+    admissionState: "PENDING",
     readinessState: "NOT_READY",
     connectionState: "OFFLINE",
     createdAt: new Date("2030-01-01T10:00:00.000Z"),
+    expiresAt: new Date("2030-01-01T12:00:00.000Z"),
+    cancelledAt: null,
+    cancellationReason: null,
     ...overrides,
   };
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
-  dbMocks.participationRepository.findParticipationByIdempotencyKey.mockResolvedValue(null);
   dbMocks.participationRepository.findParticipation.mockResolvedValue(null);
-  dbMocks.participationRepository.countActiveByPartyId.mockResolvedValue(0);
+  dbMocks.participationRepository.tryRegisterWithCapacity.mockResolvedValue({
+    ok: true,
+    participation: participationRow(),
+    created: true,
+  });
 });
 
 describe("registerForParty", () => {
@@ -81,13 +87,18 @@ describe("registerForParty", () => {
       code: "PARTY_NOT_REGISTRABLE",
       httpStatus: 422,
     });
-    expect(dbMocks.participationRepository.createParticipation).not.toHaveBeenCalled();
+
+    expect(dbMocks.participationRepository.tryRegisterWithCapacity).not.toHaveBeenCalled();
   });
 
-  it("is idempotent when the user is already registered", async () => {
+  it("is idempotent when the repository returns an existing seat", async () => {
     dbMocks.partyRepository.findPartyByCode.mockResolvedValueOnce(scheduledParty);
     const existing = participationRow();
-    dbMocks.participationRepository.findParticipation.mockResolvedValueOnce(existing);
+    dbMocks.participationRepository.tryRegisterWithCapacity.mockResolvedValueOnce({
+      ok: true,
+      participation: existing,
+      created: false,
+    });
 
     const result = await registerForParty({
       code: "LIVE01",
@@ -96,12 +107,22 @@ describe("registerForParty", () => {
     });
 
     expect(result.id).toBe("part-1");
-    expect(dbMocks.participationRepository.createParticipation).not.toHaveBeenCalled();
+    expect(dbMocks.participationRepository.tryRegisterWithCapacity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        partyId: "party-1",
+        userId: "user-1",
+        idempotencyKey: "register-dup",
+        expiresAt: scheduledParty.scheduledAt,
+      }),
+    );
   });
 
-  it("rejects when active capacity is full", async () => {
+  it("rejects when the atomic capacity primitive reports full", async () => {
     dbMocks.partyRepository.findPartyByCode.mockResolvedValueOnce(scheduledParty);
-    dbMocks.participationRepository.countActiveByPartyId.mockResolvedValueOnce(2);
+    dbMocks.participationRepository.tryRegisterWithCapacity.mockResolvedValueOnce({
+      ok: false,
+      reason: "CAPACITY_FULL",
+    });
 
     await expect(
       registerForParty({
@@ -115,15 +136,14 @@ describe("registerForParty", () => {
     });
   });
 
-  it("returns the same row on concurrent unique constraint race", async () => {
+  it("returns the repository winner for an atomic concurrent claim", async () => {
     dbMocks.partyRepository.findPartyByCode.mockResolvedValueOnce(scheduledParty);
-    dbMocks.participationRepository.createParticipation.mockRejectedValueOnce(
-      new Error("Unique constraint failed"),
-    );
     const raced = participationRow({ id: "part-race" });
-    dbMocks.participationRepository.findParticipation
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(raced);
+    dbMocks.participationRepository.tryRegisterWithCapacity.mockResolvedValueOnce({
+      ok: true,
+      participation: raced,
+      created: false,
+    });
 
     const result = await registerForParty({
       code: "LIVE01",

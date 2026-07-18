@@ -26,6 +26,8 @@ async function acquireControlLease(context: BrowserContext, partyId: string) {
   expect(lease.ok(), await lease.text()).toBeTruthy();
 }
 
+const SEEDED_FEE_PRODUCT_CODE = "SEED-PARTY-01";
+
 test.describe("L5 preparation flow", () => {
   test.beforeAll(async () => {
     const mod = await import(pathToFileURL(resolve(monorepoRoot, "scripts/lib/seed-lock.mjs")).href);
@@ -64,6 +66,8 @@ test.describe("L5 preparation flow", () => {
           visibility: "public",
           minPlayers: 2,
           maxPlayers: 8,
+          entryFeeAmount: 1000,
+          entryFeeCurrency: "XAF",
           roundProgram: { rounds: [{ number: 1, minigame: "memory_sequence" }] },
         },
       });
@@ -89,6 +93,19 @@ test.describe("L5 preparation flow", () => {
           { data: { idempotencyKey: key } },
         );
         expect(registration.status(), await registration.text()).toBe(201);
+        const registrationBody = await registration.json();
+        const participationId = registrationBody.data.id as string;
+
+        const payment = await context.request.post(`${apiProxyUrl}/v1/payments/wallet/pay`, {
+          data: {
+            productCode: SEEDED_FEE_PRODUCT_CODE,
+            partyId,
+            participationId,
+            reason: `Preparation flow ${partyCode}`,
+            idempotencyKey: `${key}-wallet`,
+          },
+        });
+        expect(payment.status(), await payment.text()).toBe(201);
       }
 
       const adminPage = await adminContext.newPage();

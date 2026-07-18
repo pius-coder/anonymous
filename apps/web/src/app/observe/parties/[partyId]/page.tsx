@@ -1,4 +1,3 @@
-import { getObserverParty } from "@/components/observer/observer-data";
 import { ObserverWorkspace } from "@/components/observer/ObserverWorkspace";
 import { AppShell } from "@/components/ui/AppShell";
 
@@ -8,16 +7,16 @@ type ObserverPartyPageProps = {
 
 export default async function ObserverPartyPage({ params }: ObserverPartyPageProps) {
   const { partyId } = await params;
-  const party = getObserverParty(decodeURIComponent(partyId));
+  const decodedPartyId = decodeURIComponent(partyId);
 
   return (
     <AppShell
       audience="Observateur"
       eyebrow="Observation"
-      title={party.name}
+      title="Direct public"
       subtitle="Vue lecture seule sans inputs, réponses cachées, scores provisoires ni données de paiement."
     >
-      <ObserverWorkspace party={party} />
+      <ObserverWorkspace partyId={decodedPartyId} />
     </AppShell>
   );
 }
