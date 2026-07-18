@@ -64,6 +64,8 @@ test.describe("L5 preparation flow", () => {
           visibility: "public",
           minPlayers: 2,
           maxPlayers: 8,
+          entryFeeAmount: 1000,
+          entryFeeCurrency: "XAF",
           roundProgram: { rounds: [{ number: 1, minigame: "memory_sequence" }] },
         },
       });
@@ -89,6 +91,15 @@ test.describe("L5 preparation flow", () => {
           { data: { idempotencyKey: key } },
         );
         expect(registration.status(), await registration.text()).toBe(201);
+
+        const payment = await context.request.post(`${apiProxyUrl}/v1/payments/wallet/pay`, {
+          data: {
+            productCode: partyCode,
+            reason: `Preparation flow ${partyCode}`,
+            idempotencyKey: `${key}-wallet`,
+          },
+        });
+        expect(payment.status(), await payment.text()).toBe(201);
       }
 
       const adminPage = await adminContext.newPage();

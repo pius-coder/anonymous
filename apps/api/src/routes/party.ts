@@ -6,6 +6,7 @@ import { successResponse, errorResponse } from "../lib/responses.js";
 import { listPublicParties, getPublicParty, PartyUseCaseError } from "../use-cases/party/party.use-case.js";
 import { registerForParty, cancelMyParticipation, getMyParticipation, ParticipationUseCaseError } from "../use-cases/party/participation.use-case.js";
 import { requireAuth } from "../middleware/auth.js";
+import { auditLog } from "../middleware/audit.js";
 import type { StatusCode } from "hono/utils/http-status";
 
 const partyRouter = new Hono<AppEnv>();
@@ -54,7 +55,7 @@ partyRouter.get("/parties/:code", zValidator("param", codeParamSchema), async (c
   }
 });
 
-partyRouter.post("/parties/:code/register", requireAuth, zValidator("param", codeParamSchema), zValidator("json", registerSchema), async (c) => {
+partyRouter.post("/parties/:code/register", requireAuth, auditLog("PARTICIPATION_REGISTER", "PartyParticipation"), zValidator("param", codeParamSchema), zValidator("json", registerSchema), async (c) => {
   try {
     const { code } = c.req.valid("param");
     const { idempotencyKey } = c.req.valid("json");
@@ -66,7 +67,7 @@ partyRouter.post("/parties/:code/register", requireAuth, zValidator("param", cod
   }
 });
 
-partyRouter.post("/parties/:code/cancel", requireAuth, zValidator("param", codeParamSchema), async (c) => {
+partyRouter.post("/parties/:code/cancel", requireAuth, auditLog("PARTICIPATION_CANCEL", "PartyParticipation"), zValidator("param", codeParamSchema), async (c) => {
   try {
     const { code } = c.req.valid("param");
     const user = c.get("user");

@@ -12,9 +12,14 @@ export type ParticipationStatusView = {
   userId: string;
   role: string;
   status: string;
+  paymentState: string;
+  admissionState: string;
   readinessState: string;
   connectionState: string;
   createdAt: string;
+  expiresAt: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
 };
 
 export type ParticipationAdapterError = {
@@ -111,12 +116,20 @@ export const participationQueryKeys = {
 export function participationMutationInvalidateKeys(partyCode: string) {
   return [
     participationQueryKeys.mine(partyCode),
+    sessionQueryKeys.all,
     sessionQueryKeys.detail(partyCode),
-    sessionQueryKeys.catalogue(),
   ] as const;
 }
 
 export function isRegisteredStatus(status: string | undefined): boolean {
   if (!status) return false;
   return status !== "ABANDONED" && status !== "INVITED";
+}
+
+export function isCancelledParticipation(participation: ParticipationStatusView | null | undefined): boolean {
+  return Boolean(participation?.cancelledAt || participation?.status === "ABANDONED");
+}
+
+export function isPaymentSettled(participation: ParticipationStatusView | null | undefined): boolean {
+  return participation?.paymentState === "PAID";
 }
