@@ -15,11 +15,15 @@ import {
 import {
   cancelMyParticipation,
   getMyParticipation,
+  isCancelledParticipation,
+  isPaymentSettled,
   isRegisteredStatus,
   participationMutationInvalidateKeys,
   participationQueryKeys,
   registerForParty,
 } from "@/services/participation/participationAdapter";
+import { trackAnalyticsEvent } from "@/lib/analytics";
+import { getPlayerJourneyState, nextPlayerHref } from "@/services/player/player-journey";
 import {
   getPublicPartyByCode,
   sessionQueryKeys,
@@ -70,6 +74,7 @@ export function ParticipationPanel({ partyCode }: { partyCode: string }) {
   };
 
   const registerMutation = useMutation({
+    scope: { id: `participation-register-${code}` },
     mutationFn: async () => {
       // Stable key for double-click / retry of the same intent.
       registerKeyRef.current ??= `register-${code}-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Date.now()}`;
@@ -80,11 +85,13 @@ export function ParticipationPanel({ partyCode }: { partyCode: string }) {
       return result.data;
     },
     onSuccess: async () => {
+      trackAnalyticsEvent("player.participation.registered", { partyCode: code });
       await invalidateAll();
     },
   });
 
   const cancelMutation = useMutation({
+    scope: { id: `participation-cancel-${code}` },
     mutationFn: async () => {
       const result = await cancelMyParticipation(code);
       if (!result.success) {
@@ -94,6 +101,7 @@ export function ParticipationPanel({ partyCode }: { partyCode: string }) {
     },
     onSuccess: async () => {
       registerKeyRef.current = null;
+      trackAnalyticsEvent("player.participation.cancelled", { partyCode: code });
       await invalidateAll();
     },
   });
@@ -146,8 +154,12 @@ export function ParticipationPanel({ partyCode }: { partyCode: string }) {
 
   const participation = mineQuery.data ?? null;
   const registered = isRegisteredStatus(participation?.status);
+  const cancelled = isCancelledParticipation(participation);
+  const paymentSettled = isPaymentSettled(participation);
   const capacity = Math.max(party.capacity, 0);
   const full = capacity > 0 && party.players >= capacity;
+  const registrationOpen =
+    party.serverStatus === "SCHEDULED" || party.serverStatus === "PREPARATION_OPEN";
   const busy = registerMutation.isPending || cancelMutation.isPending;
   const actionError =
     (registerMutation.error as Error | null)?.message ||
@@ -155,6 +167,8 @@ export function ParticipationPanel({ partyCode }: { partyCode: string }) {
     (mineQuery.isError && (mineQuery.error as { code?: string }).code === "UNAUTHENTICATED"
       ? "Connectez-vous pour gérer votre inscription."
       : null);
+  const journeyState = getPlayerJourneyState(party, participation);
+  const nextHref = nextPlayerHref(party, participation);
 
   if (full && !registered) {
     return (
@@ -163,6 +177,17 @@ export function ParticipationPanel({ partyCode }: { partyCode: string }) {
         title="Cette partie est complète"
         message="Aucune place ne peut être réservée. La capacité est décidée uniquement côté serveur."
         action={<Button render={<Link href="/parties" />}>Choisir une autre partie</Button>}
+      />
+    );
+  }
+
+  if (!registrationOpen && !registered) {
+    return (
+      <PageState
+        kind="denied"
+        title="Inscriptions fermées"
+        message="Cette partie n’accepte plus de nouvelles inscriptions."
+        action={<Button render={<Link href="/parties" />}>Retour au catalogue</Button>}
       />
     );
   }
@@ -187,7 +212,7 @@ export function ParticipationPanel({ partyCode }: { partyCode: string }) {
           <CapacityBlock party={party} />
           <div className="grid gap-3 sm:grid-cols-3">
             <FlowFact icon={Users} label="Admission" value="Décidée serveur" />
-            <FlowFact icon={WalletCards} label="Montant" value={party.entryFee} />
+            <FlowFact icon={WalletCards} label="Montant" value={party.entryFeeLabel} />
             <FlowFact icon={TicketCheck} label="Ticket" value="Personnel" />
           </div>
           <div className="rounded-md border bg-muted/40 p-4 text-sm">
@@ -203,19 +228,37 @@ export function ParticipationPanel({ partyCode }: { partyCode: string }) {
             <PageState
               kind="success"
               title="Inscription confirmée"
-              message={`Statut serveur : ${participation?.status ?? "REGISTERED"}. Prochaine étape éventuelle : paiement (service dédié).`}
+              message={
+                paymentSettled
+                  ? `Statut serveur : ${participation?.status ?? "PAID"}. Votre accès joueur progresse vers ${journeyState === "preparation-ready" ? "la préparation" : "la suite de parcours"}.`
+                  : `Statut serveur : ${participation?.status ?? "REGISTERED"}. Paiement requis avant lobby/live.`
+              }
             />
+          ) : null}
+
+          {cancelled ? (
+            <PageState
+              kind="denied"
+              title="Participation annulée"
+              message={participation?.cancellationReason ?? "Votre place a été libérée. Vous pouvez réserver à nouveau si la capacité le permet."}
+            />
+          ) : null}
+
+          {participation?.expiresAt ? (
+            <p className="text-xs text-muted-foreground" role="status">
+              Réservation valable jusqu’au {new Date(participation.expiresAt).toLocaleString("fr-FR", { timeZone: "UTC", timeZoneName: "short" })}.
+            </p>
           ) : null}
 
           {actionError ? (
             <PageState kind="error" title="Action refusée" message={actionError} />
           ) : null}
 
-          {!registered ? (
+          {!registered || cancelled ? (
             <Button
               className="w-full"
               size="lg"
-              disabled={busy || full}
+              disabled={busy || full || !registrationOpen}
               onClick={() => {
                 if (registerMutation.isPending) return;
                 registerMutation.mutate();
@@ -230,7 +273,7 @@ export function ParticipationPanel({ partyCode }: { partyCode: string }) {
                 className="w-full"
                 size="lg"
                 variant="outline"
-                disabled={busy}
+                disabled={busy || paymentSettled}
                 onClick={() => {
                   if (cancelMutation.isPending) return;
                   cancelMutation.mutate();
@@ -241,9 +284,9 @@ export function ParticipationPanel({ partyCode }: { partyCode: string }) {
               <Button
                 className="w-full"
                 size="lg"
-                render={<Link href={`/parties/${party.code}/payment`} />}
+                render={<Link href={nextHref} />}
               >
-                Continuer vers le paiement <ArrowRight />
+                {paymentSettled ? "Continuer le parcours joueur" : "Continuer vers le paiement"} <ArrowRight />
               </Button>
             </div>
           )}
@@ -266,6 +309,10 @@ export function ParticipationPanel({ partyCode }: { partyCode: string }) {
           <div>
             <span className="text-muted-foreground">Votre statut</span>
             <p className="font-semibold">{participation?.status ?? "Non inscrit"}</p>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Paiement</span>
+            <p className="font-semibold">{participation?.paymentState ?? "Aucun"}</p>
           </div>
           <div className="flex gap-2 rounded-md border p-3 text-muted-foreground">
             <CircleAlert className="size-5 shrink-0" />

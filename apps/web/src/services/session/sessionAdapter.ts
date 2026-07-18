@@ -21,11 +21,16 @@ type ApiListItem = {
   minPlayers: number | null;
   maxPlayers: number | null;
   participantCount: number;
+  roundProgram: unknown;
+  description: string | null;
+  entryFeeAmount: number | null;
+  entryFeeCurrency: string;
+  configVersion: number;
+  feeVersion: number;
 };
 
 type ApiDetail = ApiListItem & {
   visibility: string;
-  roundProgram: unknown;
   createdAt: string;
 };
 
@@ -60,19 +65,26 @@ function mapStatus(status: string): PublicPartyStatus {
   }
 }
 
-function formatStart(scheduledAt: string | null): string {
+export function formatStart(scheduledAt: string | null): string {
   if (!scheduledAt) return "Horaire à confirmer";
   try {
     return new Intl.DateTimeFormat("fr-FR", {
       dateStyle: "medium",
       timeStyle: "short",
+      timeZone: "UTC",
+      timeZoneName: "short",
     }).format(new Date(scheduledAt));
   } catch {
     return scheduledAt;
   }
 }
 
-function gameFromProgram(roundProgram: unknown): string {
+export function formatEntryFee(amount: number | null, currency: string): string {
+  if (amount == null || amount <= 0) return "Gratuit";
+  return `${amount.toLocaleString("fr-FR")} ${currency}`;
+}
+
+export function gameFromProgram(roundProgram: unknown): string {
   if (!roundProgram || typeof roundProgram !== "object") return "Programme à confirmer";
   const program = roundProgram as {
     minigameIds?: string[];
@@ -92,11 +104,19 @@ function toCard(item: ApiListItem, roundProgram?: unknown): PublicPartyCard {
     name: item.name,
     status: mapStatus(item.status),
     serverStatus: item.status,
+    scheduledAt: item.scheduledAt,
     startsAt: formatStart(item.scheduledAt),
+    timeZone: "UTC",
     players: item.participantCount,
     capacity: item.maxPlayers ?? 0,
-    entryFee: "Selon configuration",
-    game: gameFromProgram(roundProgram),
+    description: item.description,
+    roundProgram: roundProgram ?? item.roundProgram,
+    entryFeeAmount: item.entryFeeAmount,
+    entryFeeCurrency: item.entryFeeCurrency || "XAF",
+    entryFeeLabel: formatEntryFee(item.entryFeeAmount, item.entryFeeCurrency || "XAF"),
+    configVersion: item.configVersion ?? 1,
+    feeVersion: item.feeVersion ?? 1,
+    game: gameFromProgram(roundProgram ?? item.roundProgram),
   };
 }
 

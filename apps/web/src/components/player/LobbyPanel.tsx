@@ -19,6 +19,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConnectionStatus } from "@/components/ui/ConnectionStatus";
 import { LifecycleBanner } from "@/components/ui/LifecycleBanner";
+import { PageState } from "@/components/ui/PageState";
+import {
+  isCancelledParticipation,
+} from "@/services/participation/participationAdapter";
+import { nextPlayerHref } from "@/services/player/player-journey";
+import { usePlayerPartyAccess } from "@/services/player/usePlayerPartyAccess";
 import {
   getPlayerPreparation,
   leavePreparation,
@@ -75,13 +81,20 @@ function axisLabel(value: string | undefined) {
 }
 
 export function LobbyPanel({ partyCode }: { partyCode: string }) {
+  const access = usePlayerPartyAccess(partyCode);
   const queryClient = useQueryClient();
-  const queryKey = ["preparation", "player", partyCode] as const;
+  const queryKey = ["preparation", "player", access.code] as const;
+  const party = access.party;
+  const participation = access.participation;
+  const journeyState = access.journeyState;
+  const canLoadPreparation =
+    journeyState === "preparation-ready" || journeyState === "live-ready";
 
   const prepQuery = useQuery({
     queryKey,
+    enabled: canLoadPreparation,
     queryFn: async () => {
-      const res = await getPlayerPreparation(partyCode);
+      const res = await getPlayerPreparation(access.code);
       if (!res.success) {
         const err = new Error(res.error.message) as Error & { code?: string };
         err.code = res.error.code;
@@ -98,7 +111,7 @@ export function LobbyPanel({ partyCode }: { partyCode: string }) {
 
   const presentMutation = useMutation({
     mutationFn: async () => {
-      const res = await markPresent(partyCode);
+      const res = await markPresent(access.code);
       if (!res.success) throw Object.assign(new Error(res.error.message), { code: res.error.code });
       return res.data;
     },
@@ -107,7 +120,7 @@ export function LobbyPanel({ partyCode }: { partyCode: string }) {
 
   const readyMutation = useMutation({
     mutationFn: async () => {
-      const res = await markReady(partyCode);
+      const res = await markReady(access.code);
       if (!res.success) throw Object.assign(new Error(res.error.message), { code: res.error.code });
       return res.data;
     },
@@ -116,7 +129,7 @@ export function LobbyPanel({ partyCode }: { partyCode: string }) {
 
   const leaveMutation = useMutation({
     mutationFn: async () => {
-      const res = await leavePreparation(partyCode);
+      const res = await leavePreparation(access.code);
       if (!res.success) throw Object.assign(new Error(res.error.message), { code: res.error.code });
       return res.data;
     },
@@ -143,6 +156,99 @@ export function LobbyPanel({ partyCode }: { partyCode: string }) {
   const canEnter = present && ready;
   const latestAnnouncement = prepQuery.data?.announcements[0];
   const isStale = prepQuery.isFetched && prepQuery.isStale && !prepQuery.isFetching;
+
+  if (access.partyQuery.isLoading || access.participationQuery.isLoading) {
+    return (
+      <PageState
+        kind="loading"
+        title="Chargement de la préparation"
+        message="Vérification de la partie, de votre ticket et du paiement serveur…"
+      />
+    );
+  }
+
+  if (access.partyQuery.isError) {
+    return (
+      <PageState
+        kind="error"
+        title="Préparation indisponible"
+        message={
+          access.partyQuery.error instanceof Error
+            ? access.partyQuery.error.message
+            : "Impossible de charger la partie."
+        }
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Button render={<Link href="/parties" />}>Catalogue</Button>
+            <Button type="button" variant="outline" onClick={() => void access.partyQuery.refetch()}>
+              <RefreshCw /> Réessayer
+            </Button>
+          </div>
+        }
+      />
+    );
+  }
+
+  if (access.participationQuery.isError) {
+    const code = (access.participationQuery.error as { code?: string }).code;
+    return (
+      <PageState
+        kind={code === "UNAUTHENTICATED" ? "denied" : "error"}
+        title={code === "UNAUTHENTICATED" ? "Connexion requise" : "Préparation indisponible"}
+        message={
+          access.participationQuery.error instanceof Error
+            ? access.participationQuery.error.message
+            : "Impossible de charger votre ticket."
+        }
+        action={
+          <Button render={<Link href={`/parties/${access.code}/participation`} />}>
+            Voir mon inscription
+          </Button>
+        }
+      />
+    );
+  }
+
+  if (!party || !participation || isCancelledParticipation(participation)) {
+    return (
+      <PageState
+        kind="denied"
+        title="Participation active requise"
+        message="Vous devez conserver une participation active pour ouvrir la préparation."
+        action={
+          <Button render={<Link href={`/parties/${access.code}/participation`} />}>
+            Ouvrir l’inscription
+          </Button>
+        }
+      />
+    );
+  }
+
+  if (journeyState === "payment-required") {
+    return (
+      <PageState
+        kind="denied"
+        title="Paiement requis"
+        message="Le lobby reste verrouillé tant que votre ticket n’est pas réglé côté serveur."
+        action={<Button render={<Link href={`/parties/${access.code}/payment`} />}>Finaliser le paiement</Button>}
+      />
+    );
+  }
+
+  if (!canLoadPreparation) {
+    return (
+      <PageState
+        kind="denied"
+        title="Préparation indisponible"
+        message="Cette étape n’est pas ouverte pour votre statut actuel."
+        action={
+          <Button render={<Link href={nextPlayerHref(party, participation)} />}>
+            Reprendre le parcours
+          </Button>
+        }
+      />
+    );
+  }
 
   if (prepQuery.isLoading) {
     return (
@@ -340,7 +446,7 @@ export function LobbyPanel({ partyCode }: { partyCode: string }) {
               className="w-full"
               size="lg"
               disabled={!canEnter}
-              render={canEnter ? <Link href={`/parties/${partyCode}/room`} /> : undefined}
+              render={canEnter ? <Link href={`/parties/${access.code}/room`} /> : undefined}
             >
               Entrer dans la room <ArrowRight />
             </Button>

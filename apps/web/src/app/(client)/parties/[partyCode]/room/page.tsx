@@ -1,6 +1,4 @@
-import { notFound } from "next/navigation";
-import { RoomExperience } from "@/components/game/RoomExperience";
-import { getPublicPartyByCode } from "@/services/session/sessionAdapter";
+import { PlayerRuntimePage } from "@/components/player/PlayerRuntimePage";
 
 export default async function PartyRoomPage({
   params,
@@ -9,7 +7,5 @@ export default async function PartyRoomPage({
 }) {
   const { partyCode } = await params;
   const code = decodeURIComponent(partyCode).toUpperCase();
-  const result = await getPublicPartyByCode(code);
-  if (!result.success) notFound();
-  return <RoomExperience party={result.data} />;
+  return <PlayerRuntimePage partyCode={code} mode="room" />;
 }

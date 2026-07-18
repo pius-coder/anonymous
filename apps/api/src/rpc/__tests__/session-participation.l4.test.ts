@@ -152,9 +152,14 @@ describe("L4 ParticipationService", () => {
       userId: "user-1",
       role: "player",
       status: "REGISTERED",
+      paymentState: "NONE",
+      admissionState: "PENDING",
       readinessState: "NOT_READY",
       connectionState: "OFFLINE",
       createdAt: new Date().toISOString(),
+      expiresAt: null,
+      cancelledAt: null,
+      cancellationReason: null,
     });
 
     const { participation } = clients();

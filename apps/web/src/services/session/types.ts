@@ -15,10 +15,18 @@ export type PublicPartyCard = {
   status: PublicPartyStatus;
   /** Raw server status for diagnostics (never used for payment/readiness decisions). */
   serverStatus: string;
+  scheduledAt: string | null;
   startsAt: string;
+  timeZone: string;
   players: number;
   capacity: number;
-  entryFee: string;
+  description: string | null;
+  roundProgram: unknown;
+  entryFeeAmount: number | null;
+  entryFeeCurrency: string;
+  entryFeeLabel: string;
+  configVersion: number;
+  feeVersion: number;
   game: string;
 };
 

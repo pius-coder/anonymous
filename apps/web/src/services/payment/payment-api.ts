@@ -64,6 +64,8 @@ export const paymentApi = {
   initiate(input: {
     purpose?: "ACCESS_FEE" | "TOP_UP";
     productCode?: string;
+    partyId?: string;
+    participationId?: string;
     amount?: number;
     currency?: string;
     idempotencyKey?: string;
@@ -73,6 +75,8 @@ export const paymentApi = {
       body: JSON.stringify({
         purpose: input.purpose ?? "ACCESS_FEE",
         productCode: input.productCode,
+        partyId: input.partyId,
+        participationId: input.participationId,
         amount: input.amount,
         currency: input.currency,
         idempotencyKey: input.idempotencyKey ?? newIdempotencyKey("init"),
@@ -82,6 +86,8 @@ export const paymentApi = {
 
   payWithWallet(input: {
     productCode?: string;
+    partyId?: string;
+    participationId?: string;
     reason: string;
     idempotencyKey?: string;
   }) {
@@ -92,6 +98,8 @@ export const paymentApi = {
         body: JSON.stringify({
           purpose: "ACCESS_FEE",
           productCode: input.productCode,
+          partyId: input.partyId,
+          participationId: input.participationId,
           reason: input.reason,
           idempotencyKey: input.idempotencyKey ?? newIdempotencyKey("wallet"),
         }),

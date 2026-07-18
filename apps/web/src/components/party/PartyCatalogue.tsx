@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowRight, CalendarClock, Gamepad2, RefreshCw, Search, Users } from "lucide-react";
 import {
   listPublicParties,
@@ -34,11 +34,14 @@ type Props = {
 export function PartyCatalogue({ parties: injected }: Props) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
+  const [page, setPage] = useState(0);
+  const pageSize = 12;
+  const skip = page * pageSize;
 
   const catalogueQuery = useQuery({
-    queryKey: sessionQueryKeys.catalogue(),
+    queryKey: sessionQueryKeys.catalogue(skip, pageSize),
     queryFn: async () => {
-      const result = await listPublicParties({ skip: 0, take: 50 });
+      const result = await listPublicParties({ skip, take: pageSize });
       if (!result.success) {
         throw Object.assign(new Error(result.error.message), { code: result.error.code });
       }
@@ -46,12 +49,16 @@ export function PartyCatalogue({ parties: injected }: Props) {
     },
     enabled: injected === undefined,
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 
   const parties = useMemo(
     () => injected ?? catalogueQuery.data?.parties ?? [],
     [injected, catalogueQuery.data?.parties],
   );
+  const total = catalogueQuery.data?.total ?? parties.length;
+  const canGoBack = page > 0;
+  const canGoNext = injected === undefined ? skip + parties.length < total : false;
 
   const visible = useMemo(
     () =>
@@ -159,11 +166,28 @@ export function PartyCatalogue({ parties: injected }: Props) {
           message="Aucune partie ne correspond à votre recherche ou filtre."
         />
       ) : (
-        <section className="catalogue-grid" aria-label="Sessions disponibles">
-          {visible.map((party) => (
-            <PartyCard key={party.id} party={party} />
-          ))}
-        </section>
+        <>
+          <section className="catalogue-grid" aria-label="Sessions disponibles">
+            {visible.map((party) => (
+              <PartyCard key={party.id} party={party} />
+            ))}
+          </section>
+          {injected === undefined ? (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground" role="status">
+                Page {page + 1} · {parties.length} sessions chargées sur {total}
+              </p>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" disabled={!canGoBack} onClick={() => setPage((value) => Math.max(0, value - 1))}>
+                  Précédent
+                </Button>
+                <Button type="button" variant="outline" disabled={!canGoNext || catalogueQuery.isFetching} onClick={() => setPage((value) => value + 1)}>
+                  Suivant
+                </Button>
+              </div>
+            </div>
+          ) : null}
+        </>
       )}
     </div>
   );
@@ -181,10 +205,10 @@ function PartyCard({ party }: { party: PublicPartyCard }) {
           <Badge variant="outline" className={`status-badge status-badge--${party.status}`}>
             {statusLabel[party.status]}
           </Badge>
-          <Badge variant="outline">{party.entryFee}</Badge>
+          <Badge variant="outline">{party.entryFeeLabel}</Badge>
         </div>
         <CardTitle>{party.name}</CardTitle>
-        <CardDescription>{party.code}</CardDescription>
+        <CardDescription>{party.code} · v{party.feeVersion}</CardDescription>
       </CardHeader>
       <CardContent className="party-card-body">
         <div className="party-meta">
