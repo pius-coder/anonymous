@@ -34,8 +34,6 @@ type RoomExperienceProps = {
   party: { id: string; code: string; name: string; game: string };
 };
 
-const participants = ["Vous", "Malo", "Aya", "Sam", "Inès", "Liam"];
-
 const connectionCopy: Record<ConnectionState, string> = {
   connecting: "Connexion",
   connected: "Live",
@@ -58,6 +56,19 @@ export function RoomExperience({ party }: RoomExperienceProps) {
     if (document.fullscreenElement) await document.exitFullscreen();
     else await document.documentElement.requestFullscreen();
   }
+
+  const rosterCount = Math.max(playerCount, 1);
+  const rosterEntries = Array.from({ length: rosterCount }, (_, index) => ({
+    name: index === 0 ? "Vous" : `Participant ${index + 1}`,
+    status:
+      connection === "connected"
+        ? "Synchronisé"
+        : connection === "preview"
+          ? "Projection locale"
+          : connection === "reconnecting"
+            ? "Reconnexion"
+            : "En attente",
+  }));
 
   return (
     <main className="game-shell">
@@ -120,10 +131,10 @@ export function RoomExperience({ party }: RoomExperienceProps) {
         <SheetContent className="game-sheet" side="right">
           {panel === "roster" ? (
             <>
-              <SheetHeader><SheetTitle>Présents</SheetTitle><SheetDescription>{playerCount || 6} joueurs dans la room</SheetDescription></SheetHeader>
+              <SheetHeader><SheetTitle>Présents</SheetTitle><SheetDescription>{rosterCount} joueur{rosterCount > 1 ? "s" : ""} visible{rosterCount > 1 ? "s" : ""} dans la room</SheetDescription></SheetHeader>
               <div className="game-roster-list">
-                {participants.map((name, index) => (
-                  <div key={name}><PixelAvatar seed={name} size="sm" /><span><strong>{name}</strong><small>{index < 4 ? "Dans le foyer" : "Salon vocal"}</small></span><i /></div>
+                {rosterEntries.map((entry) => (
+                  <div key={entry.name}><PixelAvatar seed={entry.name} size="sm" /><span><strong>{entry.name}</strong><small>{entry.status}</small></span><i /></div>
                 ))}
               </div>
               <div className="game-sheet-footer"><Button render={<Link href={`/parties/${party.code}/round`} />}>Ouvrir le briefing <ArrowRight /></Button></div>
@@ -131,12 +142,12 @@ export function RoomExperience({ party }: RoomExperienceProps) {
           ) : null}
           {panel === "chat" ? (
             <>
-              <SheetHeader><SheetTitle>Discussion</SheetTitle><SheetDescription>Messages de la room</SheetDescription></SheetHeader>
+              <SheetHeader><SheetTitle>Discussion</SheetTitle><SheetDescription>Canal modéré de la room</SheetDescription></SheetHeader>
               <div className="game-chat-log">
-                <p><strong>Malo</strong><span>On se retrouve près du briefing.</span></p>
-                <p><strong>Aya</strong><span>Prête pour la prochaine manche.</span></p>
+                <p><strong>Statut transport</strong><span>Aucun faux message n’est injecté dans cette room.</span></p>
+                <p><strong>Modération</strong><span>Le chat temps réel modéré sera branché sur le transport live autoritaire; utilisez le support si un incident doit être signalé.</span></p>
               </div>
-              <form className="game-chat-compose" onSubmit={(event) => event.preventDefault()}><label className="sr-only" htmlFor="room-message">Message</label><input id="room-message" placeholder="Votre message" /><Button type="submit" size="icon" aria-label="Envoyer"><ArrowRight /></Button></form>
+              <form className="game-chat-compose" onSubmit={(event) => event.preventDefault()}><label className="sr-only" htmlFor="room-message">Message</label><input id="room-message" placeholder="Messagerie modérée indisponible sur cette baseline" disabled /><Button type="submit" size="icon" aria-label="Envoyer" disabled><ArrowRight /></Button></form>
             </>
           ) : null}
           {panel === "settings" ? (

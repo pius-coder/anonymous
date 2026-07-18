@@ -56,6 +56,7 @@ const {
   markReady,
   leavePreparation,
   sendPreparationAnnouncement,
+  getPreparationState,
 } = await import("../preparation.use-case.js");
 
 const baseParty = {
@@ -104,6 +105,31 @@ describe("openPreparation", () => {
 });
 
 describe("markPresent / markReady / leave — distinct and idempotent", () => {
+  it("allows free-party participants to mark present from REGISTERED", async () => {
+    dbMocks.participationRepository.findParticipation.mockResolvedValueOnce({
+      id: "p-free",
+      partyId: "party-1",
+      userId: "u-free",
+      role: "player",
+      status: "REGISTERED",
+      readinessState: "offline",
+      connectionState: "disconnected",
+      paymentState: "NONE",
+      admissionState: "PENDING",
+    });
+    dbMocks.participationRepository.updateParticipationStatusReadiness.mockResolvedValueOnce({
+      id: "p-free",
+      status: "PRESENT",
+      readinessState: "present",
+    });
+
+    await expect(markPresent({ partyId: "party-1", userId: "u-free" })).resolves.toEqual({
+      id: "p-free",
+      status: "PRESENT",
+      readinessState: "present",
+    });
+  });
+
   it("marks present from PAID", async () => {
     dbMocks.participationRepository.findParticipation.mockResolvedValueOnce({
       id: "p1",
@@ -113,6 +139,8 @@ describe("markPresent / markReady / leave — distinct and idempotent", () => {
       status: "PAID",
       readinessState: "offline",
       connectionState: "disconnected",
+      paymentState: "PAID",
+      admissionState: "ADMITTED",
     });
     dbMocks.participationRepository.updateParticipationStatusReadiness.mockResolvedValueOnce({
       id: "p1",
@@ -127,6 +155,32 @@ describe("markPresent / markReady / leave — distinct and idempotent", () => {
     });
   });
 
+  it("blocks unpaid players from joining the lobby on paid parties", async () => {
+    dbMocks.partyRepository.findPartyById.mockResolvedValueOnce({
+      ...baseParty,
+      entryFeeAmount: { toNumber: () => 500 },
+    });
+    dbMocks.participationRepository.findParticipation.mockResolvedValueOnce({
+      id: "p-paid",
+      partyId: "party-1",
+      userId: "u-paid",
+      role: "player",
+      status: "REGISTERED",
+      readinessState: "offline",
+      connectionState: "disconnected",
+      paymentState: "NONE",
+      admissionState: "PENDING",
+    });
+
+    await expect(markPresent({ partyId: "party-1", userId: "u-paid" })).rejects.toMatchObject({
+      code: "PAYMENT_REQUIRED",
+      httpStatus: 403,
+    });
+    expect(
+      dbMocks.participationRepository.updateParticipationStatusReadiness,
+    ).not.toHaveBeenCalled();
+  });
+
   it("present is idempotent when already PRESENT", async () => {
     dbMocks.participationRepository.findParticipation.mockResolvedValueOnce({
       id: "p1",
@@ -136,6 +190,8 @@ describe("markPresent / markReady / leave — distinct and idempotent", () => {
       status: "PRESENT",
       readinessState: "present",
       connectionState: "connected",
+      paymentState: "PAID",
+      admissionState: "ADMITTED",
     });
 
     await expect(markPresent({ partyId: "party-1", userId: "u1" })).resolves.toMatchObject({
@@ -155,6 +211,8 @@ describe("markPresent / markReady / leave — distinct and idempotent", () => {
       status: "PAID",
       readinessState: "offline",
       connectionState: "disconnected",
+      paymentState: "PAID",
+      admissionState: "ADMITTED",
     });
 
     await expect(markReady({ partyId: "party-1", userId: "u1" })).rejects.toMatchObject({
@@ -172,6 +230,8 @@ describe("markPresent / markReady / leave — distinct and idempotent", () => {
       status: "READY",
       readinessState: "ready",
       connectionState: "connected",
+      paymentState: "PAID",
+      admissionState: "ADMITTED",
     });
 
     await expect(markReady({ partyId: "party-1", userId: "u1" })).resolves.toMatchObject({
@@ -191,12 +251,66 @@ describe("markPresent / markReady / leave — distinct and idempotent", () => {
       status: "REGISTERED",
       readinessState: "offline",
       connectionState: "disconnected",
+      paymentState: "NONE",
+      admissionState: "PENDING",
     });
 
     await expect(leavePreparation({ partyId: "party-1", userId: "u1" })).resolves.toEqual({
       status: "REGISTERED",
     });
     expect(dbMocks.participationRepository.updateParticipation).not.toHaveBeenCalled();
+  });
+});
+
+describe("getPreparationState", () => {
+  it("returns self access axes for the authenticated player", async () => {
+    dbMocks.participationRepository.listParticipationsByParty.mockResolvedValueOnce([
+      {
+        id: "p1",
+        partyId: "party-1",
+        userId: "u1",
+        role: "player",
+        status: "READY",
+        readinessState: "ready",
+        connectionState: "connected",
+        paymentState: "PAID",
+        admissionState: "ADMITTED",
+      },
+    ]);
+    dbMocks.announcementRepository.findAnnouncementsByParty.mockResolvedValueOnce([]);
+
+    await expect(getPreparationState({ partyId: "party-1", userId: "u1" })).resolves.toMatchObject({
+      self: {
+        id: "p1",
+        status: "READY",
+        paymentState: "PAID",
+        admissionState: "ADMITTED",
+        connectionState: "connected",
+      },
+      stats: { total: 1, ready: 1 },
+    });
+  });
+
+  it("blocks revoked players from reading the lobby projection", async () => {
+    dbMocks.participationRepository.listParticipationsByParty.mockResolvedValueOnce([
+      {
+        id: "p-revoked",
+        partyId: "party-1",
+        userId: "u-revoked",
+        role: "player",
+        status: "REGISTERED",
+        readinessState: "offline",
+        connectionState: "disconnected",
+        paymentState: "PAID",
+        admissionState: "REVOKED",
+      },
+    ]);
+    dbMocks.announcementRepository.findAnnouncementsByParty.mockResolvedValueOnce([]);
+
+    await expect(getPreparationState({ partyId: "party-1", userId: "u-revoked" })).rejects.toMatchObject({
+      code: "LOBBY_ACCESS_REVOKED",
+      httpStatus: 403,
+    });
   });
 });
 

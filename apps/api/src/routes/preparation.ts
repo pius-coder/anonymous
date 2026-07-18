@@ -11,7 +11,6 @@ import {
   getPreparationState,
   PreparationUseCaseError,
 } from "../use-cases/preparation/preparation.use-case.js";
-import { ParticipationUseCaseError } from "../use-cases/party/participation.use-case.js";
 import type { StatusCode } from "hono/utils/http-status";
 
 const preparationRouter = new Hono<AppEnv>();
@@ -22,9 +21,6 @@ const codeParamSchema = z.object({
 
 function handleError(c: Parameters<typeof errorResponse>[0], err: unknown) {
   if (err instanceof PreparationUseCaseError) {
-    return errorResponse(c, err.httpStatus as StatusCode, err.code, err.message);
-  }
-  if (err instanceof ParticipationUseCaseError) {
     return errorResponse(c, err.httpStatus as StatusCode, err.code, err.message);
   }
   console.error("Unexpected preparation error:", err);
@@ -99,10 +95,7 @@ preparationRouter.get(
       const party = await (
         await import("../use-cases/party/party.use-case.js")
       ).getPublicParty({ code });
-      await (
-        await import("../use-cases/party/participation.use-case.js")
-      ).getMyParticipation({ code, userId: user.id });
-      const result = await getPreparationState({ partyId: party.id });
+      const result = await getPreparationState({ partyId: party.id, userId: user.id });
       if (!["SCHEDULED", "PREPARATION_OPEN", "PREPARATION_LOCKED"].includes(result.status)) {
         throw new PreparationUseCaseError(
           "PREPARATION_NOT_AVAILABLE",
