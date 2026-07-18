@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root="${CODEX_WORKTREE_PATH:-$(git rev-parse --show-toplevel)}"
+cd "$root"
+
+if [[ -f .env.worktree.local ]]; then
+  # shellcheck disable=SC1091
+  source .env.worktree.local
+fi
+
+if [[ $# -eq 0 ]]; then
+  exec "${SHELL:-bash}"
+fi
+
+exec "$@"

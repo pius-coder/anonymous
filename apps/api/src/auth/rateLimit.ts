@@ -1,32 +1,33 @@
-type Bucket = {
-  count: number;
-  resetAt: number;
-};
+const buckets = new Map<string, { count: number; resetAt: number }>();
 
-const WINDOW_MS = 15 * 60 * 1000;
-const MAX_ATTEMPTS = 5;
-const buckets = new Map<string, Bucket>();
-
-export function consumeAuthRateLimit(key: string, now = Date.now()) {
+export function checkRateLimit(key: string, limit: number, windowMs: number): { allowed: boolean; remaining: number; resetAt: number } {
+  const now = Date.now();
   const bucket = buckets.get(key);
 
-  if (!bucket || bucket.resetAt <= now) {
-    buckets.set(key, { count: 1, resetAt: now + WINDOW_MS });
-    return { allowed: true, remaining: MAX_ATTEMPTS - 1, resetAt: now + WINDOW_MS };
+  if (!bucket || now >= bucket.resetAt) {
+    return { allowed: true, remaining: limit, resetAt: now + windowMs };
   }
 
-  bucket.count += 1;
-  return {
-    allowed: bucket.count <= MAX_ATTEMPTS,
-    remaining: Math.max(0, MAX_ATTEMPTS - bucket.count),
-    resetAt: bucket.resetAt,
-  };
+  return { allowed: bucket.count < limit, remaining: Math.max(0, limit - bucket.count), resetAt: bucket.resetAt };
 }
 
-export function clearAuthRateLimit(key: string) {
+export function consumeRateLimit(key: string, limit: number, windowMs: number): { allowed: boolean; remaining: number; resetAt: number } {
+  const now = Date.now();
+  const bucket = buckets.get(key);
+
+  if (!bucket || now >= bucket.resetAt) {
+    buckets.set(key, { count: 1, resetAt: now + windowMs });
+    return { allowed: true, remaining: limit - 1, resetAt: now + windowMs };
+  }
+
+  bucket.count++;
+  return { allowed: bucket.count <= limit, remaining: Math.max(0, limit - bucket.count), resetAt: bucket.resetAt };
+}
+
+export function clearRateLimit(key: string): void {
   buckets.delete(key);
 }
 
-export function resetAuthRateLimits() {
+export function resetAllRateLimits(): void {
   buckets.clear();
 }

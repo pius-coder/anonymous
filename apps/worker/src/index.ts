@@ -1,62 +1,63 @@
-import { config } from "dotenv";
-import { resolve } from "path";
-config({ path: resolve("../../.env") });
+export type { ReconciliationResult } from "./jobs/paymentReconciliation.js";
+export { reconcilePendingTransactions } from "./jobs/paymentReconciliation.js";
+export type { RoundDeadlineCloseResult } from "./jobs/roundDeadline.js";
+export { closeDueRoundDeadlines } from "./jobs/roundDeadline.js";
+export {
+  deliverNotificationJob,
+  RetryableDeliveryError,
+  TerminalDeliveryError,
+  type NotificationDeliveryPayload,
+  type NotificationDeliveryResult,
+} from "./jobs/notificationDelivery.js";
+export { loadWorkerConfig, QUEUE_NAMES, type WorkerRuntimeConfig } from "./config.js";
+export { createWorkerRunner, type WorkerRunner, type RunnerDeps } from "./runner.js";
+export {
+  createQueues,
+  closeQueues,
+  enqueueNotificationDelivery,
+  enqueueRoundDeadlineScan,
+  enqueuePaymentReconciliation,
+  type WorkerQueues,
+} from "./queues.js";
+export { getMetrics, resetMetrics, type MetricSnapshot } from "./metrics.js";
+export { log, newCorrelationId } from "./logging.js";
 
-import { Worker } from "bullmq";
-import {
-  processRegistrationExpiration,
-  type RegistrationExpirationJobData,
-} from "./registrationExpiration.js";
-import {
-  processPaymentReconciliation,
-  type PaymentReconciliationJobData,
-} from "./paymentReconciliation.js";
-import { processCheckInDeadline, type CheckInDeadlineJobData } from "./checkInDeadline.js";
-import { processRoundDeadline, type RoundDeadlineJobData } from "./roundDeadline.js";
-import {
-  processCreditsDistribution,
-  type CreditsDistributionJobData,
-} from "./creditsDistribution.js";
-import { processNotificationSend, type NotificationSendJobData } from "./notifications.js";
-
-const connection = {
-  host: process.env.REDIS_HOST || "localhost",
-  port: Number(process.env.REDIS_PORT) || 6379,
+export type WorkerFoundation = {
+  service: "worker";
+  foundation: "v0.1";
+  jobs: "payment-reconciliation,round-deadline-close,notification-delivery";
+  runner: "bullmq";
 };
 
-const worker = new Worker(
-  "session-jeu",
-  async (job) => {
-    console.log(`Processing job ${job.id} of type ${job.name}`);
-    if (job.name === "registration.expire") {
-      return processRegistrationExpiration(job.data as RegistrationExpirationJobData);
-    }
-    if (job.name === "payment.reconcile") {
-      return processPaymentReconciliation(job.data as PaymentReconciliationJobData);
-    }
-    if (job.name === "checkin.deadline") {
-      return processCheckInDeadline(job.data as CheckInDeadlineJobData);
-    }
-    if (job.name === "round.deadline") {
-      return processRoundDeadline(job.data as RoundDeadlineJobData);
-    }
-    if (job.name === "credits.distribute") {
-      return processCreditsDistribution(job.data as CreditsDistributionJobData);
-    }
-    if (job.name === "notification.send") {
-      return processNotificationSend(job.data as NotificationSendJobData);
-    }
-    return { success: true };
-  },
-  { connection },
-);
+export type WorkerJobType =
+  | "PAYMENT_RECONCILIATION"
+  | "ROUND_DEADLINE_CLOSE"
+  | "NOTIFICATION_DELIVERY";
 
-worker.on("completed", (job) => {
-  console.log(`Job ${job.id} has been completed`);
-});
+export function getWorkerFoundation(): WorkerFoundation {
+  return {
+    service: "worker",
+    foundation: "v0.1",
+    jobs: "payment-reconciliation,round-deadline-close,notification-delivery",
+    runner: "bullmq",
+  };
+}
 
-worker.on("failed", (job, err) => {
-  console.error(`Job ${job?.id} has failed with ${err.message}`);
-});
+const shouldBoot =
+  process.env.NODE_ENV !== "test" && process.env.WORKER_AUTOSTART !== "0";
 
-console.log("Worker started and listening for jobs...");
+if (shouldBoot) {
+  const { assertBootEnv } = await import("@session-jeu/config");
+  assertBootEnv("worker");
+  const { createWorkerRunner } = await import("./runner.js");
+  const runner = createWorkerRunner();
+  await runner.start();
+  console.log(
+    JSON.stringify({
+      service: "worker",
+      status: "ready",
+      jobs: getWorkerFoundation().jobs,
+      provider: runner.provider.name,
+    }),
+  );
+}

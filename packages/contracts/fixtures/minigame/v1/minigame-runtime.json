@@ -1,0 +1,71 @@
+{
+  "manifest": {
+    "id": "mg-memory-sequence",
+    "key": "memory-sequence",
+    "name": "Memory Sequence",
+    "description": "Reproduce the sequence",
+    "family": "MINI_GAME_FAMILY_SOLO",
+    "player_mode": "PLAYER_MODE_SOLO",
+    "resolver_id": "memory-sequence-v1",
+    "enabled": true,
+    "version": "1.0.0"
+  },
+  "command": {
+    "correlation_id": "corr-mg-001",
+    "round_id": "round-001",
+    "player_id": "player-001",
+    "action": "submit_sequence",
+    "nonce": "nonce-abc",
+    "client_sequence": 3,
+    "payload": "",
+    "client_timestamp_ms": 1760400300000,
+    "schema_id": "minigame.memory_sequence.command.v1",
+    "schema_version": "1.0.0",
+    "payload_max_bytes": 4096,
+    "typed": {
+      "memory_sequence": {
+        "schema_version": "1.0.0",
+        "action": "submit_input",
+        "symbol_id": "a",
+        "step_index": 0
+      }
+    }
+  },
+  "public_state": {
+    "round_id": "round-001",
+    "minigame_id": "mg-memory-sequence",
+    "phase": "ACTIVE",
+    "remaining_seconds": 42,
+    "participant_count": 12,
+    "version": "1.0.0",
+    "typed": {
+      "memory_sequence": {
+        "schema_version": "1.0.0",
+        "phase": "INPUT",
+        "sequence_length": 6,
+        "current_step": 1
+      }
+    }
+  },
+  "private_state": {
+    "round_id": "round-001",
+    "player_id": "player-001",
+    "private_payload": "",
+    "version": "1.0.0",
+    "schema_id": "minigame.memory_sequence.private.v1",
+    "schema_version": "1.0.0",
+    "payload_max_bytes": 4096
+  },
+  "score_evidence": {
+    "round_id": "round-001",
+    "player_id": "player-001",
+    "raw_score": 880,
+    "evidence_hash": "sha256:deadbeef",
+    "computed_at_ms": 1760400310000,
+    "minigame_version": "1.0.0"
+  },
+  "no_leak": {
+    "observer_excludes_private_state": true,
+    "player_excludes_others_private_state": true
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "send_notification": {
+    "correlation_id": { "value": "corr-notif-001" },
+    "player_id": { "value": "player-001" },
+    "type": "NOTIF_TYPE_RESULT",
+    "channel": "NOTIF_CHANNEL_IN_APP",
+    "title": "Resultats disponibles",
+    "body": "Les resultats de la manche ont ete publies.",
+    "template_key": "results_published",
+    "idempotency_key": "party-001-round-001-player-001"
+  },
+  "create_notification_job": {
+    "correlation_id": { "value": "corr-notif-001" },
+    "player_id": { "value": "player-001" },
+    "type": "NOTIF_TYPE_RESULT",
+    "channel": "NOTIF_CHANNEL_IN_APP",
+    "title": "Resultats disponibles",
+    "body": "Les resultats de la manche ont ete publies.",
+    "template_key": "results_published",
+    "idempotency_key": "party-001-round-001-player-001"
+  },
+  "delivery_updated": {
+    "notification_id": "notif-001",
+    "status": "NOTIF_DELIVERY_STATUS_SENT",
+    "failure_reason_public": "",
+    "updated_at": { "seconds": "1760400200", "nanos": 0 }
+  },
+  "list_notifications": {
+    "player_id": { "value": "player-001" },
+    "page_size": 20,
+    "page_token": ""
+  },
+  "acknowledge_notification": {
+    "correlation_id": { "value": "corr-notif-002" },
+    "notification_id": "notif-001",
+    "player_id": { "value": "player-001" }
+  },
+  "constraints": {
+    "does_not_start_party": true,
+    "does_not_publish_score": true
+  }
+}

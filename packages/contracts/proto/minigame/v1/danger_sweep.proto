@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package sessionjeu.minigame.v1;
+
+import "common/v1/shared.proto";
+
+// Survival: Le rayon balayeur — server-simulated positions and eliminations.
+// Client never authoritates coordinates, collisions, or survival.
+
+message DangerSweepConfig {
+  string schema_version = 1;
+  int32 arena_width = 2;
+  int32 arena_height = 3;
+  int32 tick_ms = 4;
+  int32 max_duration_ms = 5;
+  int32 beam_speed = 6;
+  int32 player_radius = 7;
+}
+
+message DangerSweepPlayerCommand {
+  string schema_version = 1;
+  // move_intent | dash | abort
+  string action = 2;
+  // Intent only — server integrates physics.
+  int32 intent_dx = 3;
+  int32 intent_dy = 4;
+  int64 client_timestamp_ms = 5;
+}
+
+message DangerSweepPublicState {
+  string schema_version = 1;
+  string phase = 2;
+  int32 tick = 3;
+  int32 remaining_ms = 4;
+  int32 alive_count = 5;
+  // Beam public geometry (server).
+  int32 beam_x = 6;
+  int32 beam_y = 7;
+  int32 beam_angle_deg = 8;
+  // Coarse public positions of alive players (no private plans).
+  repeated DangerSweepPublicPlayer players = 9;
+}
+
+message DangerSweepPublicPlayer {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+  int32 x = 2;
+  int32 y = 3;
+  bool alive = 4;
+}
+
+// Own intent ack / elimination reason for self only.
+message DangerSweepPrivateState {
+  string schema_version = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  bool alive = 3;
+  string elimination_reason = 4;
+  int32 last_accepted_tick = 5;
+}
+
+message DangerSweepServerEvent {
+  string schema_version = 1;
+  string event_type = 2;
+  sessionjeu.common.v1.Audience audience = 3;
+  DangerSweepPublicState public_state = 4;
+  int64 server_timestamp_ms = 5;
+}
+
+message DangerSweepScoreEvidence {
+  string schema_version = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  double raw_score = 3;
+  string evidence_hash = 4;
+  int32 survival_ticks = 5;
+  int32 elimination_tick = 6;
+  int64 computed_at_ms = 7;
+}

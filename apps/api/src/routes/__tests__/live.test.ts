@@ -1,238 +1,162 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Hono } from "hono";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import app from "../../index.js";
+import { hashOpaqueToken } from "../../auth/session.js";
 
 const dbMocks = vi.hoisted(() => ({
-  prisma: {
-    authSession: {
-      findUnique: vi.fn(),
-      update: vi.fn(),
+  authRepository: {
+    findAuthSessionByToken: vi.fn(),
+    revokeAuthSession: vi.fn(),
+  },
+  partyRepository: {
+    findPartyById: vi.fn(),
+  },
+  participationRepository: {
+    findParticipation: vi.fn(),
+  },
+  roundRepository: {
+    listRoundsByParty: vi.fn(),
+  },
+  realtimeRepository: {
+    upsertConnection: vi.fn(),
+  },
+}));
+
+vi.mock("@session-jeu/db", () => dbMocks);
+
+const sessionToken = "session-token";
+
+function authenticatedRequest(path: string): Promise<Response> {
+  return app.request(path, {
+    method: "POST",
+    headers: { cookie: `__session=${sessionToken}` },
+  });
+}
+
+function mockAuthSession() {
+  dbMocks.authRepository.findAuthSessionByToken.mockResolvedValue({
+    id: "session-1",
+    token: hashOpaqueToken(sessionToken),
+    expiresAt: new Date(Date.now() + 60_000),
+    sessionVersion: 1,
+    user: {
+      id: "user-1",
+      email: "player@example.com",
+      name: "Player One",
+      avatarUrl: null,
+      sessionVersion: 1,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      roleAssignments: [],
     },
-    gameSession: {
-      findFirst: vi.fn(),
-    },
-  },
-}));
+  });
+}
 
-const liveMocks = vi.hoisted(() => ({
-  createLiveReservation: vi.fn(),
-  getLiveStateForPlayer: vi.fn(),
-  getGameWsEndpoint: vi.fn(),
-}));
-
-vi.mock("@session-jeu/db", () => ({
-  prisma: dbMocks.prisma,
-  Prisma: {
-    TransactionIsolationLevel: { Serializable: "Serializable" },
-  },
-  GameSessionStatus: {
-    LIVE: "LIVE",
-    CANCELLED: "CANCELLED",
-  },
-  LivePhase: {
-    LOBBY: "LOBBY",
-    BRIEFING: "BRIEFING",
-    PAUSED: "PAUSED",
-  },
-  SessionRegistrationStatus: {
-    CHECKED_IN: "CHECKED_IN",
-    IN_ROOM: "IN_ROOM",
-  },
-}));
-
-vi.mock("../../live/live.js", async () => {
-  const actual = await vi.importActual<typeof import("../../live/live.js")>("../../live/live.js");
-  return {
-    ...actual,
-    ...liveMocks,
-  };
+beforeEach(() => {
+  process.env.ALLOW_INSECURE_AUTH_COOKIE = "true";
+  process.env.GAME_WS_URL = "ws://live.test";
+  vi.clearAllMocks();
+  mockAuthSession();
+  dbMocks.partyRepository.findPartyById.mockResolvedValue({
+    id: "party-1",
+    status: "ROUND_ACTIVE",
+  });
+  dbMocks.roundRepository.listRoundsByParty.mockResolvedValue([
+    { id: "round-1", number: 1, status: "ACTIVE", deadline: null },
+  ]);
+  dbMocks.participationRepository.findParticipation.mockResolvedValue({
+    id: "participation-1",
+    partyId: "party-1",
+    userId: "user-1",
+    role: "PLAYER",
+    status: "READY",
+    paymentState: "PAID",
+    admissionState: "ADMITTED",
+  });
+  dbMocks.realtimeRepository.upsertConnection.mockImplementation((_participationId, data) =>
+    Promise.resolve({
+      id: "connection-1",
+      ...data,
+      connectedAt: new Date("2026-01-01T00:00:00.000Z"),
+      disconnectedAt: null,
+    }),
+  );
 });
 
-import { SESSION_COOKIE_NAME, hashOpaqueToken } from "../../auth/session.js";
-import type { AuthVariables } from "../../auth/session.js";
-import live from "../live.js";
+afterEach(() => {
+  delete process.env.ALLOW_INSECURE_AUTH_COOKIE;
+  delete process.env.GAME_WS_URL;
+});
 
-function createApp() {
-  const app = new Hono<{ Variables: AuthVariables }>();
-  app.route("/v1/live", live);
-  return app;
-}
+describe("POST /v1/live/parties/:partyId/access", () => {
+  it("creates a short live access token for an authenticated participant", async () => {
+    const res = await authenticatedRequest("/v1/live/parties/party-1/access");
 
-function validAuthSession() {
-  return {
-    id: "auth-session-1",
-    tokenHash: hashOpaqueToken("session-token"),
-    sessionVersion: 1,
-    expiresAt: new Date(Date.now() + 60_000),
-    revokedAt: null,
-    user: {
-      id: "player-1",
-      email: "player@example.com",
-      name: "Player",
-      role: "PLAYER",
-      isActive: true,
-      sessionVersion: 1,
-    },
-  };
-}
-
-function liveState(overrides: Record<string, unknown> = {}) {
-  const now = new Date("2026-07-08T00:00:00Z");
-  return {
-    id: "live-state-1",
-    sessionId: "session-1",
-    roomId: "room-1",
-    phase: "BRIEFING",
-    previousPhase: null,
-    currentRoundId: null,
-    phaseStartedAt: now,
-    pausedAt: null,
-    pauseReason: null,
-    createdAt: now,
-    updatedAt: now,
-    ...overrides,
-  };
-}
-
-describe("live routes", () => {
-  const app = createApp();
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    dbMocks.prisma.authSession.findUnique.mockResolvedValue(validAuthSession());
-    dbMocks.prisma.gameSession.findFirst.mockResolvedValue({
-      id: "session-1",
-      code: "SESSION-1",
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.data).toMatchObject({
+      roomId: "party-1",
+      endpoint: "ws://live.test",
     });
-    liveMocks.getGameWsEndpoint.mockReturnValue("ws://game.example.test");
-    liveMocks.createLiveReservation.mockResolvedValue({
-      type: "ok",
-      liveToken: "live-token",
-      reservation: {
-        id: "reservation-1",
-        expiresAt: new Date("2026-07-08T00:01:00Z"),
-      },
-      liveState: liveState(),
-    });
-    liveMocks.getLiveStateForPlayer.mockResolvedValue({
-      type: "ok",
-      liveState: {
-        ...liveState({
-          currentRound: {
-            id: "round-1",
-            roundNum: 1,
-            status: "ACTIVE",
-            startTime: new Date("2026-07-08T00:00:00Z"),
-            endTime: null,
-          },
-        }),
-      },
-      deadline: {
-        deadlineAt: new Date("2026-07-08T00:00:30Z"),
-        closedAt: null,
-      },
-      players: [
-        {
-          userId: "player-1",
-          status: "CONNECTED",
-          lastSeenAt: new Date("2026-07-08T00:00:01Z"),
-          disconnectedAt: null,
-          reconnectUntil: null,
-        },
-      ],
-    });
-  });
-
-  it("creates a live reservation from a valid join token", async () => {
-    const res = await app.request("/v1/live/sessions/session-1/reservation", {
-      method: "POST",
-      headers: {
-        cookie: `${SESSION_COOKIE_NAME}=session-token`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ joinToken: "join-token-value" }),
-    });
-
-    expect(res.status).toBe(200);
-    expect(liveMocks.createLiveReservation).toHaveBeenCalledWith({
-      userId: "player-1",
-      sessionId: "session-1",
-      joinToken: "join-token-value",
-    });
-    const body = (await res.json()) as { data: { websocket: { roomName: string } } };
-    expect(body.data.websocket.roomName).toBe("game_session");
-  });
-
-  it("resolves public session code before creating live reservation", async () => {
-    const res = await app.request("/v1/live/sessions/SESSION-1/reservation", {
-      method: "POST",
-      headers: {
-        cookie: `${SESSION_COOKIE_NAME}=session-token`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ joinToken: "join-token-value" }),
-    });
-
-    expect(res.status).toBe(200);
-    expect(liveMocks.createLiveReservation).toHaveBeenCalledWith({
-      userId: "player-1",
-      sessionId: "session-1",
-      joinToken: "join-token-value",
-    });
-  });
-
-  it("rejects live reservation when session is not live", async () => {
-    liveMocks.createLiveReservation.mockResolvedValue({ type: "session-not-live" });
-
-    const res = await app.request("/v1/live/sessions/session-1/reservation", {
-      method: "POST",
-      headers: {
-        cookie: `${SESSION_COOKIE_NAME}=session-token`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ joinToken: "join-token-value" }),
-    });
-
-    expect(res.status).toBe(409);
-  });
-
-  it("returns explicit conflict when the current round is locked for late entry", async () => {
-    liveMocks.createLiveReservation.mockResolvedValue({
-      type: "live-entry-locked",
-      phase: "ROUND_ACTIVE",
-      roundId: "round-1",
-      admissionLock: "CHALLENGE_REVEAL",
-      reason: "late-after-challenge-reveal",
-    });
-
-    const res = await app.request("/v1/live/sessions/session-1/reservation", {
-      method: "POST",
-      headers: {
-        cookie: `${SESSION_COOKIE_NAME}=session-token`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({ joinToken: "join-token-value" }),
-    });
-
-    expect(res.status).toBe(409);
-    const body = (await res.json()) as {
-      error: { code: string; details: { admissionLock: string; reason: string } };
-    };
-    expect(body.error.code).toBe("LIVE_ENTRY_LOCKED");
-    expect(body.error.details).toEqual(
+    expect(body.data.connectionToken).toEqual(expect.any(String));
+    expect(body.data.expiresAt).toEqual(expect.any(String));
+    expect(dbMocks.realtimeRepository.upsertConnection).toHaveBeenCalledWith(
+      "participation-1",
       expect.objectContaining({
-        admissionLock: "CHALLENGE_REVEAL",
-        reason: "late-after-challenge-reveal",
+        participationId: "participation-1",
+        state: "pending",
+        tokenHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        tokenExpiresAt: expect.any(Date),
       }),
+    );
+    expect(dbMocks.realtimeRepository.upsertConnection.mock.calls[0]?.[1].tokenHash).not.toBe(
+      body.data.connectionToken,
     );
   });
 
-  it("returns sanitized live state for checked-in player", async () => {
-    const res = await app.request("/v1/live/session-1/state", {
-      headers: { cookie: `${SESSION_COOKIE_NAME}=session-token` },
+  it("rejects callers without a session", async () => {
+    const res = await app.request("/v1/live/parties/party-1/access", { method: "POST" });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("rejects a user who is not a participant", async () => {
+    dbMocks.participationRepository.findParticipation.mockResolvedValueOnce(null);
+
+    const res = await authenticatedRequest("/v1/live/parties/party-1/access");
+    const body = await res.json();
+
+    expect(res.status).toBe(404);
+    expect(body.error.code).toBe("PARTICIPATION_NOT_FOUND");
+  });
+
+  it("rejects parties outside live phases", async () => {
+    dbMocks.partyRepository.findPartyById.mockResolvedValueOnce({
+      id: "party-1",
+      status: "REGISTRATION_OPEN",
     });
 
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { data: { currentRound: { id: string } } };
-    expect(body.data.currentRound.id).toBe("round-1");
+    const res = await authenticatedRequest("/v1/live/parties/party-1/access");
+    const body = await res.json();
+
+    expect(res.status).toBe(422);
+    expect(body.error.code).toBe("PARTY_NOT_LIVE");
+  });
+
+  it("rejects unpaid players before issuing live access", async () => {
+    dbMocks.participationRepository.findParticipation.mockResolvedValueOnce({
+      id: "participation-1",
+      partyId: "party-1",
+      userId: "user-1",
+      role: "PLAYER",
+      status: "READY",
+      paymentState: "NONE",
+      admissionState: "PENDING",
+    });
+
+    const res = await authenticatedRequest("/v1/live/parties/party-1/access");
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body.error.code).toBe("PAYMENT_REQUIRED");
   });
 });

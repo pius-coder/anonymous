@@ -1,111 +1,102 @@
-import type { Metadata } from "next";
-import { AdminService } from "@/services/admin/AdminService";
-import { jsonPreview } from "../admin-format";
-import type { MiniGameDefinition } from "@/services/admin/types";
-import { MiniGameToggleForm } from "@/components/admin/AdminActionForms";
-import { Badge } from "@/components/retroui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/retroui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/retroui/table";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Mini-jeux | Admin",
+import { useQuery } from "@tanstack/react-query";
+import { Boxes, Code2, ShieldCheck } from "lucide-react";
+import { AppShell } from "@/components/ui/AppShell";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { MiniGameService } from "@/services/rpcServices";
+
+type CatalogGame = {
+  id: string;
+  name?: string;
+  family?: string;
+  version?: string | number;
+  status?: string;
 };
 
-const FAMILY_ORDER = ["SOLO", "DUEL", "ALLIANCE", "TEAM", "SURVIVAL", "HIDDEN_ROLE"];
-
-function groupByFamily(games: MiniGameDefinition[]) {
-  const groups = new Map<string, MiniGameDefinition[]>();
-  for (const game of games) {
-    groups.set(game.family, [...(groups.get(game.family) ?? []), game]);
+function normalizeCatalog(data: unknown): CatalogGame[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data as CatalogGame[];
+  if (typeof data === "object" && data !== null) {
+    const obj = data as { minigames?: CatalogGame[]; games?: CatalogGame[]; items?: CatalogGame[] };
+    return obj.minigames ?? obj.games ?? obj.items ?? [];
   }
-  return FAMILY_ORDER.map((family) => ({ family, games: groups.get(family) ?? [] })).filter(
-    (group) => group.games.length > 0,
-  );
+  return [];
 }
 
-export default async function AdminMiniGamesPage() {
-  const admin = new AdminService();
-  const games = await admin.getMinigames();
-  const familyGroups = groupByFamily(games);
+export default function AdminMinigamesPage() {
+  const catalogQuery = useQuery({
+    queryKey: ["admin", "minigames"],
+    queryFn: async () => {
+      const res = await MiniGameService.list();
+      if (!res.success) throw new Error(`${res.error.code}: ${res.error.message}`);
+      return normalizeCatalog(res.data);
+    },
+    retry: 1,
+  });
+
+  const games = catalogQuery.data ?? [];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Badge variant="outline">Catalogue</Badge>
-        <h1 className="mt-2 text-3xl font-black uppercase">Mini-jeux</h1>
-        <p className="text-sm text-muted-foreground">
-          {games.length} definition(s), {familyGroups.length} section(s).
+    <AppShell
+      audience="Admin"
+      eyebrow="Catalogue runtime"
+      title="Mini-jeux"
+      subtitle="Manifestes exposés par l’API publique. Composition six jeux prouvée par P-SEQ-06."
+    >
+      {catalogQuery.isLoading ? (
+        <p className="text-sm text-muted-foreground">Chargement du catalogue…</p>
+      ) : null}
+      {catalogQuery.isError ? (
+        <p className="text-sm text-rose-300" role="alert">
+          Catalogue indisponible:{" "}
+          {catalogQuery.error instanceof Error ? catalogQuery.error.message : "erreur"}
         </p>
-      </div>
-
-      {games.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6 text-muted-foreground">Aucun mini-jeu.</CardContent>
-        </Card>
-      ) : (
-        familyGroups.map((group) => (
-          <Card key={group.family}>
-            <CardHeader>
-              <CardTitle className="font-head text-lg uppercase">
-                {group.family} · {group.games.length}/6
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nom</TableHead>
-                    <TableHead>Mode</TableHead>
-                    <TableHead>Resolver</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Action</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {group.games.map((game) => (
-                    <TableRow key={game.id}>
-                      <TableCell>
-                        <div className="font-medium">{game.name}</div>
-                        <div className="font-mono text-xs text-muted-foreground">{game.key}</div>
-                      </TableCell>
-                      <TableCell>{game.playerMode}</TableCell>
-                      <TableCell className="font-mono text-xs">{game.resolverId}</TableCell>
-                      <TableCell>
-                        <Badge variant={game.enabled ? "default" : "outline"}>
-                          {game.enabled ? "ACTIVE" : "OFF"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <MiniGameToggleForm game={game} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        ))
-      )}
-
-      {games[0] && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="font-head text-lg uppercase">Schema exemple</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <pre className="max-h-80 overflow-auto rounded border-2 border-border bg-muted p-3 text-xs">
-              {jsonPreview(games[0].defaultConfig)}
-            </pre>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+      ) : null}
+      {!catalogQuery.isLoading && !catalogQuery.isError && games.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Aucun manifeste disponible. Aucune donnée fictive n’est affichée.
+        </p>
+      ) : null}
+      {games.length > 0 ? (
+        <div className="minigame-grid">
+          {games.map((game) => (
+            <Card key={game.id} className="minigame-card">
+              <CardHeader>
+                <div className="minigame-glyph">
+                  <Boxes />
+                </div>
+                <CardTitle>{game.name ?? game.id}</CardTitle>
+                <CardDescription>{game.id}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="minigame-tags">
+                  {game.family ? <Badge variant="outline">{game.family}</Badge> : null}
+                  {game.version != null ? (
+                    <Badge variant="outline">v{String(game.version)}</Badge>
+                  ) : null}
+                  {game.status ? <Badge>{game.status}</Badge> : null}
+                </div>
+                <div className="minigame-rule">
+                  <Code2 />
+                  <span>
+                    <small>Resolver</small>
+                    <strong>{game.id}</strong>
+                  </span>
+                </div>
+                <div className="minigame-rule">
+                  <ShieldCheck />
+                  <span>
+                    <small>Politique</small>
+                    <strong>Server authoritative</strong>
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : null}
+    </AppShell>
   );
 }

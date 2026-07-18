@@ -1,87 +1,54 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
-import { Button } from "@/components/retroui/button";
-import { Field, FieldGroup, FieldLabel, FieldDescription } from "@/components/retroui/field";
-import { Input } from "@/components/retroui/input";
-import { Alert, AlertTitle, AlertDescription } from "@/components/retroui/alert";
+import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { AlertCircle, ArrowRight } from "lucide-react";
 import { useSession } from "@/lib/useSession";
-import { safeInternalRedirect } from "@/lib/safe-redirect";
-import { translateError, formatRateLimit } from "@/lib/errors.fr";
-import type { ApiError } from "@/lib/api";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-export function LoginForm({ next, onSuccess }: { next?: string; onSuccess?: () => void }) {
-  const { login } = useSession();
+export function LoginForm() {
   const router = useRouter();
+  const { login, error } = useSession({ refreshOnMount: false });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<ApiError | null>(null);
-  const [pending, setPending] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setPending(true);
-    const err = await login({ email, password });
-    setPending(false);
-    if (err) {
-      setError(err);
-      return;
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    try {
+      const response = await login(email, password);
+      if (response.success) {
+        const requestedPath = new URLSearchParams(window.location.search).get("returnTo");
+        router.push(requestedPath?.startsWith("/") ? requestedPath : homeForRoles(response.data.user.roles));
+      }
+    } finally {
+      setSubmitting(false);
     }
-    const redirectTo = safeInternalRedirect(
-      next ?? new URLSearchParams(window.location.search).get("next"),
-    );
-    if (onSuccess) onSuccess();
-    router.push(redirectTo);
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4">
-      {error && (
-        <Alert variant="destructive" aria-live="assertive">
-          <AlertTitle>Connexion impossible</AlertTitle>
-          <AlertDescription>
-            {translateError(error.code, error.status)}{" "}
-            {error.code === "LOGIN_RATE_LIMITED" && formatRateLimit()}
-          </AlertDescription>
-        </Alert>
-      )}
-      <FieldGroup>
-        <Field>
-          <FieldLabel htmlFor="login-email">Email</FieldLabel>
-          <Input
-            id="login-email"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="toi@exemple.fr"
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="login-password">Mot de passe</FieldLabel>
-          <Input
-            id="login-password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-          />
-          <FieldDescription className="text-right">
-            <Link href="/auth/reset-password" className="underline underline-offset-2">
-              Mot de passe oublié ?
-            </Link>
-          </FieldDescription>
-        </Field>
-      </FieldGroup>
-      <Button type="submit" className="w-full" size="lg" disabled={pending}>
-        {pending ? "Connexion…" : "Se connecter"}
-      </Button>
+    <form onSubmit={handleSubmit} className="auth-form">
+      {error ? <Alert variant="destructive"><AlertCircle /><AlertDescription>{error}</AlertDescription></Alert> : null}
+      <div className="auth-field"><Label htmlFor="email">Adresse email</Label><Input id="email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="vous@exemple.com" required /></div>
+      <div className="auth-field"><div className="auth-label-row"><Label htmlFor="password">Mot de passe</Label><Link href="/auth/reset">Mot de passe oublié ?</Link></div><Input id="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></div>
+      <div className="remember-row"><Checkbox id="remember" defaultChecked /><Label htmlFor="remember">Rester connecté sur cet appareil</Label></div>
+      <Button type="submit" className="w-full" size="lg" disabled={submitting}>{submitting ? "Connexion…" : "Se connecter"}<ArrowRight /></Button>
+      <p className="auth-switch">Nouveau sur Noya ? <Link href="/auth/register">Créer un compte</Link></p>
     </form>
   );
+}
+
+function homeForRoles(roles: string[]) {
+  if (roles.includes("SUPER_ADMIN")) return "/super-admin";
+  if (roles.includes("ADMIN")) return "/admin";
+  if (roles.includes("SUPPORT")) return "/support";
+  if (roles.includes("FINANCE")) return "/finance";
+  if (roles.includes("OBSERVER")) return "/observe/parties/demo-party";
+  return "/parties";
 }

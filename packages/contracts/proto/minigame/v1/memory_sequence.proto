@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package sessionjeu.minigame.v1;
+
+import "common/v1/shared.proto";
+
+// Solo: Sequence memoire — player reproduces server-authored sequence.
+// Server is authoritative for sequence, timing windows, and score.
+
+message MemorySequenceConfig {
+  string schema_version = 1;
+  int32 sequence_length = 2;
+  int32 display_ms_per_item = 3;
+  int32 input_timeout_ms = 4;
+  int32 max_attempts = 5;
+  // Allowed symbol ids (server catalog); no correct sequence here.
+  repeated string symbol_ids = 6;
+}
+
+message MemorySequencePlayerCommand {
+  string schema_version = 1;
+  // submit_input | finish_attempt | abort
+  string action = 2;
+  // Player-chosen symbol id for current step; never the full answer key.
+  string symbol_id = 3;
+  int32 step_index = 4;
+  int64 client_timestamp_ms = 5;
+}
+
+message MemorySequencePublicState {
+  string schema_version = 1;
+  string phase = 2;
+  int32 sequence_length = 3;
+  int32 current_step = 4;
+  int32 remaining_ms = 5;
+  int32 attempt_index = 6;
+  int32 max_attempts = 7;
+  // Display-only symbols for SHOW phase (server-timed).
+  repeated string display_symbol_ids = 8;
+}
+
+// Private to acting player only — never fan-out.
+// Must NOT contain the full authoritative answer sequence after SHOW ends.
+message MemorySequencePrivateState {
+  string schema_version = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  int32 steps_correct = 3;
+  bool attempt_open = 4;
+  // Hint only: next expected index, not the answer symbols.
+  int32 next_expected_step = 5;
+}
+
+message MemorySequenceServerEvent {
+  string schema_version = 1;
+  string event_type = 2;
+  sessionjeu.common.v1.Audience audience = 3;
+  MemorySequencePublicState public_state = 4;
+  int64 server_timestamp_ms = 5;
+}
+
+// Admin/system evidence — not player/observer wire.
+message MemorySequenceScoreEvidence {
+  string schema_version = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  double raw_score = 3;
+  string evidence_hash = 4;
+  int32 steps_correct = 5;
+  int32 attempts_used = 6;
+  int64 computed_at_ms = 7;
+}

@@ -7,49 +7,48 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Enums
-enum UserRole {
-  PLAYER
-  SUPPORT
-  FINANCE
-  ADMIN
-  SUPER_ADMIN
-}
+// ─────────────────────────────
+// Finance / ops enums (no free-form financial statuses)
+// ─────────────────────────────
 
-enum SessionVisibility {
-  PUBLIC
-  UNLISTED
-  PRIVATE
-}
-
-enum GameSessionStatus {
-  DRAFT
-  PUBLISHED
-  ACTIVE
-  WAITING_START
-  LIVE
-  COMPLETED
-  CANCELLED
-}
-
-enum SessionRegistrationStatus {
-  CREATED
-  PAYMENT_PENDING
-  PAID
-  CHECKED_IN
-  IN_ROOM
-  NO_SHOW
-  CANCELLED
-  REFUNDED
-  EXPIRED
-}
-
+/// Provider-facing / public payment status (aligned with Fapshi wire SUCCESSFUL naming).
 enum PaymentStatus {
   PENDING
   SUCCESSFUL
   FAILED
   EXPIRED
   REFUNDED
+  CREATED
+}
+
+/// Platform internal payment lifecycle (distinct from provider wire).
+enum PaymentInternalStatus {
+  CREATED
+  AWAITING_PROVIDER
+  PROVIDER_PENDING
+  SUCCEEDED
+  FAILED
+  EXPIRED
+  RECONCILING
+  RECONCILED
+  COMPENSATING
+  COMPENSATED
+  PENDING
+}
+
+/// Official Fapshi wire statuses — map only in adapters.
+enum FapshiWireStatus {
+  UNSPECIFIED
+  CREATED
+  PENDING
+  SUCCESSFUL
+  FAILED
+  EXPIRED
+}
+
+enum ProviderServiceKind {
+  COLLECTION
+  PAYOUT
 }
 
 enum LedgerDirection {
@@ -63,1271 +62,955 @@ enum LedgerType {
   REFUND
   BONUS
   ADJUSTMENT
+  COMPENSATION
+  WALLET_CREDIT
+  ACCESS_FEE
 }
 
-enum RoundStatus {
-  PENDING
-  ACTIVE
-  COMPLETED
-}
-
-enum LivePhase {
-  LOBBY
-  BRIEFING
-  ROUND_ACTIVE
-  RESOLVING
-  RESULTS
-  PAUSED
-}
-
-enum PlayerConnectionStatus {
-  CONNECTED
-  DISCONNECTED
-  RECONNECTING
-}
-
-enum RoundOutcomeStatus {
-  QUALIFIED
-  ELIMINATED
-}
-
-enum RoundParticipantStatus {
-  ACTIVE
-  SPECTATOR
-  NO_SHOW
-  ELIMINATED
-}
-
-enum RoundAdmissionLock {
-  ROUND_START
-  CHALLENGE_REVEAL
-  HAZARD_START
-  MATCHMAKING_LOCK
-  PAIRING_LOCK
-  TEAM_LOCK
-  ROLE_ASSIGNMENT_LOCK
-}
-
-enum SessionChatMessageType {
-  CHAT
-  QUICK
-  PING
-  SYSTEM
-}
-
-enum SessionChatModerationStatus {
-  VISIBLE
-  HIDDEN
-  FLAGGED
-}
-
-enum GameResultStatus {
-  WINNER
-  ELIMINATED
-  COMPLETED
-}
-
-enum PrizeDistributionStatus {
-  PENDING
-  CREDITED
-  FAILED
-}
-
-enum RoundingRemainderPolicy {
-  FIRST_WINNER
-  PLATFORM_COMMISSION
-}
-
-enum DisputeWindowStatus {
-  OPEN
-  CORRECTION_REQUESTED
-  RESOLVED
-  CLOSED
-}
-
-enum SupportCaseStatus {
-  OPEN
-  IN_PROGRESS
-  RESOLVED
-  CLOSED
-}
-
-enum IncidentSeverity {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
-}
-
-enum AdminActionApprovalStatus {
-  REQUESTED
-  APPROVED
+enum WebhookInboxStatus {
+  RECEIVED
+  VERIFIED
+  APPLIED
+  DUPLICATE
   REJECTED
 }
 
-enum NotificationChannel {
-  IN_APP
-  WHATSAPP
+enum ReconciliationStatus {
+  PENDING
+  MATCHED
+  MISMATCH
+  RESOLVED
 }
 
-enum NotificationJobStatus {
-  QUEUED
-  SENT
-  FAILED
-  CANCELLED
-  SKIPPED
+enum EncryptionKeyStatus {
+  ACTIVE
+  ROTATING
+  RETIRED
+  PURGED
 }
 
-enum DeliveryStatus {
-  QUEUED
-  SENT
-  DELIVERED
-  READ
-  FAILED
-  SKIPPED
+enum DataClassification {
+  PUBLIC
+  RESTRICTED
+  SYSTEM_ONLY
+  SECRET
 }
 
-enum NotificationType {
-  REGISTRATION
-  PAYMENT
-  CHECK_IN
-  RESULT
-  REMINDER
-  SHARE
-  SYSTEM
+enum EncryptedSecretPurpose {
+  ROLE
+  VOTE
+  SEQUENCE
+  CHECKPOINT
+  SCORE_PROOF
+  OTHER
 }
 
-enum RiskSignalSeverity {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
-}
-
-enum RiskSignalType {
-  AUTHORIZATION_DENIED
-  WEBHOOK_SIGNATURE_FAILURE
-  MULTI_ACCOUNT
-  DEVICE_HASH
-  PAYMENT_PATTERN
-  ANTICHEAT
-  COMPLIANCE
-}
-
-enum AntiCheatEventType {
-  DOUBLE_SUBMIT
-  AUTO_CLICK
-  LATE_INPUT
-  LATENCY_ABUSE
-  MANUAL_REVIEW
-}
-
-enum ComplianceGateType {
-  WITHDRAWAL
-  MINI_GAME_RISK
-  LEGAL_WORDING
-  PUBLIC_LAUNCH
+enum RetentionAction {
+  KEEP
+  ANONYMIZE
+  DELETE
+  LEGAL_HOLD
 }
 
 enum ComplianceGateStatus {
+  OPEN
   BLOCKED
-  PASSED
+  APPROVED
   WAIVED
 }
 
-enum ModerationActionType {
-  WARN_USER
-  FREEZE_WALLET
-  SUSPEND_USER
-  RESTRICT_SESSION
-  NOTE
+enum IncidentStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  CLOSED
 }
 
-enum MiniGameFamily {
-  SOLO
-  DUEL
-  ALLIANCE
-  TEAM
-  SURVIVAL
-  HIDDEN_ROLE
+enum SupportAccessStatus {
+  REQUESTED
+  APPROVED
+  DENIED
+  EXPIRED
+  REVOKED
 }
 
-enum MiniGamePlayerMode {
-  SOLO
-  DUEL
-  GROUP
-  TEAM
+enum ConsentStatus {
+  GRANTED
+  WITHDRAWN
+  SUPERSEDED
 }
 
-// Models
+// ─────────────────────────────
+// Identity
+// ─────────────────────────────
+
 model User {
-  id             String   @id @default(cuid())
-  email          String   @unique
-  phone          String?  @unique
-  passwordHash   String
+  id             String    @id @default(cuid())
+  email          String    @unique
   name           String?
   avatarUrl      String?
-  role           UserRole @default(PLAYER)
-  isActive       Boolean  @default(true)
-  sessionVersion Int      @default(1)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  passwordHash   String?
+  sessionVersion Int       @default(0)
+  isActive       Boolean   @default(true)
+  lastLoginAt    DateTime?
 
-  profile                PlayerProfile?
-  authSessions           AuthSession[]
-  passwordResetTokens    PasswordResetToken[]
-  roleAssignments        RoleAssignment[]        @relation("RoleAssignments")
-  grantedRoleAssignments RoleAssignment[]        @relation("RoleGrantedBy")
-  registrations          SessionRegistration[]
-  wallet                 Wallet?
-  ledgers                LedgerEntry[]
-  auditLogs              AuditLog[]
-  gameResults            GameResult[]
-  prizeDistributions     PrizeDistribution[]
-  joinTokens             JoinToken[]
-  liveReservations       LiveReservation[]
-  playerConnections      PlayerConnection[]
-  playerActions          PlayerAction[]
-  roundParticipants      RoundParticipant[]
-  sessionChatMessages    SessionChatMessage[]
-  miniGameDefinitions    MiniGameDefinition[]
-  disputeRequests        DisputeWindow[]         @relation("DisputeRequestedBy")
-  statsSnapshot          PlayerStatsSnapshot?
-  supportCasesCreated    SupportCase[]           @relation("SupportCaseCreatedBy")
-  supportCasesForUser    SupportCase[]           @relation("SupportCaseUser")
-  incidentsCreated       IncidentLog[]           @relation("IncidentCreatedBy")
-  actionRequests         AdminActionApproval[]   @relation("AdminActionRequestedBy")
-  actionApprovals        AdminActionApproval[]   @relation("AdminActionApprovedBy")
-  notificationPreference NotificationPreference?
-  notificationJobs       NotificationJob[]
-  deliveryLogs           DeliveryLog[]
-  consentRecords         ConsentRecord[]
-  outboundMessages       OutboundMessage[]
-  riskSignals            RiskSignal[]
-  antiCheatEvents        AntiCheatEvent[]
-  moderationTargets      ModerationAction[]      @relation("ModerationTarget")
-  moderationActions      ModerationAction[]      @relation("ModerationActor")
-  complianceDecisions    ComplianceGate[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([email])
-  @@index([role])
-  @@index([isActive])
-}
-
-model PlayerProfile {
-  id          String   @id @default(cuid())
-  userId      String   @unique
-  username    String   @unique
-  bio         String?
-  avatarUrl   String?
-  preferences Json?
-  isPublic    Boolean  @default(false)
-  level       Int      @default(1)
-  xp          Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-model PlayerStatsSnapshot {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  sessionsPlayed Int      @default(0)
-  sessionsWon    Int      @default(0)
-  winRate        Float    @default(0)
-  avgFinalRank   Float?
-  creditsWonXaf  Int      @default(0)
-  computedAt     DateTime @default(now())
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([sessionsWon])
-  @@index([computedAt])
+  authSessions        AuthSession[]
+  roleAssignments     RoleAssignment[]
+  passwordResetTokens PasswordResetToken[]
+  participations      PartyParticipation[]
+  auditLogs           AuditLog[]
+  announcements       Announcement[]
+  notificationJobs    NotificationJob[]
+  wallet              Wallet?
+  paymentTransactions PaymentTransaction[]
+  consentRecords      ConsentRecord[]
+  supportAccessGrants SupportAccessGrant[]
+  incidentsOpened     Incident[]           @relation("IncidentOpenedBy")
+  encryptionKeys      EncryptionKey[]      @relation("KeyCreatedBy")
 }
 
 model AuthSession {
-  id             String    @id @default(cuid())
+  id             String   @id @default(cuid())
   userId         String
-  tokenHash      String    @unique
-  sessionVersion Int
-  ipAddress      String?
-  userAgent      String?
-  createdAt      DateTime  @default(now())
+  token          String   @unique
   expiresAt      DateTime
-  revokedAt      DateTime?
-  lastSeenAt     DateTime?
+  sessionVersion Int      @default(0)
+
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([expiresAt])
-  @@index([revokedAt])
 }
 
 model PasswordResetToken {
-  id        String    @id @default(cuid())
-  userId    String
-  tokenHash String    @unique
-  createdAt DateTime  @default(now())
-  expiresAt DateTime
-  usedAt    DateTime?
+  id         String    @id @default(cuid())
+  userId     String
+  token      String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+
+  createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([expiresAt])
-  @@index([usedAt])
 }
 
 model RoleAssignment {
-  id          String    @id @default(cuid())
-  userId      String
-  role        UserRole
-  grantedById String?
-  reason      String?
+  id     String @id @default(cuid())
+  userId String
+  role   String
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@index([userId])
+}
+
+// ─────────────────────────────
+// Party (session de jeu)
+// ─────────────────────────────
+
+model Party {
+  id               String    @id @default(cuid())
+  code             String    @unique
+  name             String
+  status           String
+  visibility       String    @default("public")
+  roundProgram     Json?
+  minPlayers       Int?
+  maxPlayers       Int?
+  /// Entry fee amount in major currency units (Decimal). Null = free party.
+  entryFeeAmount   Decimal?  @db.Decimal(18, 2)
+  entryFeeCurrency String    @default("XAF")
+  /// Monotonic config/manifest version for fee + program changes.
+  configVersion    Int       @default(1)
+  feeVersion       Int       @default(1)
+  description      String?
+
+  scheduledAt DateTime?
   createdAt   DateTime  @default(now())
-  revokedAt   DateTime?
+  updatedAt   DateTime  @updatedAt
 
-  user      User  @relation("RoleAssignments", fields: [userId], references: [id], onDelete: Cascade)
-  grantedBy User? @relation("RoleGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
-
-  @@index([userId, role])
-  @@index([grantedById])
-  @@index([revokedAt])
+  participations    PartyParticipation[]
+  rounds            Round[]
+  announcements     Announcement[]
+  payments          PaymentTransaction[]
+  complianceGates   ComplianceGate[]
+  incidents         Incident[]
+  teamAssignments   TeamAssignment[]
+  pairAssignments   PairAssignment[]
 }
 
-model GameSession {
-  id                   String            @id @default(cuid())
-  code                 String            @unique
-  name                 String
-  description          String?
-  status               GameSessionStatus @default(DRAFT)
-  minPlayers           Int               @default(2)
-  maxPlayers           Int               @default(10)
-  entryFee             Float             @default(0)
-  entryFeeXaf          Int               @default(0)
-  visibility           SessionVisibility @default(PUBLIC)
-  prizePool            Float             @default(0)
-  prizePoolBps         Int               @default(6000)
-  winnerSplitBps       Json
-  providerFeeBps       Int               @default(300)
-  selectedMiniGameIds  Json?
-  configVersion        Int               @default(1)
-  startTime            DateTime?
-  endTime              DateTime?
-  registrationClosesAt DateTime?
-  publishedAt          DateTime?
-  cancelledAt          DateTime?
-  cancellationReason   String?
-  createdBy            String
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+// ─────────────────────────────
+// Participation
+// ─────────────────────────────
 
-  registrations      SessionRegistration[]
-  rounds             RoundInstance[]
-  gameResults        GameResult[]
-  prizeDistributions PrizeDistribution[]
-  shareLinks         ShareLink[]
-  joinTokens         JoinToken[]
-  liveState          LiveSessionState?
-  liveReservations   LiveReservation[]
-  playerConnections  PlayerConnection[]
-  playerActions      PlayerAction[]
-  roundParticipants  RoundParticipant[]
-  chatMessages       SessionChatMessage[]
-  roundDeadlines     RoundDeadline[]
-  resolutionLogs     ResolutionLog[]
-  roundOutcomes      RoundOutcome[]
-  gameEvents         GameEvent[]
-  commissionRecord   CommissionRecord?
-  disputeWindow      DisputeWindow?
-  incidentLogs       IncidentLog[]
-  notificationJobs   NotificationJob[]
-  outboundMessages   OutboundMessage[]
-  riskSignals        RiskSignal[]
-  antiCheatEvents    AntiCheatEvent[]
-  moderationActions  ModerationAction[]
-
-  @@index([code])
-  @@index([status])
-  @@index([createdBy])
-  @@index([configVersion])
-}
-
-model SessionRegistration {
-  id                 String                    @id @default(cuid())
+model PartyParticipation {
+  id                 String    @id @default(cuid())
+  partyId            String
   userId             String
-  sessionId          String
-  status             SessionRegistrationStatus @default(CREATED)
-  paymentDeadlineAt  DateTime?
-  paidAt             DateTime?
-  checkedInAt        DateTime?
-  inRoomAt           DateTime?
-  noShowAt           DateTime?
+  role               String
+  status             String
+  /// Payment axis (separate from presence / connection / round).
+  paymentState       String    @default("NONE")
+  /// Admission axis after capacity + payment checks.
+  admissionState     String    @default("NOT_ADMITTED")
+  readinessState     String    @default("offline")
+  connectionState    String    @default("disconnected")
+  paymentTransactionId String? @unique
+
+  idempotencyKey     String?   @unique
+  expiresAt          DateTime?
   cancelledAt        DateTime?
   cancellationReason String?
-  createdAt          DateTime                  @default(now())
-  updatedAt          DateTime                  @updatedAt
 
-  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  session          GameSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  payment          PaymentTransaction?
-  joinTokens       JoinToken[]
-  liveReservations LiveReservation[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([userId])
-  @@index([sessionId])
-  @@index([sessionId, status])
-  @@index([status, paymentDeadlineAt])
-  @@index([status, checkedInAt])
-}
-
-model JoinToken {
-  id             String    @id @default(cuid())
-  tokenHash      String    @unique
-  userId         String
-  sessionId      String
-  registrationId String
-  expiresAt      DateTime
-  consumedAt     DateTime?
-  createdAt      DateTime  @default(now())
-
-  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  session      GameSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  registration SessionRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([sessionId])
-  @@index([registrationId])
-  @@index([expiresAt])
-  @@index([consumedAt])
-}
-
-model LiveSessionState {
-  id             String     @id @default(cuid())
-  sessionId      String     @unique
-  roomId         String?
-  phase          LivePhase  @default(LOBBY)
-  previousPhase  LivePhase?
-  currentRoundId String?
-  phaseStartedAt DateTime?
-  pausedAt       DateTime?
-  pauseReason    String?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-
-  session      GameSession    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  currentRound RoundInstance? @relation(fields: [currentRoundId], references: [id], onDelete: SetNull)
-
-  @@index([phase])
-  @@index([roomId])
-  @@index([currentRoundId])
-}
-
-model LiveReservation {
-  id             String    @id @default(cuid())
-  tokenHash      String    @unique
-  userId         String
-  sessionId      String
-  registrationId String
-  expiresAt      DateTime
-  consumedAt     DateTime?
-  createdAt      DateTime  @default(now())
-
-  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  session      GameSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  registration SessionRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([sessionId])
-  @@index([registrationId])
-  @@index([expiresAt])
-  @@index([consumedAt])
-}
-
-model PlayerConnection {
-  id                String                 @id @default(cuid())
-  sessionId         String
-  userId            String
-  registrationId    String?
-  roomId            String?
-  colyseusSessionId String?
-  status            PlayerConnectionStatus @default(CONNECTED)
-  connectedAt       DateTime?
-  disconnectedAt    DateTime?
-  reconnectUntil    DateTime?
-  lastSeenAt        DateTime?
-  createdAt         DateTime               @default(now())
-  updatedAt         DateTime               @updatedAt
-
-  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([sessionId, userId])
-  @@index([sessionId, status])
-  @@index([userId])
-  @@index([roomId])
-  @@index([colyseusSessionId])
-  @@index([reconnectUntil])
-}
-
-model PaymentTransaction {
-  id                 String        @id @default(cuid())
-  userId             String
-  sessionId          String?
-  registrationId     String?       @unique
-  amount             Float
-  amountXaf          Int
-  currency           String        @default("XAF")
-  status             PaymentStatus @default(PENDING)
-  provider           String?
-  providerExternalId String?       @unique
-  providerTransId    String?       @unique
-  providerStatus     String?
-  checkoutUrl        String?
-  reference          String?
-  webhookReceivedAt  DateTime?
-  metadata           Json?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
-
-  registration  SessionRegistration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
-  ledger        LedgerEntry[]
-  webhookEvents WebhookEvent[]
-
-  @@index([userId])
-  @@index([sessionId])
-  @@index([registrationId])
-  @@index([provider, status])
-  @@index([reference])
-}
-
-model WebhookEvent {
-  id          String    @id @default(cuid())
-  provider    String
-  eventKey    String    @unique
-  paymentId   String?
-  transId     String?
-  status      String?
-  payload     Json
-  receivedAt  DateTime  @default(now())
-  processedAt DateTime?
-
-  payment PaymentTransaction? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
-
-  @@index([provider])
-  @@index([paymentId])
-  @@index([transId])
-  @@index([receivedAt])
-}
-
-model Wallet {
-  id         String   @id @default(cuid())
-  userId     String   @unique
-  balanceXaf Int      @default(0)
-  currency   String   @default("XAF")
-  isFrozen   Boolean  @default(false)
-  version    Int      @default(1)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ledgers LedgerEntry[]
-
-  @@index([userId])
-}
-
-model LedgerEntry {
-  id              String          @id @default(cuid())
-  walletId        String
-  userId          String
-  amountXaf       Int
-  balanceAfterXaf Int
-  direction       LedgerDirection
-  type            LedgerType
-  description     String?
-  referenceType   String?
-  referenceId     String?
-  idempotencyKey  String          @unique
-  paymentId       String?
-  sessionId       String?
-  createdAt       DateTime        @default(now())
-
-  wallet  Wallet              @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  user    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  payment PaymentTransaction? @relation(fields: [paymentId], references: [id])
-
-  @@index([walletId])
-  @@index([userId])
-  @@index([paymentId])
-  @@index([sessionId])
-  @@index([referenceType, referenceId])
-  @@index([createdAt])
-}
-
-model RoundInstance {
-  id                   String      @id @default(cuid())
-  sessionId            String
-  miniGameDefinitionId String?
-  configJson           Json?
-  roundNum             Int
-  status               RoundStatus @default(PENDING)
-  startTime            DateTime?
-  endTime              DateTime?
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @updatedAt
-
-  session            GameSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  results            RoundResult[]
-  liveState          LiveSessionState[]
-  deadline           RoundDeadline?
+  party              Party                @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentTransaction PaymentTransaction?  @relation("ParticipationPayment", fields: [paymentTransactionId], references: [id], onDelete: SetNull)
+  connection         RealtimeConnection?
+  rounds             RoundParticipant[]
+  scores             ProvisionalScore[]
+  published          PublishedScore[]
   playerActions      PlayerAction[]
-  participants       RoundParticipant[]
-  resolutionLog      ResolutionLog?
-  outcomes           RoundOutcome[]
-  gameEvents         GameEvent[]
-  miniGameDefinition MiniGameDefinition? @relation(fields: [miniGameDefinitionId], references: [id], onDelete: SetNull)
-  antiCheatEvents    AntiCheatEvent[]
+  payments           PaymentTransaction[] @relation("PaymentParticipation")
+  roleSecrets        EncryptedSecret[]    @relation("ParticipationSecrets")
+  pairAsA            PairAssignment[]     @relation("PairA")
+  pairAsB            PairAssignment[]     @relation("PairB")
+  teamMemberships    TeamMember[]
 
-  @@unique([sessionId, roundNum])
-  @@index([sessionId])
-  @@index([miniGameDefinitionId])
+  @@unique([partyId, userId])
+  @@index([partyId])
+  @@index([userId])
+  @@index([partyId, admissionState])
+  @@index([partyId, paymentState])
+  @@index([partyId, status])
 }
 
-model MiniGameDefinition {
-  id                String             @id @default(cuid())
-  key               String
-  name              String
-  description       String
-  family            MiniGameFamily
-  playerMode        MiniGamePlayerMode
-  resolverId        String
-  enabled           Boolean            @default(true)
-  version           Int
-  configSchema      Json
-  defaultConfig     Json
-  allowedActions    Json
-  antiCheatPolicy   Json
-  clientStateSchema Json
-  uiCopy            Json
-  createdBy         String?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+// ─────────────────────────────
+// Realtime
+// ─────────────────────────────
 
-  rounds  RoundInstance[]
-  creator User?           @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+model RealtimeConnection {
+  id              String    @id @default(cuid())
+  participationId String    @unique
+  connectionId    String    @unique
+  state           String
+  tokenHash       String    @unique
+  tokenExpiresAt  DateTime
 
-  @@unique([key, version])
-  @@index([key])
-  @@index([family])
-  @@index([enabled])
-  @@index([createdBy])
+  connectedAt    DateTime  @default(now())
+  disconnectedAt DateTime?
+
+  participation PartyParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId])
+  @@index([tokenHash])
+}
+
+// ─────────────────────────────
+// Rounds
+// ─────────────────────────────
+
+model Round {
+  id       String @id @default(cuid())
+  partyId  String
+  number   Int
+  minigame String
+  status   String
+  /// Bound minigame manifest version used for this round.
+  runtimeVersion String?
+  configVersion  Int?
+
+  startedAt DateTime?
+  deadline  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  party         Party              @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  participants  RoundParticipant[]
+  actions       PlayerAction[]
+  deadlineState RoundDeadline?
+  scores        ProvisionalScore[]
+  published     PublishedScore[]
+  checkpoints   RoundCheckpoint[]
+  teamAssignments TeamAssignment[]
+  pairAssignments PairAssignment[]
+  encryptedSecrets EncryptedSecret[] @relation("RoundSecrets")
+
+  @@unique([partyId, number])
+  @@index([partyId])
+  @@index([status])
+  @@index([minigame])
 }
 
 model RoundParticipant {
-  id             String                 @id @default(cuid())
-  sessionId      String
-  roundId        String
-  userId         String
-  status         RoundParticipantStatus @default(ACTIVE)
-  admissionLock  RoundAdmissionLock
-  admittedAt     DateTime?
-  lockedOutAt    DateTime?
-  lockReason     String?
-  teamId         String?
-  pairId         String?
-  role           String?
-  metadata       Json?
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
+  id              String    @id @default(cuid())
+  roundId         String
+  participationId String
+  status          String    @default("PENDING")
+  score           Int?
+  finishedAt      DateTime?
 
-  session GameSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  round   RoundInstance @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 
-  @@unique([roundId, userId])
-  @@index([sessionId])
-  @@index([userId])
+  round         Round              @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  participation PartyParticipation @relation(fields: [participationId], references: [id])
+
+  @@unique([roundId, participationId])
+  @@index([roundId])
+  @@index([participationId])
   @@index([status])
-  @@index([admissionLock])
-  @@index([teamId])
-  @@index([pairId])
+}
+
+model PlayerAction {
+  id              String   @id @default(cuid())
+  roundId         String
+  participationId String
+  actionType      String
+  actionNonce     String
+  payload         Json?
+  accepted        Boolean  @default(true)
+  rejectReason    String?
+  receivedAt      DateTime @default(now())
+
+  round         Round              @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  participation PartyParticipation @relation(fields: [participationId], references: [id])
+
+  @@unique([roundId, participationId, actionNonce])
+  @@index([roundId])
+  @@index([participationId])
+  @@index([accepted])
+  @@index([receivedAt])
 }
 
 model RoundDeadline {
-  id         String    @id @default(cuid())
-  sessionId  String
-  roundId    String    @unique
-  deadlineAt DateTime
-  closedAt   DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  roundId     String    @unique
+  deadlineAt  DateTime?
+  durationMs  Int
+  pausedAt    DateTime?
+  remainingMs Int?
+  closedAt    DateTime?
 
-  session GameSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  round   RoundInstance @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([sessionId])
+  round Round @relation(fields: [roundId], references: [id], onDelete: Cascade)
+
   @@index([deadlineAt])
   @@index([closedAt])
 }
 
-model SessionChatMessage {
-  id               String                      @id @default(cuid())
-  sessionId        String
-  userId           String
-  type             SessionChatMessageType      @default(CHAT)
-  body             String
-  x                Float?
-  y                Float?
-  moderationStatus SessionChatModerationStatus @default(VISIBLE)
-  createdAt        DateTime                    @default(now())
+/// Durable crash-recovery checkpoint. Payload is ciphertext only — never cleartext secrets.
+model RoundCheckpoint {
+  id               String   @id @default(cuid())
+  roundId          String
+  version          Int
+  phase            String
+  configVersion    Int?
+  runtimeVersion   String?
+  /// AES-GCM (or KMS) ciphertext of checkpoint JSON (roles/votes/sequences hashed or encrypted inside).
+  payloadCipher    Bytes
+  payloadNonce     Bytes?
+  payloadHash      String
+  keyId            String
+  acceptedInputIds Json?
+  deadlines        Json?
+  classification   DataClassification @default(SYSTEM_ONLY)
 
-  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([sessionId, createdAt])
-  @@index([userId])
-  @@index([type])
-  @@index([moderationStatus])
-}
-
-model PlayerAction {
-  id              String    @id @default(cuid())
-  sessionId       String
-  roundId         String
-  userId          String
-  actionNonce     String
-  actionType      String
-  payload         Json
-  acceptedAt      DateTime?
-  rejectedAt      DateTime?
-  rejectionReason String?
-  createdAt       DateTime  @default(now())
-
-  session         GameSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  round           RoundInstance    @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  antiCheatEvents AntiCheatEvent[]
-
-  @@unique([roundId, userId, actionNonce])
-  @@index([sessionId])
-  @@index([roundId])
-  @@index([userId])
-  @@index([acceptedAt])
-  @@index([rejectedAt])
-}
-
-model AntiCheatEvent {
-  id             String             @id @default(cuid())
-  type           AntiCheatEventType
-  severity       RiskSignalSeverity @default(MEDIUM)
-  sessionId      String?
-  roundId        String?
-  playerActionId String?
-  userId         String?
-  actionNonce    String?
-  latencyMs      Int?
-  metadata       Json?
-  createdAt      DateTime           @default(now())
-
-  session      GameSession?   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  round        RoundInstance? @relation(fields: [roundId], references: [id], onDelete: SetNull)
-  playerAction PlayerAction?  @relation(fields: [playerActionId], references: [id], onDelete: SetNull)
-  user         User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([type])
-  @@index([severity])
-  @@index([sessionId])
-  @@index([roundId])
-  @@index([userId])
-  @@index([playerActionId])
-  @@index([createdAt])
-}
-
-model RoundResult {
-  id       String @id @default(cuid())
-  roundId  String
-  playerId String
-  score    Int    @default(0)
-  rank     Int?
-  metadata Json?
-
-  round RoundInstance @relation(fields: [roundId], references: [id], onDelete: Cascade)
-
-  @@unique([roundId, playerId])
-  @@index([roundId])
-  @@index([playerId])
-}
-
-model RoundOutcome {
-  id        String             @id @default(cuid())
-  roundId   String
-  sessionId String
-  userId    String
-  status    RoundOutcomeStatus
-  reason    String?
-  createdAt DateTime           @default(now())
-
-  round   RoundInstance @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  session GameSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@unique([roundId, userId])
-  @@index([sessionId])
-  @@index([userId])
-  @@index([status])
-}
-
-model ResolutionLog {
-  id             String    @id @default(cuid())
-  roundId        String    @unique
-  sessionId      String
-  resolverId     String
-  inputHash      String
-  outputHash     String
-  inputSnapshot  Json
-  outputSnapshot Json
-  evidence       Json
-  seedLog        Json
-  createdAt      DateTime  @default(now())
-  replayedAt     DateTime?
-
-  round   RoundInstance @relation(fields: [roundId], references: [id], onDelete: Cascade)
-  session GameSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@index([sessionId])
-  @@index([resolverId])
-  @@index([inputHash])
-  @@index([outputHash])
-  @@index([createdAt])
-}
-
-model GameEvent {
-  id            String    @id @default(cuid())
-  sessionId     String?
-  roundId       String?
-  eventType     String
-  aggregateType String
-  aggregateId   String
-  payload       Json
-  createdAt     DateTime  @default(now())
-  processedAt   DateTime?
-
-  session GameSession?   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  round   RoundInstance? @relation(fields: [roundId], references: [id], onDelete: Cascade)
-
-  @@index([sessionId])
-  @@index([roundId])
-  @@index([eventType])
-  @@index([aggregateType, aggregateId])
-  @@index([processedAt])
-  @@index([createdAt])
-}
-
-model GameResult {
-  id             String           @id @default(cuid())
-  sessionId      String
-  userId         String
-  finalRank      Int?
-  totalScore     Int              @default(0)
-  finalStatus    GameResultStatus @default(COMPLETED)
-  prizeWon       Float            @default(0)
-  prizeWonXaf    Int              @default(0)
-  idempotencyKey String           @unique
-  finalizedAt    DateTime?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-
-  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([sessionId, userId])
-  @@index([sessionId])
-  @@index([userId])
-  @@index([finalStatus])
-  @@index([finalizedAt])
-}
-
-model PrizeDistribution {
-  id             String                  @id @default(cuid())
-  sessionId      String
-  userId         String
-  amount         Float
-  amountXaf      Int
-  rank           Int
-  status         PrizeDistributionStatus @default(PENDING)
-  idempotencyKey String                  @unique
-  paidAt         DateTime?
-  creditedAt     DateTime?
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
-
-  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([sessionId, userId])
-  @@index([sessionId])
-  @@index([userId])
-  @@index([status])
-  @@index([creditedAt])
-}
-
-model CommissionRecord {
-  id                        String                  @id @default(cuid())
-  sessionId                 String                  @unique
-  grossCollectionXaf        Int
-  providerFeesXaf           Int
-  netCollectionXaf          Int
-  prizePoolXaf              Int
-  organizationCommissionXaf Int
-  roundingRemainderXaf      Int                     @default(0)
-  roundingRemainderPolicy   RoundingRemainderPolicy @default(FIRST_WINNER)
-  idempotencyKey            String                  @unique
-  createdAt                 DateTime                @default(now())
-
-  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@index([createdAt])
-}
-
-model DisputeWindow {
-  id            String              @id @default(cuid())
-  sessionId     String              @unique
-  status        DisputeWindowStatus @default(OPEN)
-  opensAt       DateTime
-  closesAt      DateTime
-  requestedById String?
-  requestReason String?
-  requestedAt   DateTime?
-  resolvedAt    DateTime?
-  createdAt     DateTime            @default(now())
-  updatedAt     DateTime            @updatedAt
-
-  session     GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  requestedBy User?       @relation("DisputeRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
-
-  @@index([status])
-  @@index([closesAt])
-  @@index([requestedById])
-}
-
-model AuditLog {
-  id        String   @id @default(cuid())
-  userId    String?
-  action    String
-  entity    String
-  entityId  String?
-  oldData   Json?
-  newData   Json?
-  reason    String?
-  requestId String?
-  ipAddress String?
-  userAgent String?
   createdAt DateTime @default(now())
 
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  round Round         @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  key   EncryptionKey @relation(fields: [keyId], references: [id])
 
-  @@index([userId])
-  @@index([entity, entityId])
-  @@index([action])
-  @@index([requestId])
-  @@index([createdAt])
+  @@unique([roundId, version])
+  @@index([roundId])
+  @@index([keyId])
 }
 
-model SupportCase {
-  id          String            @id @default(cuid())
-  userId      String
-  createdById String
-  status      SupportCaseStatus @default(OPEN)
-  subject     String
-  description String?
-  resolution  String?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  closedAt    DateTime?
+// ─────────────────────────────
+// Scoring
+// ─────────────────────────────
 
-  user      User @relation("SupportCaseUser", fields: [userId], references: [id], onDelete: Cascade)
-  createdBy User @relation("SupportCaseCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+model ProvisionalScore {
+  id              String    @id @default(cuid())
+  roundId         String
+  participationId String
+  score           Decimal   @default(0)
+  rank            Int?
+  status          String
+  /// Public-safe evidence hash (not the proof body).
+  evidenceHash    String?
+  /// Optional redacted JSON for non-secret meta only.
+  evidence        Json?
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  classification  DataClassification @default(RESTRICTED)
 
-  @@index([userId])
-  @@index([createdById])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  round         Round              @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  participation PartyParticipation @relation(fields: [participationId], references: [id])
+  published     PublishedScore?
+  reviews       ScoreReview[]
+  scoreEvidence ScoreEvidence?
+
+  @@unique([roundId, participationId])
+  @@index([roundId])
   @@index([status])
-  @@index([createdAt])
+  @@index([evidenceHash])
 }
 
-model IncidentLog {
-  id          String           @id @default(cuid())
-  createdById String
-  sessionId   String?
-  severity    IncidentSeverity @default(MEDIUM)
-  category    String
-  title       String
-  description String?
-  createdAt   DateTime         @default(now())
-  resolvedAt  DateTime?
-
-  createdBy User         @relation("IncidentCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
-  session   GameSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-
-  @@index([createdById])
-  @@index([sessionId])
-  @@index([severity])
-  @@index([category])
-  @@index([createdAt])
-}
-
-model AdminActionApproval {
-  id             String                    @id @default(cuid())
-  action         String
-  entity         String
-  entityId       String?
-  status         AdminActionApprovalStatus @default(REQUESTED)
-  reason         String
-  requestedById  String
-  approvedById   String?
-  approvalReason String?
-  payload        Json?
-  beforeData     Json?
-  afterData      Json?
-  requestedAt    DateTime                  @default(now())
-  decidedAt      DateTime?
-
-  requestedBy User  @relation("AdminActionRequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
-  approvedBy  User? @relation("AdminActionApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
-
-  @@index([action])
-  @@index([entity, entityId])
-  @@index([status])
-  @@index([requestedById])
-  @@index([approvedById])
-  @@index([requestedAt])
-}
-
-model RiskSignal {
-  id         String             @id @default(cuid())
-  type       RiskSignalType
-  severity   RiskSignalSeverity @default(MEDIUM)
-  userId     String?
-  sessionId  String?
-  source     String
-  deviceHash String?
-  ipHash     String?
-  reason     String
-  metadata   Json?
-  createdAt  DateTime           @default(now())
-  reviewedAt DateTime?
-
-  user    User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
-  session GameSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@index([type])
-  @@index([severity])
-  @@index([userId])
-  @@index([sessionId])
-  @@index([deviceHash])
-  @@index([ipHash])
-  @@index([createdAt])
-}
-
-model RateLimitBucket {
-  id        String    @id @default(cuid())
-  scope     String
-  key       String
-  count     Int       @default(0)
-  resetAt   DateTime
-  blockedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  @@unique([scope, key])
-  @@index([scope])
-  @@index([resetAt])
-  @@index([blockedAt])
-}
-
-model ComplianceGate {
-  id          String               @id @default(cuid())
-  type        ComplianceGateType
-  status      ComplianceGateStatus @default(BLOCKED)
-  scope       String
-  reason      String
-  evidence    Json?
-  decidedById String?
-  decidedAt   DateTime?
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-
-  decidedBy User? @relation(fields: [decidedById], references: [id], onDelete: SetNull)
-
-  @@unique([type, scope])
-  @@index([type])
-  @@index([status])
-  @@index([scope])
-}
-
-model ModerationAction {
-  id           String               @id @default(cuid())
-  type         ModerationActionType
-  targetUserId String?
-  sessionId    String?
-  actorId      String
-  reason       String
-  payload      Json?
-  createdAt    DateTime             @default(now())
-
-  targetUser User?        @relation("ModerationTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
-  actor      User         @relation("ModerationActor", fields: [actorId], references: [id], onDelete: Cascade)
-  session    GameSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-
-  @@index([type])
-  @@index([targetUserId])
-  @@index([sessionId])
-  @@index([actorId])
-  @@index([createdAt])
-}
-
-model NotificationPreference {
+model PublishedScore {
   id                 String   @id @default(cuid())
-  userId             String   @unique
-  inAppEnabled       Boolean  @default(true)
-  whatsappOptIn      Boolean  @default(false)
-  whatsappPhone      String?
-  transactionalOptIn Boolean  @default(false)
-  marketingOptIn     Boolean  @default(false)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  provisionalScoreId String   @unique
+  roundId            String
+  participationId    String
+  score              Decimal  @default(0)
+  rank               Int?
+  publishedBy        String
+  publishedAt        DateTime @default(now())
+  evidenceHash       String?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provisionalScore ProvisionalScore    @relation(fields: [provisionalScoreId], references: [id])
+  round            Round               @relation(fields: [roundId], references: [id])
+  participation    PartyParticipation  @relation(fields: [participationId], references: [id])
 
-  @@index([whatsappOptIn])
+  @@index([roundId])
+  @@index([participationId])
 }
 
-model MessageTemplate {
-  id         String              @id @default(cuid())
-  key        String              @unique
-  channel    NotificationChannel
-  category   NotificationType
-  isApproved Boolean             @default(false)
-  body       String
-  createdAt  DateTime            @default(now())
-  updatedAt  DateTime            @updatedAt
+model ScoreReview {
+  id                 String   @id @default(cuid())
+  provisionalScoreId String
+  reviewedBy         String
+  action             String
+  reason             String?
+  previousScore      Decimal?
+  newScore           Decimal?
+  createdAt          DateTime @default(now())
 
-  @@index([channel, category])
-  @@index([isApproved])
+  provisionalScore ProvisionalScore @relation(fields: [provisionalScoreId], references: [id])
+
+  @@index([provisionalScoreId])
+}
+
+/// Encrypted score proof material (raw evidence). Cleartext never stored.
+model ScoreEvidence {
+  id                 String             @id @default(cuid())
+  provisionalScoreId String             @unique
+  evidenceHash       String
+  ciphertext         Bytes
+  nonce              Bytes?
+  keyId              String
+  minigameVersion    String?
+  classification     DataClassification @default(SYSTEM_ONLY)
+  purgedAt           DateTime?
+
+  createdAt DateTime @default(now())
+
+  provisionalScore ProvisionalScore @relation(fields: [provisionalScoreId], references: [id], onDelete: Cascade)
+  key              EncryptionKey    @relation(fields: [keyId], references: [id])
+
+  @@index([evidenceHash])
+  @@index([keyId])
+}
+
+// ─────────────────────────────
+// Assignments (team / binôme)
+// ─────────────────────────────
+
+model TeamAssignment {
+  id         String   @id @default(cuid())
+  partyId    String
+  roundId    String?
+  teamKey    String
+  captainParticipationId String?
+  lockedAt   DateTime?
+  createdAt  DateTime @default(now())
+
+  party   Party        @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  round   Round?       @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  members TeamMember[]
+
+  @@unique([partyId, teamKey, roundId])
+  @@index([partyId])
+  @@index([roundId])
+}
+
+model TeamMember {
+  id              String @id @default(cuid())
+  teamId          String
+  participationId String
+  orderIndex      Int    @default(0)
+
+  team          TeamAssignment     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  participation PartyParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, participationId])
+  @@index([participationId])
+}
+
+model PairAssignment {
+  id               String   @id @default(cuid())
+  partyId          String
+  roundId          String?
+  pairKey          String
+  participationAId String
+  participationBId String?
+  unpaired         Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  party           Party              @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  round           Round?             @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  participationA  PartyParticipation @relation("PairA", fields: [participationAId], references: [id], onDelete: Cascade)
+  participationB  PartyParticipation? @relation("PairB", fields: [participationBId], references: [id], onDelete: Cascade)
+
+  @@unique([partyId, pairKey, roundId])
+  @@index([roundId])
+  @@index([participationAId])
+  @@index([participationBId])
+}
+
+// ─────────────────────────────
+// Minigame manifests
+// ─────────────────────────────
+
+model MinigameManifest {
+  id          String  @id @default(cuid())
+  key         String
+  family      String
+  name        String
+  version     String
+  enabled     Boolean @default(true)
+  resolverId  String?
+  config      Json?
+  production  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([key, version])
+  @@index([key])
+  @@index([enabled])
+}
+
+// ─────────────────────────────
+// Encryption / classification
+// ─────────────────────────────
+
+model EncryptionKey {
+  id              String              @id @default(cuid())
+  /// Stable external key id (for AAD / envelope).
+  keyId           String              @unique
+  purpose         EncryptedSecretPurpose
+  algorithm       String              @default("AES-256-GCM")
+  status          EncryptionKeyStatus @default(ACTIVE)
+  /// Optional wrapped DEK material or KMS key ARN/name — never raw app password.
+  wrappedMaterial Bytes?
+  kmsKeyRef       String?
+  createdByUserId String?
+  rotatedAt       DateTime?
+  purgedAt        DateTime?
+  createdAt       DateTime            @default(now())
+
+  createdBy     User?              @relation("KeyCreatedBy", fields: [createdByUserId], references: [id])
+  secrets       EncryptedSecret[]
+  checkpoints   RoundCheckpoint[]
+  scoreEvidence ScoreEvidence[]
+  supportAccess SupportAccessGrant[]
+
+  @@index([purpose, status])
+  @@index([status])
+}
+
+model EncryptedSecret {
+  id               String                 @id @default(cuid())
+  purpose          EncryptedSecretPurpose
+  classification   DataClassification     @default(SECRET)
+  entityType       String
+  entityId         String
+  ciphertext       Bytes
+  nonce            Bytes?
+  keyId            String
+  aad              String?
+  purgedAt         DateTime?
+  roundId          String?
+  participationId  String?
+
+  createdAt DateTime @default(now())
+
+  key           EncryptionKey       @relation(fields: [keyId], references: [id])
+  round         Round?              @relation("RoundSecrets", fields: [roundId], references: [id], onDelete: Cascade)
+  participation PartyParticipation? @relation("ParticipationSecrets", fields: [participationId], references: [id], onDelete: Cascade)
+
+  @@index([entityType, entityId])
+  @@index([purpose])
+  @@index([keyId])
+  @@index([roundId])
+  @@index([participationId])
+  @@index([purgedAt])
+}
+
+// ─────────────────────────────
+// Audit
+// ─────────────────────────────
+
+model AuditLog {
+  id            String  @id @default(cuid())
+  userId        String?
+  action        String
+  entity        String
+  entityId      String?
+  metadata      Json?
+  ipAddress     String?
+  /// Outcome of the audited action (e.g. SUCCESS, DENIED, COMPENSATED).
+  result        String?
+  correlationId String?
+  reason        String?
+
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@index([correlationId])
+  @@index([result])
+}
+
+// ─────────────────────────────
+// Notifications
+// ─────────────────────────────
+
+model Announcement {
+  id        String  @id @default(cuid())
+  partyId   String?
+  title     String
+  body      String
+  createdBy String
+
+  createdAt DateTime @default(now())
+
+  party  Party? @relation(fields: [partyId], references: [id])
+  author User   @relation(fields: [createdBy], references: [id])
+
+  @@index([partyId])
 }
 
 model NotificationJob {
-  id             String                @id @default(cuid())
-  userId         String?
-  sessionId      String?
-  type           NotificationType
-  channel        NotificationChannel
-  status         NotificationJobStatus @default(QUEUED)
-  title          String
-  body           String
-  payload        Json?
-  idempotencyKey String                @unique
-  scheduledFor   DateTime?
+  id             String    @id @default(cuid())
+  userId         String
+  type           String
+  payload        Json
+  status         String
   sentAt         DateTime?
-  failedAt       DateTime?
-  error          String?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  /// Idempotency for enqueue (prevents double notification).
+  idempotencyKey String?   @unique
+  claimToken     String?
+  claimedAt      DateTime?
+  claimedBy      String?
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(5)
+  availableAt    DateTime  @default(now())
 
-  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  session          GameSession?      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  deliveryLogs     DeliveryLog[]
-  outboundMessages OutboundMessage[]
+  createdAt DateTime @default(now())
+
+  user       User           @relation(fields: [userId], references: [id])
+  deliveries DeliveryLog[]
 
   @@index([userId])
-  @@index([sessionId])
-  @@index([type])
-  @@index([channel])
   @@index([status])
-  @@index([scheduledFor])
+  @@index([createdAt])
+  @@index([status, availableAt])
+  @@index([claimToken])
 }
 
 model DeliveryLog {
-  id                String              @id @default(cuid())
-  notificationJobId String?
-  userId            String?
-  channel           NotificationChannel
-  status            DeliveryStatus      @default(QUEUED)
-  provider          String?
-  providerMessageId String?
-  errorCode         String?
-  errorMessage      String?
-  payload           Json?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  id          String   @id @default(cuid())
+  jobId       String
+  channel     String
+  status      String
+  error       String?
+  deliveredAt DateTime @default(now())
 
-  notificationJob NotificationJob? @relation(fields: [notificationJobId], references: [id], onDelete: SetNull)
-  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  notificationJob NotificationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
-  @@index([notificationJobId])
+  @@index([jobId])
+  @@index([status])
+}
+
+// ─────────────────────────────
+// Payments & Wallet
+// ─────────────────────────────
+
+/// External credential *reference* only (env key name / secret manager path). Never stores secret values.
+model ProviderCredentialRef {
+  id          String             @id @default(cuid())
+  serviceKind ProviderServiceKind
+  name        String
+  /// Name of env var or secret manager path — not the secret itself.
+  envKeyName  String
+  provider    String             @default("fapshi")
+  isActive    Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  payments PaymentTransaction[]
+
+  @@unique([serviceKind, name])
+  @@index([serviceKind, isActive])
+}
+
+model Wallet {
+  id        String  @id @default(cuid())
+  userId    String  @unique
+  balance   Decimal @default(0) @db.Decimal(18, 2)
+  currency  String  @default("XAF")
+  isFrozen  Boolean @default(false)
+  /// Optimistic concurrency for balance updates.
+  version   Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User                 @relation(fields: [userId], references: [id])
+  payments PaymentTransaction[]
+  ledger   LedgerEntry[]
+}
+
+model PaymentTransaction {
+  id                 String                @id @default(cuid())
+  walletId           String?
+  userId             String?
+  partyId            String?
+  participationId    String?
+  amount             Decimal               @db.Decimal(18, 2)
+  currency           String                @default("XAF")
+  type               String
+  provider           String?
+  reference          String?
+  idempotencyKey     String?               @unique
+  /// Legacy/public status enum (not free string).
+  status             PaymentStatus
+  internalStatus     PaymentInternalStatus @default(PENDING)
+  wireStatus         FapshiWireStatus      @default(UNSPECIFIED)
+  /// Fapshi merchant external id — partial unique when set.
+  providerExternalId String?
+  /// Fapshi transId — partial unique when set.
+  providerTransId    String?
+  checkoutUrl        String?
+  expiresAt          DateTime?
+  settledAt          DateTime?
+  serviceKind        ProviderServiceKind   @default(COLLECTION)
+  credentialRefId    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wallet              Wallet?                 @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user                User?                   @relation(fields: [userId], references: [id])
+  party               Party?                  @relation(fields: [partyId], references: [id])
+  participation       PartyParticipation?     @relation("PaymentParticipation", fields: [participationId], references: [id])
+  linkedParticipation PartyParticipation?     @relation("ParticipationPayment")
+  credentialRef       ProviderCredentialRef?  @relation(fields: [credentialRefId], references: [id])
+  ledgerEntry         LedgerEntry?
+  webhookEvents       ProviderWebhookInbox[]
+  reconciliations     PaymentReconciliation[]
+
+  @@index([walletId])
   @@index([userId])
-  @@index([channel, status])
-  @@index([providerMessageId])
+  @@index([partyId])
+  @@index([participationId])
+  @@index([status])
+  @@index([internalStatus])
+  @@index([serviceKind])
   @@index([createdAt])
+  @@index([providerTransId])
+  @@index([providerExternalId])
+  @@index([expiresAt])
+}
+
+model LedgerEntry {
+  id               String          @id @default(cuid())
+  transactionId    String          @unique
+  walletId         String?
+  debit            Decimal         @default(0) @db.Decimal(18, 2)
+  credit           Decimal         @default(0) @db.Decimal(18, 2)
+  balance          Decimal         @db.Decimal(18, 2)
+  balanceAfter     Decimal?        @db.Decimal(18, 2)
+  reason           String
+  direction        LedgerDirection?
+  ledgerType       LedgerType?
+  idempotencyKey   String?         @unique
+  /// Self-relation for compensating entries.
+  compensationOfId String?         @unique
+
+  createdAt DateTime @default(now())
+
+  transaction    PaymentTransaction @relation(fields: [transactionId], references: [id])
+  wallet         Wallet?            @relation(fields: [walletId], references: [id])
+  compensationOf LedgerEntry?       @relation("LedgerCompensation", fields: [compensationOfId], references: [id])
+  compensations  LedgerEntry?       @relation("LedgerCompensation")
+
+  @@index([walletId])
+  @@index([ledgerType])
+  @@index([createdAt])
+}
+
+/// Idempotent provider webhook inbox (collection + payout).
+model ProviderWebhookInbox {
+  id               String             @id @default(cuid())
+  provider         String
+  /// Provider-stable event id when available.
+  externalEventId  String?
+  providerTransId  String?
+  wireStatus       FapshiWireStatus   @default(UNSPECIFIED)
+  inboxStatus      WebhookInboxStatus @default(RECEIVED)
+  paymentId        String?
+  /// Redacted summary only — never raw signed body with secrets.
+  redactedSummary  String?
+  receivedAt       DateTime           @default(now())
+  processedAt      DateTime?
+  serviceKind      ProviderServiceKind @default(COLLECTION)
+
+  payment PaymentTransaction? @relation(fields: [paymentId], references: [id])
+
+  @@unique([provider, externalEventId])
+  @@index([providerTransId])
+  @@index([inboxStatus])
+  @@index([paymentId])
+  @@index([receivedAt])
+  @@index([serviceKind])
+}
+
+model PaymentReconciliation {
+  id          String               @id @default(cuid())
+  paymentId   String
+  status      ReconciliationStatus @default(PENDING)
+  notes       String?
+  resolvedAt  DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  payment PaymentTransaction @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@index([status])
+}
+
+// ─────────────────────────────
+// Compliance / incidents / retention / consent
+// ─────────────────────────────
+
+model ComplianceGate {
+  id          String               @id @default(cuid())
+  partyId     String?
+  gateType    String
+  status      ComplianceGateStatus @default(OPEN)
+  summary     String?
+  evidenceRefs Json?
+  decidedBy   String?
+  decidedAt   DateTime?
+  reason      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  party Party? @relation(fields: [partyId], references: [id])
+
+  @@index([partyId])
+  @@index([status])
+  @@index([gateType])
+}
+
+model Incident {
+  id          String         @id @default(cuid())
+  partyId     String?
+  subject     String
+  description String?
+  status      IncidentStatus @default(OPEN)
+  openedById  String?
+  openedAt    DateTime       @default(now())
+  resolvedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  party    Party? @relation(fields: [partyId], references: [id])
+  openedBy User?  @relation("IncidentOpenedBy", fields: [openedById], references: [id])
+
+  @@index([partyId])
+  @@index([status])
+  @@index([openedAt])
+}
+
+/// Dual-auth support access to decrypt competitive secrets (ticket + reason + duration).
+model SupportAccessGrant {
+  id              String              @id @default(cuid())
+  ticketId        String
+  requestedById   String
+  approvedById    String?
+  keyId           String?
+  purpose         EncryptedSecretPurpose
+  reason          String
+  status          SupportAccessStatus @default(REQUESTED)
+  expiresAt       DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime            @default(now())
+
+  requestedBy User           @relation(fields: [requestedById], references: [id])
+  key         EncryptionKey? @relation(fields: [keyId], references: [id])
+
+  @@index([ticketId])
+  @@index([status])
+  @@index([requestedById])
+  @@index([expiresAt])
 }
 
 model ConsentRecord {
-  id        String              @id @default(cuid())
-  userId    String
-  channel   NotificationChannel
-  optedIn   Boolean
-  source    String
-  reason    String?
-  createdAt DateTime            @default(now())
-  revokedAt DateTime?
+  id              String        @id @default(cuid())
+  userId          String
+  policyVersion   String
+  policyKey       String
+  status          ConsentStatus @default(GRANTED)
+  grantedAt       DateTime      @default(now())
+  withdrawnAt     DateTime?
+  metadata        Json?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, channel])
-  @@index([optedIn])
-  @@index([createdAt])
-}
-
-model OutboundMessage {
-  id                String              @id @default(cuid())
-  notificationJobId String?
-  userId            String?
-  sessionId         String?
-  channel           NotificationChannel
-  recipient         String?
-  body              String
-  provider          String?
-  providerMessageId String?
-  status            DeliveryStatus      @default(QUEUED)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-
-  notificationJob NotificationJob? @relation(fields: [notificationJobId], references: [id], onDelete: SetNull)
-  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
-  session         GameSession?     @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-
-  @@index([notificationJobId])
+  @@unique([userId, policyKey, policyVersion])
   @@index([userId])
-  @@index([sessionId])
-  @@index([channel, status])
-  @@index([providerMessageId])
+  @@index([policyKey])
+  @@index([status])
 }
 
-model ShareLink {
-  id         String    @id @default(cuid())
-  token      String    @unique
-  sessionId  String
-  createdBy  String?
-  createdAt  DateTime  @default(now())
-  expiresAt  DateTime?
-  clickCount Int       @default(0)
+model RetentionPolicyRule {
+  id          String          @id @default(cuid())
+  domain      String
+  entityType  String
+  retainDays  Int
+  action      RetentionAction @default(KEEP)
+  notes       String?
+  active      Boolean         @default(true)
 
-  session GameSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([token])
-  @@index([sessionId])
+  @@unique([domain, entityType])
+  @@index([active])
 }

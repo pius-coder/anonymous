@@ -1,0 +1,17 @@
+version: v2
+modules:
+  - path: proto
+lint:
+  use:
+    - STANDARD
+  except:
+    # Project layout is domain/v1 not sessionjeu/domain/v1 (package prefix is sessionjeu).
+    - PACKAGE_DIRECTORY_MATCH
+    # Intentional CQRS naming: *Command / *Query / *Response / *Event (not *Request only).
+    - RPC_REQUEST_STANDARD_NAME
+    - RPC_RESPONSE_STANDARD_NAME
+    # Empty is shared for logout/revoke/reset — explicit common.v1.Empty contract.
+    - RPC_REQUEST_RESPONSE_UNIQUE
+breaking:
+  use:
+    - FILE

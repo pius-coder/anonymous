@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package sessionjeu.minigame.v1;
+
+import "common/v1/shared.proto";
+
+// Team: Relais de mini-defis — mutual team formation and ordered turns.
+// Only the authorized member may act; server validates turn order.
+
+message TeamRelayConfig {
+  string schema_version = 1;
+  int32 team_size = 2;
+  int32 max_teams = 3;
+  int32 turn_timeout_ms = 4;
+  int32 challenge_count = 5;
+  bool require_mutual_team_confirm = 6;
+}
+
+message TeamRelayPlayerCommand {
+  string schema_version = 1;
+  // propose_team | confirm_team | act_turn | pass | abort
+  string action = 2;
+  string team_id = 3;
+  repeated string proposed_member_ids = 4;
+  string challenge_id = 5;
+  // Challenge-specific input token (catalog id), not free-form solution.
+  string input_token = 6;
+  int64 client_timestamp_ms = 7;
+}
+
+message TeamRelayPublicState {
+  string schema_version = 1;
+  string phase = 2;
+  int32 remaining_ms = 3;
+  int32 current_challenge_index = 4;
+  int32 challenge_count = 5;
+  string active_team_id = 6;
+  // Seat ids only; not private challenge solutions.
+  string active_player_id = 7;
+  repeated string team_ids = 8;
+}
+
+message TeamRelayPrivateState {
+  string schema_version = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  string team_id = 3;
+  bool is_active_turn = 4;
+  // Own pending challenge prompt only (no solution).
+  string prompt_token = 5;
+}
+
+message TeamRelayServerEvent {
+  string schema_version = 1;
+  string event_type = 2;
+  sessionjeu.common.v1.Audience audience = 3;
+  TeamRelayPublicState public_state = 4;
+  int64 server_timestamp_ms = 5;
+}
+
+message TeamRelayScoreEvidence {
+  string schema_version = 1;
+  string team_id = 2;
+  sessionjeu.common.v1.PlayerId player_id = 3;
+  double raw_score = 4;
+  string evidence_hash = 5;
+  int32 challenges_completed = 6;
+  int64 computed_at_ms = 7;
+}

@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package sessionjeu.common.v1;
+
+import "common/v1/shared.proto";
+
+// Public stable error codes. Additive only; never renumber.
+// Sprint-validated domain codes continue from 20.
+enum ErrorCode {
+  ERROR_CODE_UNSPECIFIED = 0;
+  ERROR_CODE_INTERNAL = 1;
+  ERROR_CODE_NOT_FOUND = 2;
+  ERROR_CODE_ALREADY_EXISTS = 3;
+  ERROR_CODE_INVALID_ARGUMENT = 4;
+  ERROR_CODE_UNAUTHENTICATED = 5;
+  ERROR_CODE_PERMISSION_DENIED = 6;
+  ERROR_CODE_FAILED_PRECONDITION = 7;
+  ERROR_CODE_RATE_LIMITED = 8;
+  ERROR_CODE_CONFLICT = 9;
+  ERROR_CODE_DEADLINE_EXCEEDED = 10;
+  ERROR_CODE_CANCELLED = 11;
+  ERROR_CODE_OUT_OF_RANGE = 12;
+  ERROR_CODE_UNAVAILABLE = 13;
+  ERROR_CODE_ABORTED = 14;
+  ERROR_CODE_SESSION_EXPIRED = 15;
+  ERROR_CODE_SESSION_REVOKED = 16;
+  ERROR_CODE_WEAK_PASSWORD = 17;
+  ERROR_CODE_INVALID_CREDENTIALS = 18;
+  ERROR_CODE_INVALID_RESET_TOKEN = 19;
+  // Realtime (sprint 02/09 AC-02-01, AC-09-04)
+  ERROR_CODE_RECONNECT_EXPIRED = 20;
+  // Scoring (sprint 13)
+  ERROR_CODE_SCORE_NOT_VERIFIED = 21;
+  ERROR_CODE_PUBLICATION_FORBIDDEN = 22;
+  // Compliance / audit (sprint 13/18)
+  ERROR_CODE_AUDIT_REASON_REQUIRED = 23;
+  ERROR_CODE_WAIVER_FORBIDDEN = 24;
+  // Notifications (sprint 17)
+  ERROR_CODE_DELIVERY_FAILED = 25;
+  ERROR_CODE_PROVIDER_UNAVAILABLE = 26;
+  // Minigame (sprint 14)
+  ERROR_CODE_INVALID_MINIGAME_COMMAND = 27;
+  ERROR_CODE_DUPLICATE_NONCE = 28;
+  ERROR_CODE_PRIVATE_STATE_FORBIDDEN = 29;
+  // Production freeze P-SEQ-02 (additive)
+  ERROR_CODE_IDEMPOTENCY_CONFLICT = 30;
+  ERROR_CODE_PAYLOAD_TOO_LARGE = 31;
+  ERROR_CODE_SCHEMA_UNSUPPORTED = 32;
+  ERROR_CODE_PAYMENT_NOT_RECONCILED = 33;
+  ERROR_CODE_WEBHOOK_DUPLICATE = 34;
+  ERROR_CODE_EXPORT_NOT_READY = 35;
+  ERROR_CODE_RETENTION_FORBIDDEN = 36;
+  ERROR_CODE_READINESS_FAILED = 37;
+  ERROR_CODE_GAME_PHASE_INVALID = 38;
+  ERROR_CODE_GAME_FAIRNESS_VIOLATION = 39;
+}
+
+message ErrorField {
+  string field = 1;
+  string description = 2;
+}
+
+message ErrorDetail {
+  ErrorCode code = 1;
+  string message = 2;
+  string domain = 3;
+  repeated ErrorField violations = 4;
+}
+
+// Stable public error envelope for Connect and REST adapters.
+message ErrorEnvelope {
+  ErrorDetail detail = 1;
+  sessionjeu.common.v1.CorrelationId correlation_id = 2;
+  bool retryable = 3;
+  // Public machine-readable reason; never secrets or stack traces.
+  string public_reason = 4;
+}

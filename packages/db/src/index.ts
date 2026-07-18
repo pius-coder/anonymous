@@ -1,81 +1,19 @@
-import {
-  PrismaClient,
-  Prisma,
-  AdminActionApprovalStatus,
-  AntiCheatEventType,
-  ComplianceGateStatus,
-  ComplianceGateType,
-  DeliveryStatus,
-  GameSessionStatus,
-  GameResultStatus,
-  DisputeWindowStatus,
-  IncidentSeverity,
-  LedgerDirection,
-  LedgerType,
-  LivePhase,
-  MiniGameFamily,
-  MiniGamePlayerMode,
-  ModerationActionType,
-  NotificationChannel,
-  NotificationJobStatus,
-  NotificationType,
-  PaymentStatus,
-  PlayerConnectionStatus,
-  PrizeDistributionStatus,
-  RiskSignalSeverity,
-  RiskSignalType,
-  RoundingRemainderPolicy,
-  RoundOutcomeStatus,
-  RoundAdmissionLock,
-  RoundParticipantStatus,
-  RoundStatus,
-  SessionRegistrationStatus,
-  SessionChatMessageType,
-  SessionChatModerationStatus,
-  SessionVisibility,
-  SupportCaseStatus,
-  UserRole,
-} from "@prisma/client";
+export { prisma } from "./prisma.js";
 
-export const prisma = new PrismaClient({
-  datasourceUrl: process.env.DATABASE_URL,
-});
+export * from "./repositories/index.js";
 
-export {
-  Prisma,
-  AdminActionApprovalStatus,
-  AntiCheatEventType,
-  ComplianceGateStatus,
-  ComplianceGateType,
-  DeliveryStatus,
-  GameSessionStatus,
-  GameResultStatus,
-  DisputeWindowStatus,
-  IncidentSeverity,
-  LedgerDirection,
-  LedgerType,
-  LivePhase,
-  MiniGameFamily,
-  MiniGamePlayerMode,
-  ModerationActionType,
-  NotificationChannel,
-  NotificationJobStatus,
-  NotificationType,
-  PaymentStatus,
-  PlayerConnectionStatus,
-  PrizeDistributionStatus,
-  RiskSignalSeverity,
-  RiskSignalType,
-  RoundingRemainderPolicy,
-  RoundOutcomeStatus,
-  RoundAdmissionLock,
-  RoundParticipantStatus,
-  RoundStatus,
-  SessionRegistrationStatus,
-  SessionChatMessageType,
-  SessionChatModerationStatus,
-  SessionVisibility,
-  SupportCaseStatus,
-  UserRole,
+export type PersistenceFoundation = {
+  foundation: "v0.1";
+  database: "postgresql";
+  orm: "prisma";
+  models: "rebuilt";
 };
-export default prisma;
+
+export function getPersistenceFoundation(): PersistenceFoundation {
+  return {
+    foundation: "v0.1",
+    database: "postgresql",
+    orm: "prisma",
+    models: "rebuilt",
+  };
+}

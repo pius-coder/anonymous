@@ -1,139 +1,87 @@
 "use client";
 
+import Link from "next/link";
+import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Button } from "@/components/retroui/button";
-import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/retroui/field";
-import { Input } from "@/components/retroui/input";
-import { Alert, AlertTitle, AlertDescription } from "@/components/retroui/alert";
+import { AlertCircle, ArrowRight } from "lucide-react";
 import { useSession } from "@/lib/useSession";
-import { safeInternalRedirect } from "@/lib/safe-redirect";
-import { translateError } from "@/lib/errors.fr";
-import type { ApiError } from "@/lib/api";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-type FieldKey = "email" | "password" | "name" | "username" | "phone";
-
-export function RegisterForm({ next, onSuccess }: { next?: string; onSuccess?: () => void }) {
-  const { register } = useSession();
+export function RegisterForm() {
   const router = useRouter();
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-    name: "",
-    username: "",
-    phone: "",
-  });
-  const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
-  const [general, setGeneral] = useState<ApiError | null>(null);
-  const [pending, setPending] = useState(false);
+  const { register, error } = useSession({ refreshOnMount: false });
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  function set(key: FieldKey, value: string) {
-    setForm((f) => ({ ...f, [key]: value }));
-    setErrors((current) => {
-      if (!current[key]) return current;
-      const next = { ...current };
-      delete next[key];
-      return next;
-    });
-  }
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setErrors({});
-    setGeneral(null);
-    setPending(true);
-    const err = await register(form);
-    setPending(false);
-    if (err) {
-      if (err.details && typeof err.details === "object") {
-        const fieldErrors: Partial<Record<FieldKey, string>> = {};
-        for (const [k, v] of Object.entries(err.details)) {
-          if (Array.isArray(v) && v[0]) fieldErrors[k as FieldKey] = v[0] as string;
-        }
-        if (Object.keys(fieldErrors).length) setErrors(fieldErrors);
-      }
-      setGeneral(err);
-      return;
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setSubmitting(true);
+    try {
+      const response = await register(email, password, name || undefined);
+      if (response.success) router.push("/parties");
+    } finally {
+      setSubmitting(false);
     }
-    const redirectTo = safeInternalRedirect(
-      next ?? new URLSearchParams(window.location.search).get("next"),
-    );
-    if (onSuccess) onSuccess();
-    router.push(redirectTo);
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4">
-      {general && !Object.keys(errors).length && (
-        <Alert variant="destructive" aria-live="assertive">
-          <AlertTitle>Inscription impossible</AlertTitle>
-          <AlertDescription>{translateError(general.code, general.status)}</AlertDescription>
+    <form onSubmit={handleSubmit} className="auth-form">
+      {error ? (
+        <Alert variant="destructive">
+          <AlertCircle />
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
-      )}
-      <FieldGroup>
-        <Field>
-          <FieldLabel htmlFor="reg-email">Email</FieldLabel>
-          <Input
-            id="reg-email"
-            type="email"
-            autoComplete="email"
-            required
-            value={form.email}
-            onChange={(e) => set("email", e.target.value)}
-            placeholder="toi@exemple.fr"
-          />
-          {errors.email && <FieldError>{errors.email}</FieldError>}
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="reg-username">Pseudo</FieldLabel>
-          <Input
-            id="reg-username"
-            autoComplete="username"
-            required
-            value={form.username}
-            onChange={(e) => set("username", e.target.value)}
-            placeholder="Ton pseudo de jeu"
-          />
-          {errors.username && <FieldError>{errors.username}</FieldError>}
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="reg-name">Nom affiché (optionnel)</FieldLabel>
-          <Input
-            id="reg-name"
-            value={form.name}
-            onChange={(e) => set("name", e.target.value)}
-            placeholder="Ton vrai prénom"
-          />
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="reg-phone">Téléphone (optionnel)</FieldLabel>
-          <Input
-            id="reg-phone"
-            type="tel"
-            autoComplete="tel"
-            value={form.phone}
-            onChange={(e) => set("phone", e.target.value)}
-            placeholder="+237 6XX XXX XXX"
-          />
-          {errors.phone && <FieldError>{errors.phone}</FieldError>}
-        </Field>
-        <Field>
-          <FieldLabel htmlFor="reg-password">Mot de passe</FieldLabel>
-          <Input
-            id="reg-password"
-            type="password"
-            autoComplete="new-password"
-            required
-            value={form.password}
-            onChange={(e) => set("password", e.target.value)}
-            placeholder="••••••••"
-          />
-          {errors.password && <FieldError>{errors.password}</FieldError>}
-        </Field>
-      </FieldGroup>
-      <Button type="submit" className="w-full" size="lg" disabled={pending}>
-        {pending ? "Création…" : "Créer mon compte"}
+      ) : null}
+      <div className="auth-field">
+        <Label htmlFor="name">Nom affiché</Label>
+        <Input
+          id="name"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="Votre pseudo"
+        />
+      </div>
+      <div className="auth-field">
+        <Label htmlFor="reg-email">Adresse email</Label>
+        <Input
+          id="reg-email"
+          type="email"
+          autoComplete="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          required
+        />
+      </div>
+      <div className="auth-field">
+        <Label htmlFor="reg-password">Mot de passe</Label>
+        <Input
+          id="reg-password"
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          minLength={8}
+          required
+        />
+        <small>8 caractères minimum.</small>
+      </div>
+      <div className="remember-row">
+        <Checkbox id="terms" required />
+        <Label htmlFor="terms">J’accepte les conditions et la politique de confidentialité.</Label>
+      </div>
+      <Button type="submit" className="w-full" size="lg" disabled={submitting}>
+        {submitting ? "Création…" : "Créer mon compte"}
+        <ArrowRight />
       </Button>
+      <p className="auth-switch">
+        Déjà inscrit ? <Link href="/auth/login">Se connecter</Link>
+      </p>
     </form>
   );
 }

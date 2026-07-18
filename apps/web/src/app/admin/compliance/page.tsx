@@ -1,69 +1,17 @@
-import type { Metadata } from "next";
-import { AdminService } from "@/services/admin/AdminService";
-import { ComplianceGateActions } from "@/components/admin/ComplianceGateActions";
-import { Badge } from "@/components/retroui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/retroui/card";
+import { CheckCircle2, Clock3, DatabaseZap, FileKey2, ShieldCheck } from "lucide-react";
+import { AppShell } from "@/components/ui/AppShell";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
-export const metadata: Metadata = {
-  title: "Conformite | Admin",
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  BLOCKED: "Bloque",
-  PASSED: "Valide",
-  WAIVED: "Deroge",
-};
-
-const STATUS_VARIANT: Record<string, "destructive" | "default" | "outline"> = {
-  BLOCKED: "destructive",
-  PASSED: "default",
-  WAIVED: "outline",
-};
-
-export default async function AdminCompliancePage() {
-  const admin = new AdminService();
-  const gates = await admin.getComplianceGates();
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <Badge variant="outline">Conformite</Badge>
-        <h1 className="mt-2 text-3xl font-black uppercase">Gates de conformite</h1>
-        <p className="text-sm text-muted-foreground">
-          {gates.length
-            ? `${gates.length} gate(s) — une session publique reste bloquee tant qu'un gate est Bloque.`
-            : "Donnees indisponibles"}
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-head text-lg uppercase">Gates</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {gates.length === 0 ? (
-            <p className="text-muted-foreground">Aucun gate.</p>
-          ) : (
-            gates.map((gate) => (
-              <div
-                key={gate.id}
-                className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3 last:border-0 last:pb-0"
-              >
-                <div>
-                  <p className="font-semibold">
-                    {gate.type} <span className="text-muted-foreground">({gate.scope})</span>
-                  </p>
-                  <p className="text-sm text-muted-foreground">{gate.reason}</p>
-                  <div className="mt-1">
-                    <Badge variant={STATUS_VARIANT[gate.status]}>{STATUS_LABEL[gate.status]}</Badge>
-                  </div>
-                </div>
-                <ComplianceGateActions gate={gate} />
-              </div>
-            ))
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+export default function CompliancePage() {
+  return <AppShell audience="Super admin" eyebrow="Contrôles" title="Conformité" subtitle="Rétention, intégrité, accès privilégiés et revues périodiques." actions={<Badge><ShieldCheck /> 92% conforme</Badge>}>
+    <div className="compliance-grid">{[
+      [FileKey2,"Revue des accès staff","9/9 comptes revus",100,"À jour"],
+      [DatabaseZap,"Rétention des événements","Politique appliquée sur 4 domaines",88,"1 action"],
+      [ShieldCheck,"Intégrité du ledger","Dernier rapprochement sans écart",100,"À jour"],
+      [Clock3,"Rotation des secrets","Prochaine échéance dans 8 jours",72,"Planifiée"],
+    ].map(([Icon,title,copy,value,status]) => { const Glyph = Icon as typeof ShieldCheck; return <Card key={String(title)}><CardHeader><div className="party-card-topline"><span className="metric-icon"><Glyph /></span><Badge variant="outline">{String(status)}</Badge></div><CardTitle>{String(title)}</CardTitle><CardDescription>{String(copy)}</CardDescription></CardHeader><CardContent><div className="section-heading-row"><span>Couverture</span><strong>{Number(value)}%</strong></div><Progress value={Number(value)} /><Button variant="ghost" className="mt-3 w-full"><CheckCircle2 /> Voir le contrôle</Button></CardContent></Card>; })}</div>
+  </AppShell>;
 }

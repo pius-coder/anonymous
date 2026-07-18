@@ -1,0 +1,220 @@
+syntax = "proto3";
+
+package sessionjeu.round.v1;
+
+import "common/v1/shared.proto";
+
+enum RoundStatus {
+  ROUND_STATUS_UNSPECIFIED = 0;
+  ROUND_STATUS_PENDING = 1;
+  ROUND_STATUS_ACTIVE = 2;
+  ROUND_STATUS_CLOSED = 3;
+  ROUND_STATUS_RESOLVING = 4;
+  ROUND_STATUS_VERIFIED = 5;
+  ROUND_STATUS_SETUP = 6;
+  ROUND_STATUS_BRIEFING = 7;
+  ROUND_STATUS_PAUSED = 8;
+  ROUND_STATUS_WAITING_REVIEW = 9;
+}
+
+message ConfigureRoundCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  int32 round_number = 3;
+  string minigame_id = 4;
+  string configured_by = 5;
+  int32 duration_seconds = 6;
+}
+
+message ConfigureRoundResponse {
+  string round_id = 1;
+  RoundStatus status = 2;
+}
+
+message StartRoundCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  int32 round_number = 3;
+  string minigame_id = 4;
+  string started_by = 5;
+}
+
+message StartRoundResponse {
+  string round_id = 1;
+  sessionjeu.common.v1.Timestamp ends_at = 2;
+  RoundStatus status = 3;
+}
+
+message StartRoundBriefingCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string round_id = 2;
+}
+
+message StartRoundBriefingResponse {
+  string round_id = 1;
+  RoundStatus status = 2;
+}
+
+message ActivateRoundCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string round_id = 2;
+  string activated_by = 3;
+}
+
+message ActivateRoundResponse {
+  string round_id = 1;
+  sessionjeu.common.v1.Timestamp started_at = 2;
+  sessionjeu.common.v1.Timestamp ends_at = 3;
+}
+
+message PauseRoundCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string round_id = 2;
+  string paused_by = 3;
+  string reason = 4;
+}
+
+message PauseRoundResponse {
+  string round_id = 1;
+  int32 remaining_seconds = 2;
+}
+
+message ResumeRoundCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string round_id = 2;
+  string resumed_by = 3;
+}
+
+message ResumeRoundResponse {
+  string round_id = 1;
+  sessionjeu.common.v1.Timestamp ends_at = 2;
+}
+
+message SubmitPlayerCommandPayload {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string round_id = 2;
+  sessionjeu.common.v1.PlayerId player_id = 3;
+  string action_type = 4;
+  // DEPRECATED bare bytes: only with schema_id + schema_version; max 4096.
+  bytes payload = 5;
+  string action_nonce = 6;
+  string schema_id = 7;
+  string schema_version = 8;
+  int32 payload_max_bytes = 9;
+  // Preferred: typed envelope from minigame domain (serialized via application layer
+  // as schema-bound message; opaque only via TypedBytesEnvelope rules).
+  sessionjeu.common.v1.TypedBytesEnvelope typed_payload = 10;
+}
+
+message SubmitPlayerCommandResponse {
+  bool accepted = 1;
+  string reject_reason = 2;
+}
+
+message CloseRoundCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string round_id = 2;
+  string closed_by = 3;
+  string close_reason = 4;
+  bool system_triggered = 5;
+}
+
+message CloseRoundResponse {
+  string round_id = 1;
+  RoundStatus status = 2;
+}
+
+message RoundStartedEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  int32 round_number = 3;
+  sessionjeu.common.v1.Timestamp started_at = 4;
+  sessionjeu.common.v1.Timestamp ends_at = 5;
+}
+
+message RoundPausedEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  int32 remaining_seconds = 3;
+  sessionjeu.common.v1.Timestamp paused_at = 4;
+}
+
+message RoundResumedEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.Timestamp resumed_at = 3;
+  sessionjeu.common.v1.Timestamp ends_at = 4;
+}
+
+message RoundClosedEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  int32 round_number = 3;
+  sessionjeu.common.v1.Timestamp closed_at = 4;
+  string close_reason = 5;
+}
+
+message PlayerFinishedRoundCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string round_id = 2;
+  sessionjeu.common.v1.PlayerId player_id = 3;
+  string action_nonce = 4;
+  // DEPRECATED bare bytes: only with schema_id + schema_version; max 4096.
+  bytes payload = 5;
+  string schema_id = 6;
+  string schema_version = 7;
+  int32 payload_max_bytes = 8;
+  sessionjeu.common.v1.TypedBytesEnvelope typed_payload = 9;
+}
+
+message PlayerFinishedRoundResponse {
+  string round_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  RoundStatus participant_status = 3;
+  bool duplicate = 4;
+}
+
+message PlayerFinishedRoundEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  sessionjeu.common.v1.Timestamp finished_at = 3;
+}
+
+message PlayerActionAcceptedEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  string action_type = 3;
+  sessionjeu.common.v1.Timestamp accepted_at = 4;
+}
+
+message PlayerActionRejectedEvent {
+  string round_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  string action_type = 3;
+  string reason = 4;
+}
+
+message GetRoundStateQuery {
+  string round_id = 1;
+}
+
+message GetRoundStateResponse {
+  sessionjeu.common.v1.PartyId party_id = 1;
+  int32 round_number = 2;
+  RoundStatus status = 3;
+  sessionjeu.common.v1.Timestamp started_at = 4;
+  sessionjeu.common.v1.Timestamp ends_at = 5;
+}
+
+service RoundService {
+  rpc ConfigureRound(ConfigureRoundCommand) returns (ConfigureRoundResponse);
+  rpc StartRound(StartRoundCommand) returns (StartRoundResponse);
+  rpc StartRoundBriefing(StartRoundBriefingCommand) returns (StartRoundBriefingResponse);
+  rpc ActivateRound(ActivateRoundCommand) returns (ActivateRoundResponse);
+  rpc PauseRound(PauseRoundCommand) returns (PauseRoundResponse);
+  rpc ResumeRound(ResumeRoundCommand) returns (ResumeRoundResponse);
+  rpc SubmitPlayerCommand(SubmitPlayerCommandPayload) returns (SubmitPlayerCommandResponse);
+  rpc CloseRound(CloseRoundCommand) returns (CloseRoundResponse);
+  rpc PlayerFinishedRound(PlayerFinishedRoundCommand) returns (PlayerFinishedRoundResponse);
+  rpc GetRoundState(GetRoundStateQuery) returns (GetRoundStateResponse);
+}

@@ -1,0 +1,19 @@
+{
+  "process_payment": {
+    "correlation_id": { "value": "corr-pay-001" },
+    "player_id": { "value": "player-001" },
+    "amount": { "currency": "XAF", "units": "1000", "nanos": 0 }
+  },
+  "get_wallet": {
+    "player_id": { "value": "player-001" }
+  },
+  "wallet_view_player": {
+    "wallet_id": "wallet-001",
+    "player_id": { "value": "player-001" },
+    "balance": { "currency": "XAF", "units": "5000", "nanos": 0 },
+    "currency": "XAF"
+  },
+  "constraints": {
+    "separate_from_gameplay_services": true
+  }
+}

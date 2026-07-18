@@ -1,0 +1,45 @@
+{
+  "name": "@session-jeu/contracts",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "proto",
+    "fixtures",
+    "docs",
+    "buf.yaml",
+    "buf.gen.yaml",
+    "ARCHITECTURE.md"
+  ],
+  "scripts": {
+    "generate": "BUF_CACHE_DIR=../../.cache/buf buf generate",
+    "lint:proto": "BUF_CACHE_DIR=../../.cache/buf buf lint",
+    "breaking": "BUF_CACHE_DIR=../../.cache/buf buf breaking --against '../../.git#branch=HEAD,subdir=packages/contracts/proto'",
+    "breaking:origin": "BUF_CACHE_DIR=../../.cache/buf buf breaking --against '../../.git#branch=origin/v0.1,subdir=packages/contracts/proto'",
+    "build": "pnpm generate && tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/ --ignore-pattern 'src/gen/**'",
+    "test": "vitest run",
+    "check": "pnpm lint:proto && pnpm generate && pnpm test && pnpm typecheck"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "^2.12.1"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "^1.71.0",
+    "@bufbuild/protoc-gen-es": "^2.12.1",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

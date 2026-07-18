@@ -1,44 +1,70 @@
-import { BaseApiService } from "../api/BaseApiService";
-import type { SessionUser } from "./types";
+import { IdentityV1 } from "@session-jeu/contracts";
+import { rpcCall, rpcClients, timestampToIso } from "@/lib/rpc";
+import type { AuthUser } from "./types";
 
-export type AuthInput = { email: string; password: string };
-export type RegisterInput = { email: string; password: string; username: string; name?: string; phone?: string };
+export type AuthResponse = {
+  user: AuthUser;
+  session: {
+    token: string;
+    expiresAt: string;
+  };
+};
 
-type MeResponse = { user: SessionUser };
-type LogoutResponse = { loggedOut: boolean };
+export const AuthService = {
+  async register(email: string, password: string, name?: string) {
+    const result = await rpcCall(() => rpcClients.identity.register({ email, password, name }));
+    return mapAuthResult(result);
+  },
 
-export class AuthService extends BaseApiService {
-  async register(input: RegisterInput): Promise<SessionUser> {
-    const { response } = await this.request<MeResponse>("/v1/auth/register", {
-      method: "POST",
-      body: input,
-    });
-    return response.user;
-  }
+  async login(email: string, password: string) {
+    const result = await rpcCall(() => rpcClients.identity.login({ email, password }));
+    return mapAuthResult(result);
+  },
 
-  async login(input: AuthInput): Promise<SessionUser> {
-    const { response } = await this.request<MeResponse>("/v1/auth/login", {
-      method: "POST",
-      body: input,
-    });
-    return response.user;
-  }
+  logout() {
+    return rpcCall(() => rpcClients.identity.logout({}));
+  },
 
-  async logout(): Promise<void> {
-    await this.request<LogoutResponse>("/v1/auth/logout", {
-      method: "POST",
-      authenticated: true,
-    });
-  }
+  async getMe() {
+    const result = await rpcCall(() => rpcClients.identity.getCurrentUser({}));
+    if (!result.success) return result;
+    return { success: true as const, data: { user: mapUser(result.data.user) } };
+  },
 
-  async getMe(): Promise<SessionUser | null> {
-    try {
-      const { response } = await this.request<MeResponse>("/v1/me", {
-        authenticated: true,
-      });
-      return response.user;
-    } catch {
-      return null;
-    }
-  }
+  requestPasswordReset(email: string) {
+    return rpcCall(() => rpcClients.identity.requestPasswordReset({ email }));
+  },
+
+  resetPassword(token: string, newPassword: string) {
+    return rpcCall(() => rpcClients.identity.resetPassword({ token, newPassword }));
+  },
+};
+
+function mapAuthResult<T extends { user?: IdentityV1.User; sessionToken: string; expiresAt?: { seconds: bigint; nanos: number } }>(
+  result: Awaited<ReturnType<typeof rpcCall<T>>>,
+) {
+  if (!result.success) return result;
+  return {
+    success: true as const,
+    data: {
+      user: mapUser(result.data.user),
+      session: {
+        token: result.data.sessionToken,
+        expiresAt: timestampToIso(result.data.expiresAt),
+      },
+    } satisfies AuthResponse,
+  };
+}
+
+function mapUser(user: IdentityV1.User | undefined): AuthUser {
+  if (!user) throw new Error("USER_MISSING");
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name || null,
+    avatarUrl: user.avatarUrl || null,
+    roles: user.roles.map((role) => IdentityV1.UserRole[role]),
+    sessionVersion: user.sessionVersion,
+    createdAt: timestampToIso(user.createdAt),
+  };
 }

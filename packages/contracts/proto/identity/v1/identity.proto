@@ -1,0 +1,101 @@
+syntax = "proto3";
+
+package sessionjeu.identity.v1;
+
+import "common/v1/shared.proto";
+
+enum UserRole {
+  USER_ROLE_UNSPECIFIED = 0;
+  USER_ROLE_PLAYER = 1;
+  USER_ROLE_SUPPORT = 2;
+  USER_ROLE_FINANCE = 3;
+  USER_ROLE_ADMIN = 4;
+  USER_ROLE_SUPER_ADMIN = 5;
+}
+
+message User {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  string avatar_url = 4;
+  repeated UserRole roles = 5;
+  int32 session_version = 6;
+  bool is_active = 7;
+  sessionjeu.common.v1.Timestamp created_at = 8;
+}
+
+message RegisterCommand {
+  string email = 1;
+  string password = 2;
+  string name = 3;
+}
+
+message RegisterResponse {
+  User user = 1;
+  string session_token = 2;
+  sessionjeu.common.v1.Timestamp expires_at = 3;
+}
+
+message LoginCommand {
+  string email = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  User user = 1;
+  string session_token = 2;
+  sessionjeu.common.v1.Timestamp expires_at = 3;
+}
+
+message LogoutCommand {}
+
+message AuthenticateQuery {
+  string session_token = 1;
+}
+
+message AuthenticateResponse {
+  User user = 1;
+}
+
+message GetCurrentUserQuery {}
+
+message GetCurrentUserResponse {
+  User user = 1;
+}
+
+message RevokeSessionCommand {
+  string session_token = 1;
+}
+
+message PasswordResetRequestCommand {
+  string email = 1;
+}
+
+message PasswordResetCommand {
+  string token = 1;
+  string new_password = 2;
+}
+
+service IdentityService {
+  rpc Register(RegisterCommand) returns (RegisterResponse);
+  rpc Login(LoginCommand) returns (LoginResponse);
+  rpc Logout(LogoutCommand) returns (sessionjeu.common.v1.Empty);
+  rpc Authenticate(AuthenticateQuery) returns (AuthenticateResponse);
+  rpc GetCurrentUser(GetCurrentUserQuery) returns (GetCurrentUserResponse);
+  rpc RevokeSession(RevokeSessionCommand) returns (sessionjeu.common.v1.Empty);
+  rpc RequestPasswordReset(PasswordResetRequestCommand) returns (sessionjeu.common.v1.Empty);
+  rpc ResetPassword(PasswordResetCommand) returns (sessionjeu.common.v1.Empty);
+}
+
+// Permissions action-level pour RBAC
+enum Permission {
+  PERMISSION_UNSPECIFIED = 0;
+  PERMISSION_PARTY_START = 1;
+  PERMISSION_ROUND_START = 2;
+  PERMISSION_RESULT_VERIFY = 3;
+  PERMISSION_RESULT_PUBLISH = 4;
+  PERMISSION_READONLY_OBSERVE = 5;
+  PERMISSION_MANAGE_USERS = 6;
+  PERMISSION_MANAGE_PAYMENTS = 7;
+  PERMISSION_VIEW_AUDIT = 8;
+}

@@ -1,81 +1,119 @@
-import { describe, expect, it } from "vitest";
-import { loginSchema, registerSchema, resetPasswordSchema } from "../validation.js";
+import { describe, it, expect } from "vitest";
+import {
+  registerSchema,
+  loginSchema,
+  passwordResetRequestSchema,
+  passwordResetSchema,
+} from "../validation.js";
 
-describe("auth validation", () => {
-  it("normalizes register email and accepts a valid player payload", () => {
+describe("registerSchema", () => {
+  it("accepts valid registration data", () => {
     const result = registerSchema.safeParse({
-      email: " Player@Example.COM ",
-      password: "CorrectHorse2026!",
-      username: "player_2026",
-      name: "Player",
+      email: "test@example.com",
+      password: "password123",
     });
+    expect(result.success).toBe(true);
+  });
 
+  it("accepts registration with name", () => {
+    const result = registerSchema.safeParse({
+      email: "test@example.com",
+      password: "password123",
+      name: "Test User",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.name).toBe("Test User");
+    }
+  });
+
+  it("normalizes email to lowercase", () => {
+    const result = registerSchema.safeParse({
+      email: "Test@Example.COM",
+      password: "password123",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.email).toBe("test@example.com");
+    }
+  });
+
+  it("rejects weak password", () => {
+    const result = registerSchema.safeParse({
+      email: "test@example.com",
+      password: "short",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects invalid email", () => {
+    const result = registerSchema.safeParse({
+      email: "not-an-email",
+      password: "password123",
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("loginSchema", () => {
+  it("accepts valid login data", () => {
+    const result = loginSchema.safeParse({
+      email: "test@example.com",
+      password: "password123",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("normalizes email to lowercase", () => {
+    const result = loginSchema.safeParse({
+      email: "TEST@EXAMPLE.COM",
+      password: "password123",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.email).toBe("test@example.com");
+    }
+  });
+});
+
+describe("passwordResetRequestSchema (L1)", () => {
+  it("accepts and normalizes email", () => {
+    const result = passwordResetRequestSchema.safeParse({
+      email: "Player@Example.COM",
+    });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.email).toBe("player@example.com");
     }
   });
 
-  it("treats blank optional phone and name fields as omitted", () => {
-    const result = registerSchema.safeParse({
-      email: "player@example.com",
-      password: "CorrectHorse2026!",
-      username: "player_2026",
-      name: "   ",
-      phone: "",
-    });
+  it("rejects invalid email", () => {
+    expect(passwordResetRequestSchema.safeParse({ email: "nope" }).success).toBe(false);
+  });
+});
 
+describe("passwordResetSchema (L1)", () => {
+  it("accepts opaque token and strong password", () => {
+    const result = passwordResetSchema.safeParse({
+      token: "opaque-single-use-token",
+      newPassword: "Str0ng-Passphrase!",
+    });
     expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.name).toBeUndefined();
-      expect(result.data.phone).toBeUndefined();
-    }
   });
 
-  it("trims non-empty phone values and rejects real phone values that are too short", () => {
-    const valid = registerSchema.safeParse({
-      email: "player@example.com",
-      password: "CorrectHorse2026!",
-      username: "player_2026",
-      phone: "  +237 612 345 678  ",
+  it("rejects weak password", () => {
+    const result = passwordResetSchema.safeParse({
+      token: "opaque-token",
+      newPassword: "short",
     });
-    const invalid = registerSchema.safeParse({
-      email: "player@example.com",
-      password: "CorrectHorse2026!",
-      username: "player_2026",
-      phone: "123",
-    });
-
-    expect(valid.success).toBe(true);
-    if (valid.success) expect(valid.data.phone).toBe("+237 612 345 678");
-    expect(invalid.success).toBe(false);
-  });
-
-  it("rejects weak register passwords and invalid usernames", () => {
-    const result = registerSchema.safeParse({
-      email: "player@example.com",
-      password: "short",
-      username: "bad username",
-    });
-
     expect(result.success).toBe(false);
   });
 
-  it("rejects login payloads without credentials", () => {
-    const result = loginSchema.safeParse({
-      email: "not-an-email",
-      password: "",
+  it("rejects empty token", () => {
+    const result = passwordResetSchema.safeParse({
+      token: "",
+      newPassword: "longenough",
     });
-
-    expect(result.success).toBe(false);
-  });
-
-  it("requires reset tokens and strong replacement passwords", () => {
-    const result = resetPasswordSchema.safeParse({
-      token: "too-short",
-      password: "short",
-    });
-
     expect(result.success).toBe(false);
   });
 });

@@ -1,31 +1,31 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
+import { getWorkerFoundation, QUEUE_NAMES, loadWorkerConfig } from "../index.js";
 
-describe("Worker", () => {
-  it("should have correct connection defaults", () => {
-    const connection = {
-      host: process.env.REDIS_HOST || "localhost",
-      port: Number(process.env.REDIS_PORT) || 6379,
-    };
-    expect(connection.host).toBe("localhost");
-    expect(connection.port).toBe(6379);
+describe("worker foundation", () => {
+  it("exposes bullmq runner and notification job", () => {
+    expect(getWorkerFoundation()).toEqual({
+      service: "worker",
+      foundation: "v0.1",
+      jobs: "payment-reconciliation,round-deadline-close,notification-delivery",
+      runner: "bullmq",
+    });
   });
 
-  it("should use REDIS_HOST env when set", () => {
-    process.env.REDIS_HOST = "redis-server";
-    const host = process.env.REDIS_HOST || "localhost";
-    expect(host).toBe("redis-server");
-    delete process.env.REDIS_HOST;
+  it("defines explicit queue names", () => {
+    expect(QUEUE_NAMES.NOTIFICATION).toBe("notification-delivery");
+    expect(QUEUE_NAMES.ROUND_DEADLINE).toBe("round-deadline-close");
+    expect(QUEUE_NAMES.PAYMENT_RECONCILIATION).toBe("payment-reconciliation");
   });
 
-  it("should use REDIS_PORT env when set", () => {
-    process.env.REDIS_PORT = "6380";
-    const port = Number(process.env.REDIS_PORT) || 6379;
-    expect(port).toBe(6380);
-    delete process.env.REDIS_PORT;
-  });
-
-  it("should have default queue name", () => {
-    const queueName = "session-jeu";
-    expect(queueName).toBe("session-jeu");
+  it("loads explicit max attempts and backoff from env", () => {
+    const config = loadWorkerConfig({
+      REDIS_URL: "redis://127.0.0.1:6379/2",
+      WORKER_MAX_ATTEMPTS: "7",
+      WORKER_BACKOFF_DELAY_MS: "2500",
+      WORKTREE_ID: "a-workers",
+    });
+    expect(config.maxAttempts).toBe(7);
+    expect(config.backoffDelayMs).toBe(2500);
+    expect(config.prefix).toContain("a-workers");
   });
 });

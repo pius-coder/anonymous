@@ -17,6 +17,6 @@ export default [
     },
   },
   {
-    ignores: ["node_modules/", "dist/", ".next/"],
+    ignores: ["node_modules/", "dist/", ".next/", "packages/contracts/src/gen/**"],
   },
 ];

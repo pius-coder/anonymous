@@ -1,0 +1,191 @@
+syntax = "proto3";
+
+package sessionjeu.minigame.v1;
+
+import "common/v1/shared.proto";
+import "minigame/v1/danger_sweep.proto";
+import "minigame/v1/game_keys.proto";
+import "minigame/v1/memory_sequence.proto";
+import "minigame/v1/pure_reaction_duel.proto";
+import "minigame/v1/silent_vote.proto";
+import "minigame/v1/team_relay.proto";
+import "minigame/v1/trust_bridge.proto";
+
+enum MiniGameFamily {
+  MINI_GAME_FAMILY_UNSPECIFIED = 0;
+  MINI_GAME_FAMILY_SOLO = 1;
+  MINI_GAME_FAMILY_DUEL = 2;
+  MINI_GAME_FAMILY_ALLIANCE = 3;
+  MINI_GAME_FAMILY_TEAM = 4;
+  MINI_GAME_FAMILY_SURVIVAL = 5;
+  MINI_GAME_FAMILY_HIDDEN_ROLE = 6;
+}
+
+enum PlayerMode {
+  PLAYER_MODE_UNSPECIFIED = 0;
+  PLAYER_MODE_SOLO = 1;
+  PLAYER_MODE_DUEL = 2;
+  PLAYER_MODE_GROUP = 3;
+  PLAYER_MODE_TEAM = 4;
+}
+
+// Default max bytes for any opaque gameplay envelope (contract constant).
+// Runtime must reject payloads larger than this even if TypedBytesEnvelope.max_bytes is higher.
+// GAMEPLAY_PAYLOAD_MAX_BYTES = 4096 (documented; not a proto field default).
+
+message MiniGameManifest {
+  string id = 1;
+  string key = 2;
+  string name = 3;
+  string description = 4;
+  MiniGameFamily family = 5;
+  PlayerMode player_mode = 6;
+  string resolver_id = 7;
+  bool enabled = 8;
+  string version = 9;
+  ProductionMiniGameKey production_key = 10;
+}
+
+message MiniGameConfig {
+  MiniGameManifest manifest = 1;
+  repeated string allowed_actions = 2;
+  string anti_cheat_policy = 3;
+  // Typed per-game configs (prefer over free-form).
+  oneof game_config {
+    MemorySequenceConfig memory_sequence = 10;
+    PureReactionDuelConfig pure_reaction_duel = 11;
+    TrustBridgeConfig trust_bridge = 12;
+    TeamRelayConfig team_relay = 13;
+    DangerSweepConfig danger_sweep = 14;
+    SilentVoteConfig silent_vote = 15;
+  }
+}
+
+// Player command envelope for live minigame input (WS/Colyseus or round submit).
+// Never trust client score fields. Prefer typed oneof; opaque only with schema.
+message MiniGameCommand {
+  string correlation_id = 1;
+  string round_id = 2;
+  string player_id = 3;
+  string action = 4;
+  string nonce = 5;
+  int64 client_sequence = 6;
+  // DEPRECATED bare payload: empty unless schema_id + schema_version set; max 4096.
+  // Prefer `typed` oneof. Kept for additive compatibility with SEQ-01 field numbers.
+  bytes payload = 7;
+  int64 client_timestamp_ms = 8;
+  // Required when payload (field 7) is non-empty.
+  string schema_id = 9;
+  string schema_version = 10;
+  // Contract limit applied to field 7; must be > 0 and <= 4096 when payload used.
+  int32 payload_max_bytes = 11;
+  MiniGameKeyRef key_ref = 12;
+  oneof typed {
+    MemorySequencePlayerCommand memory_sequence = 20;
+    PureReactionDuelPlayerCommand pure_reaction_duel = 21;
+    TrustBridgePlayerCommand trust_bridge = 22;
+    TeamRelayPlayerCommand team_relay = 23;
+    DangerSweepPlayerCommand danger_sweep = 24;
+    SilentVotePlayerCommand silent_vote = 25;
+    // Escape hatch only with explicit schema_id/schema_version/max_bytes.
+    sessionjeu.common.v1.TypedBytesEnvelope opaque = 26;
+  }
+}
+
+// Public state safe for player, observer, and admin projections.
+message MiniGamePublicState {
+  string round_id = 1;
+  string minigame_id = 2;
+  string phase = 3;
+  int32 remaining_seconds = 4;
+  int32 participant_count = 5;
+  string version = 6;
+  MiniGameKeyRef key_ref = 7;
+  oneof typed {
+    MemorySequencePublicState memory_sequence = 20;
+    PureReactionDuelPublicState pure_reaction_duel = 21;
+    TrustBridgePublicState trust_bridge = 22;
+    TeamRelayPublicState team_relay = 23;
+    DangerSweepPublicState danger_sweep = 24;
+    SilentVotePublicState silent_vote = 25;
+  }
+}
+
+// Private state for the acting player only — never fan-out to observers.
+message MiniGamePrivateState {
+  string round_id = 1;
+  string player_id = 2;
+  // DEPRECATED: empty unless schema_id + schema_version; max 4096. Prefer typed.
+  bytes private_payload = 3;
+  string version = 4;
+  string schema_id = 5;
+  string schema_version = 6;
+  int32 payload_max_bytes = 7;
+  oneof typed {
+    MemorySequencePrivateState memory_sequence = 20;
+    PureReactionDuelPrivateState pure_reaction_duel = 21;
+    TrustBridgePrivateState trust_bridge = 22;
+    TeamRelayPrivateState team_relay = 23;
+    DangerSweepPrivateState danger_sweep = 24;
+    SilentVotePrivateState silent_vote = 25;
+    sessionjeu.common.v1.TypedBytesEnvelope opaque = 26;
+  }
+}
+
+message MiniGameServerEvent {
+  string round_id = 1;
+  string event_type = 2;
+  sessionjeu.common.v1.Audience audience = 3;
+  // DEPRECATED bare payload: same rules as MiniGameCommand.payload.
+  bytes payload = 4;
+  int64 server_timestamp_ms = 5;
+  string schema_id = 6;
+  string schema_version = 7;
+  int32 payload_max_bytes = 8;
+  oneof typed {
+    MemorySequenceServerEvent memory_sequence = 20;
+    PureReactionDuelServerEvent pure_reaction_duel = 21;
+    TrustBridgeServerEvent trust_bridge = 22;
+    TeamRelayServerEvent team_relay = 23;
+    DangerSweepServerEvent danger_sweep = 24;
+    SilentVoteServerEvent silent_vote = 25;
+    sessionjeu.common.v1.TypedBytesEnvelope opaque = 26;
+  }
+}
+
+// Evidence for provisional scoring — admin/system; not published as official rank.
+message MiniGameScoreEvidence {
+  string round_id = 1;
+  string player_id = 2;
+  double raw_score = 3;
+  string evidence_hash = 4;
+  int64 computed_at_ms = 5;
+  string minigame_version = 6;
+  oneof typed {
+    MemorySequenceScoreEvidence memory_sequence = 20;
+    PureReactionDuelScoreEvidence pure_reaction_duel = 21;
+    TrustBridgeScoreEvidence trust_bridge = 22;
+    TeamRelayScoreEvidence team_relay = 23;
+    DangerSweepScoreEvidence danger_sweep = 24;
+    SilentVoteScoreEvidence silent_vote = 25;
+  }
+}
+
+message ListMiniGamesQuery {}
+
+message ListMiniGamesResponse {
+  repeated MiniGameManifest manifests = 1;
+}
+
+message GetMiniGameQuery {
+  string minigame_id = 1;
+}
+
+message GetMiniGameResponse {
+  MiniGameConfig config = 1;
+}
+
+service MiniGameService {
+  rpc ListMiniGames(ListMiniGamesQuery) returns (ListMiniGamesResponse);
+  rpc GetMiniGame(GetMiniGameQuery) returns (GetMiniGameResponse);
+}

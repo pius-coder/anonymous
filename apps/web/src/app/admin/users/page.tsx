@@ -1,18 +1,9 @@
-import type { Metadata } from "next";
-import { getAdminUsers } from "@/actions/admin";
-import { AdminUsersContent } from "@/components/admin/AdminUsersContent";
+import { AppShell } from "@/components/ui/AppShell";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { UserDirectory } from "@/components/admin/UserDirectory";
 
-export const metadata: Metadata = {
-  title: "Utilisateurs | Admin",
-};
-
-export default async function AdminUsersPage(props: {
-  searchParams: Promise<{ q?: string; role?: string }>;
-}) {
-  const { q, role } = await props.searchParams;
-  const users = await getAdminUsers({ q, role, limit: "50" });
-  const rows = users?.data ?? [];
-  const total = users?.meta?.total ?? 0;
-
-  return <AdminUsersContent rows={rows} q={q} role={role} total={total} />;
+export default function AdminUsersPage() {
+  return <AppShell audience="Support" eyebrow="Comptes et accès" title="Utilisateurs" subtitle="Consulter un compte, assister un joueur et gérer les accès autorisés.">
+    <Card className="full-height-card"><CardHeader><CardTitle>Annuaire</CardTitle><CardDescription>Les actions sensibles restent réservées aux rôles autorisés.</CardDescription></CardHeader><CardContent className="min-h-0 flex-1 p-0"><UserDirectory /></CardContent></Card>
+  </AppShell>;
 }

@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package sessionjeu.admin.v1;
+
+import "common/v1/shared.proto";
+import "session/v1/session.proto";
+
+message GetAdminGameStateQuery {
+  sessionjeu.common.v1.PartyId party_id = 1;
+}
+
+message ParticipantAdminDetail {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+  string name = 2;
+  string connection_status = 3;
+  string participation_status = 4;
+  bool is_ready = 5;
+}
+
+message AdminGameState {
+  sessionjeu.session.v1.PartyConfig config = 1;
+  sessionjeu.session.v1.PartyStatus status = 2;
+  repeated ParticipantAdminDetail participants = 3;
+  int32 participant_count = 4;
+  int32 connected_count = 5;
+  string current_round_id = 6;
+  string current_phase = 7;
+}
+
+message GetAdminGameStateResponse {
+  AdminGameState state = 1;
+}
+
+message GetReadonlySnapshotQuery {
+  sessionjeu.common.v1.PartyId party_id = 1;
+}
+
+message AdminReadonlySnapshot {
+  string party_name = 1;
+  sessionjeu.session.v1.PartyStatus status = 2;
+  int32 participant_count = 3;
+  int32 round_count = 4;
+  string current_phase = 5;
+}
+
+message GetReadonlySnapshotResponse {
+  AdminReadonlySnapshot snapshot = 1;
+}
+
+message ListAdminPartiesQuery {
+  int32 page_size = 1;
+  string page_token = 2;
+  sessionjeu.session.v1.PartyStatus status_filter = 3;
+}
+
+message ListAdminPartiesResponse {
+  repeated AdminGameState parties = 1;
+  string next_page_token = 2;
+}
+
+// Production readiness projection (ops). No secrets, credentials, or hostnames with tokens.
+enum ReadinessComponentStatus {
+  READINESS_COMPONENT_STATUS_UNSPECIFIED = 0;
+  READINESS_COMPONENT_STATUS_UP = 1;
+  READINESS_COMPONENT_STATUS_DEGRADED = 2;
+  READINESS_COMPONENT_STATUS_DOWN = 3;
+}
+
+message ReadinessComponent {
+  string name = 1;
+  ReadinessComponentStatus status = 2;
+  // Public detail only (e.g. "postgres ping ok"); never DSNs or keys.
+  string public_detail = 3;
+}
+
+message GetSystemReadinessQuery {
+  // When true, include dependency probes (DB/Redis/provider sandbox reachability).
+  bool deep = 1;
+}
+
+message GetSystemReadinessResponse {
+  bool ready = 1;
+  string contracts_version = 2;
+  repeated ReadinessComponent components = 3;
+  sessionjeu.common.v1.Timestamp checked_at = 4;
+}
+
+service AdminService {
+  rpc GetGameState(GetAdminGameStateQuery) returns (GetAdminGameStateResponse);
+  rpc GetReadonlySnapshot(GetReadonlySnapshotQuery) returns (GetReadonlySnapshotResponse);
+  rpc ListParties(ListAdminPartiesQuery) returns (ListAdminPartiesResponse);
+  rpc GetSystemReadiness(GetSystemReadinessQuery) returns (GetSystemReadinessResponse);
+}

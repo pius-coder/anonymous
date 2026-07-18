@@ -1,0 +1,95 @@
+syntax = "proto3";
+
+package sessionjeu.preparation.v1;
+
+import "common/v1/shared.proto";
+
+enum ParticipantReadiness {
+  PARTICIPANT_READINESS_UNSPECIFIED = 0;
+  PARTICIPANT_READINESS_UNKNOWN = 1;
+  PARTICIPANT_READINESS_READY = 2;
+  PARTICIPANT_READINESS_NOT_READY = 3;
+  PARTICIPANT_READINESS_NO_RESPONSE = 4;
+}
+
+message OpenPreparationCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.Timestamp announcement_at = 3;
+}
+
+message OpenPreparationResponse {
+  string preparation_id = 1;
+}
+
+message MarkReadyCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.PlayerId player_id = 3;
+}
+
+message MarkReadyResponse {}
+
+message SendPreparationAnnouncementCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  string title = 3;
+  string body = 4;
+}
+
+message SendPreparationAnnouncementResponse {}
+
+message ConfirmStartCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  string confirmed_by = 3;
+}
+
+message ConfirmStartResponse {}
+
+message PreparationOpenedEvent {
+  sessionjeu.common.v1.PartyId party_id = 1;
+  sessionjeu.common.v1.Timestamp opened_at = 2;
+}
+
+message PlayerReadyEvent {
+  sessionjeu.common.v1.PartyId party_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  sessionjeu.common.v1.Timestamp ready_at = 3;
+}
+
+message PreparationAnnouncementSentEvent {
+  sessionjeu.common.v1.PartyId party_id = 1;
+  string title = 2;
+  string body = 3;
+  sessionjeu.common.v1.Timestamp sent_at = 4;
+}
+
+message StartConfirmedEvent {
+  sessionjeu.common.v1.PartyId party_id = 1;
+  string confirmed_by = 2;
+  sessionjeu.common.v1.Timestamp confirmed_at = 3;
+}
+
+message GetPreparationStateQuery {
+  sessionjeu.common.v1.PartyId party_id = 1;
+}
+
+message GetPreparationStateResponse {
+  repeated ParticipantState participants = 1;
+  bool all_ready = 2;
+}
+
+message ParticipantState {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+  ParticipantReadiness readiness = 2;
+  sessionjeu.common.v1.Timestamp last_seen_at = 3;
+}
+
+service PreparationService {
+  rpc OpenPreparation(OpenPreparationCommand) returns (OpenPreparationResponse);
+  rpc MarkReady(MarkReadyCommand) returns (MarkReadyResponse);
+  rpc SendAnnouncement(SendPreparationAnnouncementCommand) returns (SendPreparationAnnouncementResponse);
+  rpc ConfirmStart(ConfirmStartCommand) returns (ConfirmStartResponse);
+  rpc GetPreparationState(GetPreparationStateQuery) returns (GetPreparationStateResponse);
+}

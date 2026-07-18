@@ -1,117 +1,103 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resetMetrics } from "../metrics.js";
 
 const dbMocks = vi.hoisted(() => ({
-  prisma: {
-    paymentTransaction: {
-      findUnique: vi.fn(),
-      updateMany: vi.fn(),
-    },
-    sessionRegistration: {
-      updateMany: vi.fn(),
-    },
-    auditLog: {
-      create: vi.fn(),
-    },
+  paymentRepository: {
+    expireDueCheckouts: vi.fn(),
+    listPendingForReconciliation: vi.fn(),
+    findTransactionById: vi.fn(),
+    updateTransactionStatus: vi.fn(),
+    createReconciliation: vi.fn(),
   },
 }));
 
-vi.mock("@session-jeu/db", () => ({
-  prisma: dbMocks.prisma,
-  Prisma: {},
-  PaymentStatus: {
-    PENDING: "PENDING",
-    SUCCESSFUL: "SUCCESSFUL",
-    FAILED: "FAILED",
-    EXPIRED: "EXPIRED",
-    REFUNDED: "REFUNDED",
-  },
-  SessionRegistrationStatus: {
-    PAYMENT_PENDING: "PAYMENT_PENDING",
-    PAID: "PAID",
-  },
-}));
-
-import { processPaymentReconciliation } from "../paymentReconciliation.js";
-
-function payment(overrides: Record<string, unknown> = {}) {
+vi.mock("@session-jeu/db", () => dbMocks);
+vi.mock("@session-jeu/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@session-jeu/shared")>();
   return {
-    id: "payment-1",
-    userId: "player-1",
-    providerTransId: "trans-1",
-    status: "PENDING",
-    amountXaf: 1000,
-    webhookReceivedAt: null,
-    registration: {
-      id: "registration-1",
-      status: "PAYMENT_PENDING",
-    },
-    ...overrides,
+    ...actual,
+    expireCollectionPayment: vi.fn(),
+    getCollectionPaymentStatus: vi.fn(),
+    wireStatusToEnum: (s: string) => (s === "UNKNOWN" ? "UNSPECIFIED" : s),
   };
-}
+});
 
-describe("payment reconciliation worker", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    process.env.FAPSHI_API_USER = "api-user";
-    process.env.FAPSHI_API_KEY = "api-key";
-    process.env.FAPSHI_BASE_URL = "https://sandbox.example";
-    dbMocks.prisma.paymentTransaction.findUnique.mockResolvedValue(payment());
-    dbMocks.prisma.paymentTransaction.updateMany.mockResolvedValue({ count: 1 });
-    dbMocks.prisma.sessionRegistration.updateMany.mockResolvedValue({ count: 1 });
-    dbMocks.prisma.auditLog.create.mockResolvedValue({});
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ transId: "trans-1", status: "SUCCESSFUL", amount: 1000 }),
-      }),
-    );
-  });
+const { reconcilePendingTransactions } = await import("../jobs/paymentReconciliation.js");
 
-  it("reconciles successful provider status and marks registration paid", async () => {
-    const result = await processPaymentReconciliation(
-      { paymentId: "payment-1" },
-      new Date("2026-07-08T00:00:00Z"),
-    );
+beforeEach(() => {
+  vi.clearAllMocks();
+  resetMetrics();
+  dbMocks.paymentRepository.expireDueCheckouts.mockResolvedValue(0);
+  dbMocks.paymentRepository.createReconciliation.mockResolvedValue({});
+});
 
-    expect(result).toEqual({
-      reconciled: true,
-      paymentId: "payment-1",
-      status: "SUCCESSFUL",
-      registrationPaid: true,
+describe("reconcilePendingTransactions", () => {
+  it("expires only still-PENDING stale transactions (idempotent re-fetch)", async () => {
+    const old = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    dbMocks.paymentRepository.listPendingForReconciliation.mockResolvedValue([
+      { id: "tx-1", status: "PENDING", createdAt: old, reference: "r1" },
+      { id: "tx-2", status: "PENDING", createdAt: old, reference: "r2" },
+    ]);
+    dbMocks.paymentRepository.findTransactionById
+      .mockResolvedValueOnce({
+        id: "tx-1",
+        status: "PENDING",
+        createdAt: old,
+        reference: "r1",
+        providerTransId: null,
+        expiresAt: null,
+      })
+      .mockResolvedValueOnce({
+        id: "tx-2",
+        status: "EXPIRED",
+        createdAt: old,
+        reference: "r2_EXPIRED",
+        providerTransId: null,
+        expiresAt: null,
+      });
+    dbMocks.paymentRepository.updateTransactionStatus.mockResolvedValue({});
+
+    const result = await reconcilePendingTransactions();
+
+    expect(result.processed).toBe(1);
+    expect(result.skipped).toBe(1);
+    expect(dbMocks.paymentRepository.updateTransactionStatus).toHaveBeenCalledTimes(1);
+    expect(dbMocks.paymentRepository.updateTransactionStatus).toHaveBeenCalledWith("tx-1", {
+      status: "EXPIRED",
+      internalStatus: "EXPIRED",
+      wireStatus: "EXPIRED",
+      reference: "r1_EXPIRED",
     });
-    expect(dbMocks.prisma.sessionRegistration.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ id: "registration-1", status: "PAYMENT_PENDING" }),
-        data: expect.objectContaining({ status: "PAID", paidAt: expect.any(Date) }),
-      }),
-    );
   });
 
-  it("does not settle a successful provider response with a missing amount", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ transId: "trans-1", status: "SUCCESSFUL" }),
-      }),
-    );
-
-    const result = await processPaymentReconciliation({ paymentId: "payment-1" });
-
-    expect(result).toEqual({ reconciled: false, reason: "amount-verification-failed" });
-    expect(dbMocks.prisma.paymentTransaction.updateMany).not.toHaveBeenCalled();
-    expect(dbMocks.prisma.sessionRegistration.updateMany).not.toHaveBeenCalled();
+  it("never starts a party (only payment status updates)", async () => {
+    dbMocks.paymentRepository.listPendingForReconciliation.mockResolvedValue([]);
+    const result = await reconcilePendingTransactions();
+    expect(result).toMatchObject({ processed: 0, failed: 0 });
+    expect(dbMocks.paymentRepository.listPendingForReconciliation).toHaveBeenCalled();
+    expect(dbMocks.paymentRepository.expireDueCheckouts).toHaveBeenCalled();
   });
 
-  it("does not poll terminal payments", async () => {
-    dbMocks.prisma.paymentTransaction.findUnique.mockResolvedValue(
-      payment({ status: "SUCCESSFUL" }),
-    );
+  it("records mismatch and DLQ when provider status poll fails", async () => {
+    const { getCollectionPaymentStatus } = await import("@session-jeu/shared");
+    const recent = new Date();
+    dbMocks.paymentRepository.listPendingForReconciliation.mockResolvedValue([
+      { id: "tx-p", status: "PENDING", createdAt: recent },
+    ]);
+    dbMocks.paymentRepository.findTransactionById.mockResolvedValue({
+      id: "tx-p",
+      status: "PENDING",
+      createdAt: recent,
+      providerTransId: "real-trans",
+      amount: 1000,
+      expiresAt: null,
+      reference: "ref",
+    });
+    vi.mocked(getCollectionPaymentStatus).mockRejectedValue(new Error("network"));
 
-    const result = await processPaymentReconciliation({ paymentId: "payment-1" });
-
-    expect(result).toEqual({ reconciled: false, reason: "payment-terminal" });
-    expect(fetch).not.toHaveBeenCalled();
+    const result = await reconcilePendingTransactions();
+    expect(result.failed).toBe(1);
+    expect(result.dlq).toContain("tx-p");
+    expect(dbMocks.paymentRepository.createReconciliation).toHaveBeenCalled();
   });
 });

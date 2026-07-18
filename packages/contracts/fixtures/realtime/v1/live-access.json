@@ -1,0 +1,47 @@
+{
+  "create_live_access": {
+    "correlation_id": { "value": "corr-live-001" },
+    "party_id": { "value": "party-001" },
+    "player_id": { "value": "player-001" }
+  },
+  "create_live_access_result": {
+    "connection_token": "live-token-short-lived",
+    "room_id": "party-001",
+    "endpoint": "ws://localhost:3002",
+    "expires_at": { "seconds": 1784131200, "nanos": 0 }
+  },
+  "join_live": {
+    "correlation_id": { "value": "corr-live-002" },
+    "party_id": { "value": "party-001" },
+    "connection_token": "live-token-short-lived"
+  },
+  "reconnect_live": {
+    "correlation_id": { "value": "corr-live-003" },
+    "party_id": { "value": "party-001" },
+    "connection_token": "live-token-short-lived",
+    "previous_session_id": "session-old"
+  },
+  "live_state_view": {
+    "audience": "AUDIENCE_PLAYER",
+    "party_id": { "value": "party-001" },
+    "current_phase": "ROUND_ACTIVE",
+    "connected_count": 3,
+    "current_round_number": 2,
+    "current_round_status": "active"
+  },
+  "readonly_snapshot": {
+    "current_phase": "ROUND_ACTIVE",
+    "participant_count": 12,
+    "rounds": [],
+    "party_id": { "value": "party-001" },
+    "connected_count": 10,
+    "current_round_number": 2,
+    "current_round_status": "active"
+  },
+  "live_command_rejected": {
+    "correlation_id": { "value": "corr-live-004" },
+    "command_type": "round:submit",
+    "reason": "ROUND_NOT_ACTIVE",
+    "error_code": "ERROR_CODE_FAILED_PRECONDITION"
+  }
+}

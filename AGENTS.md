@@ -1,193 +1,355 @@
 # AGENTS.md
 
-Regles simples pour tout agent qui travaille dans ce repo.
+Guide principal pour tout agent qui travaille dans ce depot.
 
-## Regle principale
+## Contexte du projet
 
-Ne jamais implementer au feeling. Toujours verifier avec les fichiers du projet, la documentation actuelle et les commandes CLI avant de modifier le code.
+Le projet reconstruit une plateforme de parties multijoueurs composees de manches et de mini-jeux.
+La branche de reconstruction est `v0.1`.
 
-Si une instruction est ambigue, ne pas choisir l option la plus rapide. L agent doit transformer l ambiguite en decision explicite, documentee dans la reponse, puis verifier cette decision avec les PRD, le plan et les tests.
+La fondation actuelle est volontairement nettoyee, mais le projet n'est pas un MVP jetable.
+Le `HEAD` legacy contenait une base ambitieuse : auth, paiement, wallet, sessions, live temps reel,
+mini-jeux, resultats, admin, audit, support, notifications et anti-cheat.
 
-## Workflow obligatoire
+Aucune fonctionnalite ne doit etre supposee presente dans le code courant sans preuve, mais aucune
+decision legacy ne doit etre ignoree sans lire l'audit HEAD.
 
-1. Lire la fiche de plan dans `docs/plan/`.
-2. Lire la fiche PRD correspondante dans `docs/prd/features/`.
-3. Lire les documents source demandes par la feature :
-   - `docs/BRAINSTORMING.md`
-   - `docs/PRD_PHASE_1.md`
-   - `docs/PRD_PHASE_2.md`
-   - `docs/cahier_des_charges_technique_plateforme_sessions_jeu.md`
-   - `docs/deep-research-report.md`
-   - `docs/catalogue-mini-jeux.md` si gameplay ou mini-jeux sont touches.
-4. Inspecter le repo avec la CLI avant de coder :
-   - `pwd`
-   - `git status --short`
-   - `find` ou `rg --files`
-   - `cat package.json`
-   - `pnpm list` si une dependance est concernee.
-5. Pour toute librairie, framework, SDK, API, CLI ou service cloud, utiliser Context7 avant implementation :
-   - `npx ctx7@latest library <Nom officiel> "<question complete>"`
-   - `npx ctx7@latest docs <libraryId> "<question complete>"`
-6. Noter dans la reponse :
-   - docs locales lues ;
-   - library IDs Context7 utilises ;
-   - versions/packages verifies ;
-   - commandes CLI executees ;
-   - tests executes et resultat.
-7. Implementer seulement apres ces verifications.
-8. Lancer les validations CLI avant de terminer.
+## Objectifs
 
-## Workflow autonome APEX obligatoire
+-Toujours demadner a tes agents de faie des analyse officiel avec ctx7
+- Architecture modulaire, maintenable, testable et adaptee au temps reel multijoueur.
+- Responsabilites claires par couche.
+- Contrats reseau Protobuf comme source de verite cible pour les API et evenements temps reel.
+- Separation stricte des parcours administrateur, joueur et observateur lecture seule.
+- Serveur autoritaire pour les donnees competitives : scores, timers, etats de manche, abandon,
+  reconnexion et validation anti-triche.
 
-Pour toute implementation de feature ou correction importante, utiliser APEX en mode autonome complet :
+## Source de verite locale
 
-- Flags par defaut obligatoires : `-a -b -pr -s -t -x`.
-- Ne pas utiliser `-e` / economy mode par defaut. L economy mode est interdit sauf demande explicite du user.
-- Toujours travailler sur une branche non-main. Ne jamais commit directement sur `main`.
-- Toujours utiliser `gh` pour le cycle PR : creation, verification, checks, mergeabilite et merge.
-- Ne pas attendre que le user dise `continue` si la suite est claire dans `docs/plan/` et `docs/prd/features/`.
+Lire d'abord `docs/README.md`, puis les documents adaptes a la demande :
 
-Rythme strict a repeter feature par feature :
+- Audit : `docs/00-audit/`
+- Audit forensique HEAD : `docs/00-audit/head-forensic-audit.md`
+- Index complet HEAD : `docs/00-audit/head-file-index.md`
+- Produit : `docs/01-product/`
+- Mini-jeux : `docs/01-product/minigame-catalog.md`
+- UX : `docs/02-ux/`
+- Architecture : `docs/03-architecture/`
+- Couches : `docs/04-layers/`
+- Workflows : `docs/05-workflows/`
+- Roadmap : `docs/06-roadmap/`
 
-1. Depuis `main`, executer `git pull --ff-only`.
-2. Creer une branche dediee avec APEX `-b`.
-3. Lire les docs locales requises et les docs actuelles via `ctx7`, `curl` ou `fetch`.
-4. Implementer uniquement la feature courante dans le scope de sa fiche.
-5. Ajouter ou mettre a jour les tests obligatoires de la fiche.
-6. Executer et faire passer au minimum :
-   - `pnpm typecheck`
-   - `pnpm lint`
-   - `pnpm test`
-   - `pnpm build`
-7. Corriger en boucle jusqu a ce que toutes les validations passent.
-8. Commit et push la branche.
-9. Ouvrir une PR avec `gh pr create`.
-10. Verifier la PR avec `gh pr view`, `gh pr checks` et les informations de mergeabilite.
-11. Si la PR est mergeable et que les checks sont verts, merger avec `gh pr merge`.
-12. Revenir sur `main`, executer `git pull --ff-only`, puis passer a la feature suivante.
+Les anciens dossiers `docs/plan/` et `docs/prd/features/` ne sont plus la source de verite sur `v0.1`.
+Leur contenu historique doit etre consulte via `HEAD` ou via l'audit forensique lorsqu'une decision
+semble manquer.
 
-Ne jamais devaluer ou jeter le travail existant :
+## Inspection obligatoire avant changement
 
-- Ne pas supprimer ou reecrire une implementation valide pour aller plus vite.
-- Ne pas ignorer une feature deja partiellement implementee ; l analyser, la stabiliser et la completer.
-- Ne pas contourner les tests, les migrations ou les checks PR.
-- Si un blocage externe empeche le merge ou la validation, le documenter clairement dans la reponse et dans les notes APEX.
+Avant toute modification non triviale :
 
-Source de verite :
+1. Executer `pwd`.
+2. Executer `git branch --show-current`.
+3. Executer `git status --short`.
+4. Inspecter les fichiers avec `rg --files` ou `rg "<terme>"`.
+5. Lire `package.json` et le `package.json` du workspace concerne.
+6. Lire la documentation locale concernee dans `docs/`.
+7. Identifier les changements utilisateur existants et ne jamais les ecraser silencieusement.
 
-- Les fiches `docs/plan/` et `docs/prd/features/` sont prioritaires.
-- Les documents source dans `docs/` fixent les decisions produit et metier.
-- La documentation externe doit venir de `ctx7` ou de sources officielles recuperees par `curl` / `fetch`.
-- Ne pas utiliser des suppositions ou souvenirs de librairies comme source de verite.
+## Documentation externe
 
-## Interdictions
+Pour toute question ou modification impliquant une bibliotheque, framework, SDK, API, CLI ou service
+cloud, utiliser `ctx7` avant d'implementer :
 
-- Ne pas coder a partir de memoire.
-- Ne pas supposer une API de librairie sans documentation actuelle.
-- Ne pas installer une dependance sans verifier sa version, ses peer dependencies et son usage officiel.
-- Ne pas ignorer une erreur de build, typecheck, lint ou test.
-- Ne pas declarer une feature terminee si les tests obligatoires de la fiche `docs/plan/` ne sont pas valides.
-- Ne pas declarer une feature terminee si `pnpm typecheck`, `pnpm lint`, `pnpm test` et `pnpm build` ne passent pas.
-- Ne pas toucher aux features hors scope sauf dependance minimale documentee.
-- Ne pas exposer secrets, cles API, mots de passe ou donnees sensibles.
-- Ne pas remplacer un concept metier par un raccourci technique. Exemple : ne pas remplacer `PUBLIC/UNLISTED/PRIVATE` par un simple booleen si le PRD demande trois etats.
-- Ne pas ajouter un champ Prisma sans migration correspondante.
-- Ne pas modifier `schema.prisma` sans verifier que la migration SQL ou la migration Prisma existe et se lance depuis une DB vide.
+1. `npx ctx7@latest library <Nom officiel> "<question complete>"`
+2. Choisir l'ID officiel le plus pertinent.
+3. `npx ctx7@latest docs <libraryId> "<question complete>"`
 
-## Regles anti-ambiguite
+Ne pas lancer plus de trois commandes `ctx7` pour une meme question.
+Si `ctx7` echoue par quota, stopper et demander une connexion avec `npx ctx7@latest login` ou
+`CONTEXT7_API_KEY`.
+Si `ctx7` ne couvre pas le fournisseur, utiliser uniquement la documentation officielle.
 
-Quand une feature touche l UI, l agent doit definir explicitement :
+## Workspaces
 
-- les pages exactes ;
-- les routes exactes ;
-- les textes interdits ;
-- les CTA exacts ;
-- les etats vides/erreur/loading ;
-- le comportement mobile minimal ;
-- les tests UI/E2E associes.
+- `apps/web` : interface Next.js App Router. Doit contenir presentation, layouts, navigation et etats UI.
+- `apps/api` : API applicative Hono. Doit exposer des commandes et lectures applicatives, pas les regles UI.
+- `apps/game-server` : serveur temps reel Colyseus ou transport equivalent. Source autoritaire live.
+- `apps/worker` : traitements asynchrones et jobs planifies.
+- `apps/whatsapp-gateway` : passerelle de notification, sans regle metier de partie.
+- `packages/game-engine` : domaine et regles pures du jeu.
+- `packages/db` : acces persistance, migrations et client Prisma.
+- `packages/shared` : types ou utilitaires vraiment transversaux, sans logique metier specifique.
 
-Quand une feature touche la DB, l agent doit definir explicitement :
+## Lecture obligatoire du legacy
 
-- les modeles modifies ;
-- les enums modifies ;
-- la migration attendue ;
-- les seeds modifies ;
-- les tests DB ou integration qui prouvent que la migration fonctionne.
+Avant de reconstruire un domaine qui existait dans `HEAD`, lire :
 
-Quand une feature touche API + UI, l agent doit verifier que :
+1. `docs/00-audit/head-forensic-audit.md`.
+2. Les fichiers HEAD mentionnes dans la section du domaine.
+3. Les anciens rapports de `HEAD:docs/audit-rapport-incoherences.md`,
+   `HEAD:docs/audit-ui-api-trace.md`, `HEAD:docs/analysis-live-connection-flow.md` si le sujet touche
+   admin, live ou UI/API.
+4. `HEAD:docs/admin-arbitrage/05-diagrammes.md` pour tout sujet d'administration, arbitrage,
+   publication ou supervision.
 
-- le contrat de reponse API correspond aux types utilises par l UI ;
-- les erreurs API sont gerees cote UI ;
-- les tests couvrent au moins un parcours complet.
+## Couches et dependances
 
-## Regles CLI
+La cible documentaire est decrite dans `docs/04-layers/`.
 
-Toujours utiliser la CLI pour verifier l etat reel du projet.
+Regles principales :
 
-Commandes recommandees :
+- UI -> cas d'utilisation ou API publique, jamais persistance directe.
+- API -> cas d'utilisation, domaine, contrats, persistance via repositories.
+- Game server -> domaine jeu, contrats temps reel, persistance minimale, validation serveur.
+- Domaine -> aucune dependance framework, UI, transport ou DB.
+- Persistance -> ne contient pas les regles metier essentielles.
+- Notifications -> ne demarrent pas de partie et ne publient pas de score.
+- Observabilite -> logs, traces et metriques sans secrets ni donnees sensibles inutiles.
 
-- Recherche fichiers : `rg --files`
-- Recherche texte : `rg "<terme>"`
-- Etat git : `git status --short`
-- Dependances : `pnpm list`, `cat package.json`
-- Validation : `pnpm typecheck`, `pnpm lint`, `pnpm test`
-- Build si necessaire : `pnpm build`
+Interdictions :
 
-Si une commande n existe pas, lire `package.json` et utiliser le script reel.
+- Imports profonds entre modules lorsque l'API publique existe.
+- DTO JSON manuels comme source de verite definitive pour les contrats reseau.
+- Entites Prisma exposees directement comme contrats reseau.
+- Regles competitives placees dans les composants UI.
+- Controle admin direct sur le client joueur.
 
-## Regles documentation
+## Protobuf
 
-Context7 est obligatoire pour :
+Les futurs contrats API et evenements live doivent etre definis en Protobuf.
 
-- Next.js
-- Hono
-- Prisma
-- PostgreSQL
-- Colyseus
-- BullMQ
-- Redis
-- Fapshi
-- WhatsApp / Meta API
-- Docker Compose
-- toute autre librairie ou service externe.
+Regles minimales :
 
-Si Context7 echoue par quota, stopper et demander login ou `CONTEXT7_API_KEY`.
+- Ajouter `UNSPECIFIED = 0` dans les enums.
+- Ne jamais reutiliser un numero de champ supprime.
+- Reserver les noms et numeros retires.
+- Ne pas changer arbitrairement le type d'un champ existant.
+- Garder des messages petits et par domaine.
+- Distinguer contrats reseau et modele de persistance.
 
-Si Context7 ne couvre pas le provider, lire uniquement la documentation officielle.
+Ne pas generer de client Protobuf ni creer d'endpoint avant decision et workflow documente.
 
-## Regle Colyseus
+## Mini-jeux
 
-Avant toute modification dans `apps/game-server` :
+Le catalogue est dans `docs/01-product/minigame-catalog.md`.
 
-1. Lire la documentation Colyseus actuelle via Context7.
-2. Verifier la version installee de `colyseus` et des packages `@colyseus/*`.
-3. Confirmer les imports officiels pour cette version.
-4. Ne pas utiliser une ancienne API comme `new Server(...)` sans preuve documentaire.
-5. Verifier `defineServer`, `defineRoom`, `Room`, `Client`, `Schema`, `type`, transport, presence Redis et contraintes TypeScript avant de coder.
+Avant de creer ou modifier un mini-jeu :
 
-## Tests obligatoires
+1. Lire `docs/05-workflows/minigame-integration.md`.
+2. Identifier le mini-jeu exact, sa famille et son objectif.
+3. Documenter les regles, commandes joueur, evenements serveur, scoring, anti-triche et reconnexion.
+4. Definir les contrats Protobuf avant l'implementation.
+5. Ajouter tests unitaires domaine, tests temps reel et tests d'integration si persistance.
 
-Chaque feature doit valider les criteres de tests de sa fiche dans `docs/plan/`.
+Ne jamais implementer un mini-jeu a partir du titre seul.
 
-Minimum obligatoire :
+## Administration
 
-- Tests unitaires pour la logique metier.
-- Tests integration pour API + DB.
-- Tests securite pour auth/RBAC/donnees sensibles.
-- Tests E2E pour parcours utilisateur visible.
-- Tests concurrence/idempotence pour paiement, wallet, capacite, resultats ou jobs.
+L'administration cible est separee du parcours joueur :
 
-Si un test est impossible maintenant, creer une tache de rattrapage et expliquer pourquoi.
+- planification sans demarrage automatique par timer ;
+- lobby de preparation avec etats des participants ;
+- annonces d'avant-match separees de la selection du mini-jeu ;
+- lancement manuel de manche par administrateur autorise ;
+- supervision globale et individuelle en lecture seule ;
+- verification des scores provisoires ;
+- publication explicite des scores ;
+- decision explicite de manche suivante ou fin de partie.
 
-## Definition of Done agent
+Ces principes viennent des instructions produit initiales et doivent rester visibles dans les documents
+et les futurs tickets.
 
-Une tache est terminee seulement si :
+## Authentification et autorisation
 
-- les documents requis ont ete lus ;
-- les docs actuelles des librairies ont ete consultees ;
-- le code est implemente dans le scope ;
-- les tests obligatoires sont ajoutes ou mis a jour ;
-- les commandes `pnpm typecheck`, `pnpm lint`, `pnpm test` et `pnpm build` passent ;
-- les migrations DB sont coherentes avec `schema.prisma` ;
-- aucun test obligatoire de la fiche `docs/plan/` n est manquant ;
-- la reponse finale liste fichiers modifies, commandes executees et resultats.
+Prevoir les emplacements et contrats pour inscription, connexion, deconnexion, session utilisateur,
+utilisateur courant, roles, permissions, guards, erreurs, revocation, limitation de tentatives et logs
+de securite.
+
+Ne pas choisir JWT, cookies, OAuth, fournisseur externe ou strategie de session sans verification du
+stack, documentation officielle et decision explicite.
+
+## UI et layouts
+
+- `apps/web/src/app/layout.tsx` est le root layout Next.js et doit contenir la structure HTML racine.
+- Les routes Next.js suivent l'App Router et la structure fichier.
+- Les layouts ne contiennent pas de regles metier essentielles.
+- Les parcours public, authentification, joueur, jeu et administration ne doivent etre crees que lorsque
+  leur besoin est confirme.
+- Chaque etat visible important doit prevoir loading, empty, error, reconnexion et accessibilite.
+
+## Git
+
+- Ne jamais utiliser `git reset --hard`, `git checkout --`, rebase ou suppression forcee sans demande
+  explicite.
+- Ne jamais pousser, ouvrir une PR ou merger sans demande explicite.
+- Ne jamais masquer ou ecraser les modifications utilisateur.
+- Travailler sur une branche non-main pour toute implementation.
+- Documenter l'etat initial et final de `git status` pour les changements importants.
+
+## Worktrees agents et dependances hors ligne
+
+Lecture obligatoire avant toute session parallele :
+`docs/05-workflows/agent-worktree-convention.md`.
+
+Pour toute tache APEX parallele, l'agent doit travailler dans un worktree dedie. Le checkout principal
+`/home/afreeserv/anonymous` reste sur `v0.1` ou sur la branche d'integration choisie. Il sert uniquement
+a creer les worktrees, integrer les commits et executer les gates globaux. Un agent de lot ne doit
+jamais y executer `git switch`, `git checkout`, `git rebase` ou une implementation metier.
+
+Garde-fou obligatoire : si `pwd` vaut `/home/afreeserv/anonymous` et que la branche correspond a
+`apex/*`, arreter la session immediatement. Ne pas tenter de corriger, stasher, reset ou changer la
+branche; signaler la collision a l'integrateur.
+
+Regles obligatoires :
+
+1. Creer le worktree avec `pnpm worktree:create -- <task-id> [base-ref]`. Le dossier parent par defaut
+   est `/home/afreeserv/worktrees/anonymous` et peut etre remplace par `SESSION_JEU_WORKTREE_ROOT`.
+2. Une branche `apex/<task-id>` et un dossier par tache. Ne jamais ouvrir la meme branche dans deux
+   worktrees.
+3. Demarrer la session Codex avec son repertoire de travail fixe sur
+   `/home/afreeserv/worktrees/anonymous/<task-id>`, jamais sur le checkout principal.
+4. Au debut de la session, confirmer `pwd`, branche, commit de base et `git status --short`.
+5. Executer les commandes avec `scripts/worktree-run <commande>` afin de charger `WORKTREE_ID`, ports,
+   DB et Redis propres au worktree.
+6. Ne jamais copier, deplacer ou symlinker `node_modules` entre worktrees. pnpm partage deja son store
+   de contenu; chaque worktree conserve ses propres liens `node_modules`.
+7. `scripts/worktree-up` tente toujours `pnpm install --offline --frozen-lockfile` avec le store partage.
+   Le reseau n'est autorise que par `WORKTREE_ALLOW_NETWORK=1`; utiliser d'abord `pnpm deps:fetch` depuis
+   le checkout source quand une connexion est disponible.
+8. Ne pas lancer directement `pnpm install` avec un lockfile inchange. Relancer `scripts/worktree-up`.
+9. Avant suppression : worktree propre, `scripts/worktree-down`, puis `git worktree remove <path>` depuis
+   le checkout source. Ne jamais supprimer le dossier manuellement.
+
+Configuration Codex partagee : `.codex/environments/environment.toml`. Procedure complete :
+`docs/05-workflows/agent-worktree-convention.md`. Merge train et ownership :
+`docs/05-workflows/apex-parallel-worktrees.md`.
+
+## Workflow de fonctionnalite
+
+Aucune fonctionnalite ne commence par un composant, une table ou un endpoint.
+
+Pipeline obligatoire :
+
+1. Definir le cas d'usage et l'acteur.
+2. Definir preconditions et criteres d'acceptation.
+3. Identifier les etats UI.
+4. Identifier les transitions du cycle de vie.
+5. Decouper par couche.
+6. Definir ou modifier les contrats Protobuf.
+7. Evaluer l'impact donnees.
+8. Definir autorisations.
+9. Definir evenements temps reel et notifications.
+10. Definir erreurs et reconnexion.
+11. Definir tests par couche.
+12. Lire le canevas de changement de couche dans `docs/04-layers/`.
+13. Executer le workflow Apex si une implementation ou correction importante est demandee.
+14. Mettre a jour documentation et decisions d'architecture.
+
+## Ambiguite
+
+Si une demande est incomplete :
+
+1. Chercher la reponse dans le depot, les docs, les configs et l'historique accessible.
+2. Presenter ce qui est constate.
+3. Distinguer ce qui est confirme, deduit, propose et inconnu.
+4. Poser uniquement les questions bloqueantes.
+5. Attendre la reponse avant d'implementer la decision fonctionnelle concernee.
+
+Ne pas reposer une question dont la reponse existe deja dans le depot ou la conversation.
+
+Avant une modification sensible, clarifier au minimum :
+
+- probleme observe ;
+- comportement actuel ;
+- comportement attendu ;
+- utilisateurs concernes ;
+- scenario de reproduction ;
+- contraintes metier ;
+- contraintes techniques ;
+- elements qui ne doivent pas changer.
+
+## Creation ou modification de module
+
+Un module important doit documenter :
+
+- objectif ;
+- perimetre ;
+- structure ;
+- dependances autorisees ;
+- API publique ;
+- regles metier ;
+- evenements ;
+- erreurs ;
+- tests ;
+- exemples d'utilisation ;
+- procedure d'extension ;
+- elements interdits dans le module.
+
+Ajouter un module seulement s'il correspond a une responsabilite stable et prouvee.
+
+## Suppression
+
+Avant toute suppression non deja validee :
+
+1. Identifier les fichiers concernes.
+2. Decrire leur fonction actuelle.
+3. Lister dependances et imports.
+4. Justifier la suppression.
+5. Proposer le remplacement futur.
+6. Documenter le risque.
+7. Attendre validation explicite si du code source metier est concerne.
+
+Licences, mentions legales, lockfiles et configurations indispensables ne sont jamais supprimes
+silencieusement.
+
+## Tests et validations
+
+Commandes de base :
+
+- `pnpm typecheck`
+- `pnpm lint`
+- `pnpm test`
+- `pnpm build`
+
+Adapter les tests au risque :
+
+- domaine : tests unitaires ;
+- API et DB : tests integration ;
+- temps reel : tests commandes/evenements/reconnexion ;
+- securite : auth, permissions, validation d'entrees, rate limiting si applicable ;
+- UI : etats visibles et parcours critiques ;
+- concurrence : resultats, paiements, capacite, jobs, idempotence.
+
+Ne pas declarer une implementation terminee si les validations requises n'ont pas ete executees ou si
+leur echec n'est pas clairement documente.
+
+## Securite
+
+- Valider toutes les entrees externes.
+- Ne jamais faire confiance aux valeurs competitives envoyees par le client.
+- Ne pas exposer secrets, tokens, cles API ou donnees sensibles dans logs, erreurs ou docs.
+- Verifier autorisations cote serveur.
+- Eviter la securite par obscurite.
+- Documenter les limites de protection connues.
+
+## Limites connues v0.1
+
+- La fondation actuelle ne contient pas encore de modele metier complet.
+- Les routes legacy admin/joueur ont ete supprimees comme implementation.
+- Les mini-jeux sont listes comme catalogue produit, pas comme runtimes implementes.
+- Les contrats `.proto` ne sont pas encore crees.
+- L'authentification n'est pas implementee.
+- Le choix final d'hebergement, de notification et de stockage temps reel reste a decider.
+
+## Reponse finale attendue
+
+Pour une intervention importante, repondre avec :
+
+- etat constate ;
+- fichiers crees, modifies ou supprimes ;
+- docs locales lues ;
+- IDs Context7 utilises si applicable ;
+- commandes executees ;
+- tests et resultats ;
+- risques restants ;
+- questions encore ouvertes.

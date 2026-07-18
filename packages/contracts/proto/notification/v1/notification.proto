@@ -1,0 +1,137 @@
+syntax = "proto3";
+
+package sessionjeu.notification.v1;
+
+import "common/v1/shared.proto";
+
+enum NotifChannel {
+  NOTIF_CHANNEL_UNSPECIFIED = 0;
+  NOTIF_CHANNEL_IN_APP = 1;
+  NOTIF_CHANNEL_WHATSAPP = 2;
+}
+
+enum NotifDeliveryStatus {
+  NOTIF_DELIVERY_STATUS_UNSPECIFIED = 0;
+  NOTIF_DELIVERY_STATUS_QUEUED = 1;
+  NOTIF_DELIVERY_STATUS_SENT = 2;
+  NOTIF_DELIVERY_STATUS_DELIVERED = 3;
+  NOTIF_DELIVERY_STATUS_READ = 4;
+  NOTIF_DELIVERY_STATUS_FAILED = 5;
+  NOTIF_DELIVERY_STATUS_SKIPPED = 6;
+}
+
+enum NotifType {
+  NOTIF_TYPE_UNSPECIFIED = 0;
+  NOTIF_TYPE_REGISTRATION = 1;
+  NOTIF_TYPE_PAYMENT = 2;
+  NOTIF_TYPE_CHECK_IN = 3;
+  NOTIF_TYPE_RESULT = 4;
+  NOTIF_TYPE_REMINDER = 5;
+  NOTIF_TYPE_ANNOUNCEMENT = 6;
+  NOTIF_TYPE_SYSTEM = 7;
+}
+
+// Sprint 17 CreateNotificationJob maps to SendNotification (HTTP Connect).
+// Does not start a party and does not publish scores.
+message SendNotificationCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  NotifType type = 3;
+  NotifChannel channel = 4;
+  string title = 5;
+  string body = 6;
+  string template_key = 7;
+  string idempotency_key = 8;
+}
+
+message SendNotificationResponse {
+  string notification_id = 1;
+  NotifDeliveryStatus status = 2;
+}
+
+// Alias shape for worker job creation (same fields as SendNotificationCommand).
+message CreateNotificationJobCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  NotifType type = 3;
+  NotifChannel channel = 4;
+  string title = 5;
+  string body = 6;
+  string template_key = 7;
+  string idempotency_key = 8;
+}
+
+message NotificationSentEvent {
+  string notification_id = 1;
+  sessionjeu.common.v1.PlayerId player_id = 2;
+  NotifType type = 3;
+  NotifChannel channel = 4;
+  sessionjeu.common.v1.Timestamp sent_at = 5;
+}
+
+message NotificationDeliveredEvent {
+  string notification_id = 1;
+  NotifDeliveryStatus status = 2;
+  sessionjeu.common.v1.Timestamp delivered_at = 3;
+}
+
+// Sprint 17 NotificationDeliveryUpdated
+message NotificationDeliveryUpdatedEvent {
+  string notification_id = 1;
+  NotifDeliveryStatus status = 2;
+  string failure_reason_public = 3;
+  sessionjeu.common.v1.Timestamp updated_at = 4;
+  // No provider credentials or raw payloads.
+}
+
+message GetNotificationStatusQuery {
+  string notification_id = 1;
+}
+
+message GetNotificationStatusResponse {
+  NotifType type = 1;
+  NotifDeliveryStatus status = 2;
+  sessionjeu.common.v1.Timestamp sent_at = 3;
+  sessionjeu.common.v1.Timestamp delivered_at = 4;
+}
+
+// Sprint 17 ListMyNotifications — player reads own notifications only.
+message ListNotificationsQuery {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message NotificationSummary {
+  string notification_id = 1;
+  NotifType type = 2;
+  string title = 3;
+  string body = 4;
+  NotifDeliveryStatus status = 5;
+  sessionjeu.common.v1.Timestamp sent_at = 6;
+  bool acknowledged = 7;
+}
+
+message ListNotificationsResponse {
+  repeated NotificationSummary notifications = 1;
+  string next_page_token = 2;
+}
+
+// Sprint 17 AcknowledgeNotification
+message AcknowledgeNotificationCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string notification_id = 2;
+  sessionjeu.common.v1.PlayerId player_id = 3;
+}
+
+message AcknowledgeNotificationResponse {
+  string notification_id = 1;
+  bool acknowledged = 2;
+}
+
+service NotificationService {
+  rpc SendNotification(SendNotificationCommand) returns (SendNotificationResponse);
+  rpc GetNotificationStatus(GetNotificationStatusQuery) returns (GetNotificationStatusResponse);
+  rpc ListNotifications(ListNotificationsQuery) returns (ListNotificationsResponse);
+  rpc AcknowledgeNotification(AcknowledgeNotificationCommand) returns (AcknowledgeNotificationResponse);
+}

@@ -1,0 +1,163 @@
+syntax = "proto3";
+
+package sessionjeu.realtime.v1;
+
+import "common/v1/errors.proto";
+import "common/v1/shared.proto";
+
+enum ConnectionStatus {
+  CONNECTION_STATUS_UNSPECIFIED = 0;
+  CONNECTION_STATUS_CONNECTED = 1;
+  CONNECTION_STATUS_DISCONNECTED = 2;
+  CONNECTION_STATUS_RECONNECTING = 3;
+}
+
+message ConnectedEvent {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.Timestamp connected_at = 3;
+}
+
+message DisconnectedEvent {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.Timestamp disconnected_at = 3;
+}
+
+message ReconnectedEvent {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.Timestamp reconnected_at = 3;
+}
+
+message CreateLiveAccessRequest {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.PlayerId player_id = 3;
+}
+
+message CreateLiveAccessResult {
+  string connection_token = 1;
+  string room_id = 2;
+  string endpoint = 3;
+  sessionjeu.common.v1.Timestamp expires_at = 4;
+}
+
+message JoinLive {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  string connection_token = 3;
+}
+
+message ReconnectLive {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  string connection_token = 3;
+  string previous_session_id = 4;
+}
+
+message RoomMovementIntent {
+  int64 sequence = 1;
+  float axis_x = 2;
+  float axis_y = 3;
+}
+
+message RoomPlayerTransform {
+  string session_id = 1;
+  float x = 2;
+  float y = 3;
+  string facing = 4;
+  bool moving = 5;
+  int64 last_processed_input_sequence = 6;
+}
+
+message LiveStateView {
+  sessionjeu.common.v1.Audience audience = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  string current_phase = 3;
+  int32 connected_count = 4;
+  int32 current_round_number = 5;
+  string current_round_status = 6;
+}
+
+message LiveCommandRejected {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string command_type = 2;
+  string reason = 3;
+  sessionjeu.common.v1.ErrorCode error_code = 4;
+}
+
+message GetPlayerStateQuery {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+}
+
+message PlayerStateSnapshot {
+  sessionjeu.common.v1.PlayerId player_id = 1;
+  ConnectionStatus connection_status = 2;
+  string current_phase = 3;
+  string current_round_id = 4;
+  sessionjeu.common.v1.Timestamp last_heartbeat = 5;
+}
+
+message GetPlayerStateResponse {
+  PlayerStateSnapshot state = 1;
+}
+
+message GetAdminGameSnapshotQuery {
+  sessionjeu.common.v1.PartyId party_id = 1;
+}
+
+message AdminGameSnapshot {
+  message PlayerSummary {
+    sessionjeu.common.v1.PlayerId player_id = 1;
+    ConnectionStatus connection_status = 2;
+    string name = 3;
+  }
+  repeated PlayerSummary participants = 1;
+  string current_phase = 2;
+  int32 participant_count = 3;
+  int32 connected_count = 4;
+}
+
+message GetAdminGameSnapshotResponse {
+  AdminGameSnapshot snapshot = 1;
+}
+
+message RoundStartedEvent {
+  sessionjeu.common.v1.PartyId party_id = 1;
+  string round_id = 2;
+  sessionjeu.common.v1.Timestamp started_at = 3;
+}
+
+message RoundStateSnapshot {
+  string round_id = 1;
+  string phase = 2;
+  sessionjeu.common.v1.Timestamp started_at = 3;
+  sessionjeu.common.v1.Timestamp ends_at = 4;
+}
+
+message GetReadonlySnapshotQuery {
+  sessionjeu.common.v1.PartyId party_id = 1;
+}
+
+message ReadonlySnapshot {
+  string current_phase = 1;
+  int32 participant_count = 2;
+  repeated RoundStateSnapshot rounds = 3;
+  sessionjeu.common.v1.PartyId party_id = 4;
+  int32 connected_count = 5;
+  int32 current_round_number = 6;
+  string current_round_status = 7;
+}
+
+message GetReadonlySnapshotResponse {
+  ReadonlySnapshot snapshot = 1;
+}
+
+service RealtimeAccessService {
+  rpc CreateLiveAccess(CreateLiveAccessRequest) returns (CreateLiveAccessResult);
+  rpc GetPlayerState(GetPlayerStateQuery) returns (GetPlayerStateResponse);
+  rpc GetAdminGameSnapshot(GetAdminGameSnapshotQuery) returns (GetAdminGameSnapshotResponse);
+  rpc GetReadonlySnapshot(GetReadonlySnapshotQuery) returns (GetReadonlySnapshotResponse);
+}

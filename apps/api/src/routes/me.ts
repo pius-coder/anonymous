@@ -1,20 +1,20 @@
 import { Hono } from "hono";
-import { requireAuth } from "../auth/session.js";
-import type { AuthVariables } from "../auth/session.js";
+import type { AppEnv } from "../app-env.js";
+import { requireAuth } from "../middleware/auth.js";
 import { successResponse } from "../lib/responses.js";
+import { listMyTickets } from "../use-cases/party/participation.use-case.js";
 
-const me = new Hono<{ Variables: AuthVariables }>();
+const meRouter = new Hono<AppEnv>();
 
-me.get("/", requireAuth, (c) => {
+meRouter.get("/me", requireAuth, async (c) => {
   const user = c.get("user");
-  return successResponse(c, {
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    },
-  });
+  return successResponse(c, { user });
 });
 
-export default me;
+meRouter.get("/me/tickets", requireAuth, async (c) => {
+  const user = c.get("user");
+  const tickets = await listMyTickets(user.id);
+  return successResponse(c, { tickets });
+});
+
+export { meRouter };

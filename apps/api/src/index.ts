@@ -1,90 +1,64 @@
-import { config } from "dotenv";
-import { resolve } from "path";
-config({ path: resolve("../../.env") });
-import { serve } from "@hono/node-server";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { connectNodeAdapter } from "@connectrpc/connect-node";
+import { getRequestListener } from "@hono/node-server";
 import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { logger } from "hono/logger";
-import { requestId } from "./middleware/requestId.js";
-import { secureHeaders } from "./middleware/secureHeaders.js";
-import { bodyLimit } from "./middleware/bodyLimit.js";
-import health from "./routes/health.js";
-import internalRounds from "./routes/internal/rounds.js";
-import publicSessions from "./routes/public/sessions.js";
-import publicSessionDetail from "./routes/public/session-detail.js";
-import share from "./routes/share.js";
-import auth from "./routes/auth.js";
-import me from "./routes/me.js";
-import adminSessions from "./routes/admin/sessions.js";
-import registrations from "./routes/registrations.js";
-import payments from "./routes/payments.js";
-import adminPayments from "./routes/admin/payments.js";
-import wallet from "./routes/wallet.js";
-import adminWallets from "./routes/admin/wallets.js";
-import lobby from "./routes/lobby.js";
-import adminLobby from "./routes/admin/lobby.js";
-import live from "./routes/live.js";
-import adminLive from "./routes/admin/live.js";
-import minigames from "./routes/minigames.js";
-import adminMinigames from "./routes/admin/minigames.js";
-import results from "./routes/results.js";
-import adminResults from "./routes/admin/results.js";
-import players from "./routes/players.js";
-import adminOperations from "./routes/admin/operations.js";
-import notifications from "./routes/notifications.js";
-import adminNotifications from "./routes/admin/notifications.js";
-import internalNotifications from "./routes/internal/notifications.js";
-import whatsappWebhook from "./routes/webhooks/whatsapp.js";
-import security from "./routes/security.js";
-import adminSecurity from "./routes/admin/security.js";
-import anticheat from "./routes/internal/anticheat.js";
+import { assertBootEnv } from "@session-jeu/config";
+import type { AppEnv } from "./app-env.js";
+import { authRouter } from "./routes/auth.js";
+import { meRouter } from "./routes/me.js";
+import { partyRouter } from "./routes/party.js";
+import { paymentRouter } from "./routes/payment.js";
+import { adminPartyRouter } from "./routes/admin/party.js";
+import { adminPaymentRouter } from "./routes/admin/payment.js";
+import { adminPreparationRouter } from "./routes/admin/preparation.js";
+import { adminRoundRouter } from "./routes/admin/round.js";
+import { adminScoringRouter } from "./routes/admin/scoring.js";
+import { preparationRouter } from "./routes/preparation.js";
+import { liveRouter } from "./routes/live.js";
+import { roundRouter } from "./routes/round.js";
+import { registerRpcRoutes } from "./rpc/routes.js";
 
-const app = new Hono();
+export const app = new Hono<AppEnv>();
 
-app.use("*", logger());
-app.use("*", cors());
-app.use("*", requestId);
-app.use("*", secureHeaders);
-app.use("*", bodyLimit());
+app.get("/health", (c) =>
+  c.json({
+    status: "ok",
+    service: "api",
+    foundation: "v0.1",
+  }),
+);
 
-app.route("/health", health);
-app.route("/internal", internalRounds);
-app.route("/internal", internalNotifications);
-app.route("/internal", anticheat);
-app.route("/v1/public/sessions", publicSessions);
-app.route("/v1/public/sessions", publicSessionDetail);
-app.route("/v1/share", share);
-app.route("/v1/auth", auth);
-app.route("/v1/me", me);
-app.route("/v1/me", notifications);
-app.route("/v1/admin/sessions", adminSessions);
-app.route("/v1", registrations);
-app.route("/v1", payments);
-app.route("/v1/admin/payments", adminPayments);
-app.route("/v1", wallet);
-app.route("/v1/admin/wallets", adminWallets);
-app.route("/v1", lobby);
-app.route("/v1/admin", adminLobby);
-app.route("/v1/live", live);
-app.route("/v1/admin", adminLive);
-app.route("/v1/minigames", minigames);
-app.route("/v1/admin/minigames", adminMinigames);
-app.route("/v1", results);
-app.route("/v1/admin", adminResults);
-app.route("/v1", players);
-app.route("/v1", security);
-app.route("/v1/admin", adminOperations);
-app.route("/v1/admin", adminNotifications);
-app.route("/v1/admin", adminSecurity);
-app.route("/v1/webhooks", whatsappWebhook);
+app.route("/v1/auth", authRouter);
+app.route("/v1", meRouter);
+app.route("/v1", partyRouter);
+app.route("/v1", paymentRouter);
+app.route("/v1/admin", adminPartyRouter);
+app.route("/v1/admin", adminPaymentRouter);
+app.route("/v1/admin", adminPreparationRouter);
+app.route("/v1/admin", adminRoundRouter);
+app.route("/v1/admin", adminScoringRouter);
+app.route("/v1", preparationRouter);
+app.route("/v1", liveRouter);
+app.route("/v1", roundRouter);
 
 const port = Number(process.env.PORT) || 3001;
 
-console.log(`API server starting on port ${port}`);
+if (process.env.NODE_ENV !== "test") {
+  // Fail-fast before opening a port (P-SEQ-00). Local/test remain permissive.
+  assertBootEnv("api");
 
-serve({
-  fetch: app.fetch,
-  port,
-});
+  const honoListener = getRequestListener(app.fetch);
+  const requestListener = connectNodeAdapter({
+    routes: registerRpcRoutes,
+    fallback: (request, response) => {
+      void honoListener(
+        request as IncomingMessage,
+        response as ServerResponse<IncomingMessage>,
+      );
+    },
+  });
+  createServer(requestListener).listen(port);
+  console.log(`API foundation (ConnectRPC + Hono) listening on port ${port}`);
+}
 
 export default app;

@@ -1,234 +1,155 @@
-import { createHash } from "node:crypto";
 export {
-  ROUND_ADMISSION_LOCK_BY_FAMILY,
-  admissionLockForFamily,
-  isPreRoundLivePhase,
-  lateAdmissionReason,
-  normalizeMiniGameFamily,
-  type CatalogueMiniGameFamily,
-  type RoundAdmissionLockCode,
-} from "./admission.js";
+  DomainError,
+  InvalidTransitionError,
+  InvalidRoleError,
+  ParticipationNotFoundError,
+  ScoreNotPublishableError,
+  ScoreNotVerifiedError,
+  GameNotFoundError,
+  InvalidPermissionError,
+  InvalidConfigError,
+  CapacityExceededError,
+  AlreadyRegisteredError,
+} from "./errors.js"
 
-export const GAME_ENGINE_VERSION = "0.1.0";
+export {
+  GameStatus,
+  type Game,
+  type CreateGameParams,
+  createGame,
+  type PartyConfig,
+  type ComplianceIssue,
+  validateGameConfig,
+  type Announcement,
+  type CreateAnnouncementParams,
+  createAnnouncement,
+  type ReadinessStats,
+  computeReadinessStats,
+} from "./types/index.js"
 
-export type ResolverFamily = "solo-score" | "duel-score";
+export {
+  ParticipationStatus,
+  type ReadinessState,
+  type ConnectionState,
+  type ParticipationRole,
+  type ParticipationRights,
+  type GameParticipation,
+  type CreateParticipationParams,
+  createParticipation,
+  rightsForRole,
+  canRegister,
+  registerParticipant,
+} from "./types/index.js"
 
-export type PlayerAction = {
-  playerId: string;
-  actionNonce: string;
-  submittedAt: string;
-  payload: {
-    score?: number;
-    tieBreakMs?: number;
-    [key: string]: unknown;
-  };
-};
+export {
+  RoundStatus,
+  type Round,
+  type CreateRoundParams,
+  createRound,
+} from "./types/index.js"
 
-export type ResolverConfig = {
-  family: ResolverFamily;
-  winnersCount: number;
-  missingActionScore?: number;
-};
+export {
+  ScoreStatus,
+  type ProvisionalScore,
+  type PublishedScore,
+  type ScoreEntry,
+} from "./types/index.js"
 
-export type ResolverInput = {
-  roundId: string;
-  participants: string[];
-  actions: PlayerAction[];
-  config: ResolverConfig;
-  seedLog?: ResolutionEvidence[];
-};
+export {
+  type DomainEvent,
+  createEvent,
+} from "./types/index.js"
 
-export type RankedPlayer = {
-  playerId: string;
-  score: number;
-  rank: number;
-  tieBreakMs: number | null;
-  missingAction: boolean;
-};
+export {
+  PARTY_TRANSITIONS,
+  canTransitionParty,
+  transitionParty,
+  schedule,
+  openPreparation,
+  lockPreparation,
+  confirmStart,
+  cancel,
+  prepareRound,
+  startBriefing,
+  startRound,
+  closeRound,
+  computeProvisionalScores,
+  publishResults,
+  requestCorrection,
+  prepareNextRound,
+  completeGame,
+  pause,
+  resume,
+  fail,
+  recover,
+  PARTICIPATION_TRANSITIONS,
+  canTransitionParticipation,
+  transitionParticipation,
+  acceptInvitation,
+  confirmPayment,
+  checkIn,
+  markReady,
+  connectRealtime,
+  startRoundForPlayer,
+  finishPlayerRound,
+  disconnectPlayer,
+  reconnectPlayer,
+  abandonPlayer,
+  cancelParticipation,
+  closePlayerRound,
+  publishPlayerResults,
+  prepareNextRoundForPlayer,
+  completePlayerParticipation,
+  SCORE_TRANSITIONS,
+  canTransitionScore,
+  transitionScore,
+  setProvisional,
+  flagForReview,
+  correctScore,
+  verifyScore,
+  publishScore,
+  voidScore,
+  ROUND_TRANSITIONS,
+  canTransitionRound,
+  transitionRound,
+  startRoundBriefing,
+  activateRound,
+  closeRoundForResolution,
+  enterRoundVerification,
+  markRoundResolved,
+  markRoundVerified,
+  publishRound,
+  pauseRound,
+  resumeRound,
+  isRoundInputAccepted,
+} from "./transitions/index.js"
 
-export type ResolutionEvidence = {
-  type: string;
-  message: string;
-  data?: Record<string, unknown>;
-};
+export {
+  SYSTEM_ROLES,
+  STAFF_ROLES,
+  ADMIN_ROLES,
+  PERMISSIONS,
+  type SystemRole,
+  type Permission,
+  roleHasPermission,
+  hasAnyPermission,
+  isStaff,
+  isAdmin,
+} from "./auth/policies.js"
 
-export type ResolverOutput = {
-  resolverId: ResolverFamily;
-  roundId: string;
-  scores: Record<string, number>;
-  ranks: Record<string, number>;
-  qualifiedIds: string[];
-  eliminatedIds: string[];
-  tieGroups: string[][];
-  ranking: RankedPlayer[];
-  evidence: ResolutionEvidence[];
-  seedLog: ResolutionEvidence[];
-};
-
-export type EliminationPolicy =
-  | { type: "KEEP_TOP_N"; n: number }
-  | { type: "ELIMINATE_BOTTOM_N"; n: number }
-  | { type: "ELIMINATE_BOTTOM_PERCENT"; bps: number }
-  | { type: "DUEL_WINNER_ADVANCES" }
-  | { type: "SURVIVAL_UNTIL_QUOTA"; quota: number }
-  | { type: "NO_ELIMINATION" };
-
-export function simulateProgram(start: number, policies: EliminationPolicy[]): number[] {
-  const steps: number[] = [start];
-  let remaining = start;
-  for (const policy of policies) {
-    switch (policy.type) {
-      case "KEEP_TOP_N":
-        remaining = Math.min(remaining, policy.n);
-        break;
-      case "ELIMINATE_BOTTOM_N":
-        remaining = Math.max(1, remaining - policy.n);
-        break;
-      case "ELIMINATE_BOTTOM_PERCENT":
-        remaining = Math.max(1, remaining - Math.floor((remaining * policy.bps) / 10000));
-        break;
-      case "DUEL_WINNER_ADVANCES":
-        remaining = Math.floor(remaining / 2);
-        break;
-      case "SURVIVAL_UNTIL_QUOTA":
-        remaining = Math.min(remaining, policy.quota);
-        break;
-      case "NO_ELIMINATION":
-        break;
-    }
-    steps.push(remaining);
-  }
-  return steps;
-}
-
-export function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map((item) => stableStringify(item)).join(",")}]`;
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
-    .join(",")}}`;
-}
-
-export function hashResolution(value: unknown) {
-  return createHash("sha256").update(stableStringify(value)).digest("base64url");
-}
-
-export function rankPlayers(
-  entries: Array<Omit<RankedPlayer, "rank">>,
-): { ranking: RankedPlayer[]; tieGroups: string[][] } {
-  const sorted = [...entries].sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    if (a.tieBreakMs !== null && b.tieBreakMs !== null && a.tieBreakMs !== b.tieBreakMs) {
-      return a.tieBreakMs - b.tieBreakMs;
-    }
-    if (a.tieBreakMs !== null && b.tieBreakMs === null) return -1;
-    if (a.tieBreakMs === null && b.tieBreakMs !== null) return 1;
-    return a.playerId.localeCompare(b.playerId);
-  });
-
-  const ranking = sorted.map((entry, index) => ({ ...entry, rank: index + 1 }));
-  const tieGroups = new Map<string, string[]>();
-  for (const entry of ranking) {
-    const key = `${entry.score}:${entry.tieBreakMs ?? "none"}`;
-    const group = tieGroups.get(key) ?? [];
-    group.push(entry.playerId);
-    tieGroups.set(key, group);
-  }
-
-  return {
-    ranking,
-    tieGroups: [...tieGroups.values()].filter((group) => group.length > 1),
-  };
-}
-
-export function applyWinnersCount(ranking: RankedPlayer[], winnersCount: number) {
-  const safeWinnersCount = Math.max(0, Math.min(winnersCount, ranking.length));
-  const qualifiedIds = ranking.slice(0, safeWinnersCount).map((entry) => entry.playerId);
-  const qualified = new Set(qualifiedIds);
-  return {
-    qualifiedIds,
-    eliminatedIds: ranking
-      .filter((entry) => !qualified.has(entry.playerId))
-      .map((entry) => entry.playerId),
-  };
-}
-
-function latestActionByPlayer(actions: PlayerAction[]) {
-  const byPlayer = new Map<string, PlayerAction>();
-  for (const action of actions) {
-    const existing = byPlayer.get(action.playerId);
-    if (!existing || action.submittedAt > existing.submittedAt) {
-      byPlayer.set(action.playerId, action);
-    }
-  }
-  return byPlayer;
-}
-
-function resolveScoreRound(input: ResolverInput, resolverId: ResolverFamily): ResolverOutput {
-  const evidence: ResolutionEvidence[] = [
-    {
-      type: "resolver.selected",
-      message: `${resolverId} resolver selected`,
-      data: { winnersCount: input.config.winnersCount },
-    },
-  ];
-  const actions = latestActionByPlayer(input.actions);
-  const missingActionScore = input.config.missingActionScore ?? 0;
-
-  const entries = input.participants.map((playerId) => {
-    const action = actions.get(playerId);
-    const score = typeof action?.payload.score === "number" ? action.payload.score : missingActionScore;
-    const tieBreakMs =
-      typeof action?.payload.tieBreakMs === "number" ? action.payload.tieBreakMs : null;
-    const missingAction = !action;
-    if (missingAction) {
-      evidence.push({
-        type: "action.missing",
-        message: "Missing action scored with default",
-        data: { playerId, score },
-      });
-    }
-    return { playerId, score, tieBreakMs, missingAction };
-  });
-
-  const { ranking, tieGroups } = rankPlayers(entries);
-  const { qualifiedIds, eliminatedIds } = applyWinnersCount(
-    ranking,
-    resolverId === "duel-score" ? Math.min(1, input.config.winnersCount) : input.config.winnersCount,
-  );
-
-  return {
-    resolverId,
-    roundId: input.roundId,
-    scores: Object.fromEntries(ranking.map((entry) => [entry.playerId, entry.score])),
-    ranks: Object.fromEntries(ranking.map((entry) => [entry.playerId, entry.rank])),
-    qualifiedIds,
-    eliminatedIds,
-    tieGroups,
-    ranking,
-    evidence,
-    seedLog: input.seedLog ?? [],
-  };
-}
-
-export function resolveSoloScoreRound(input: ResolverInput) {
-  return resolveScoreRound(input, "solo-score");
-}
-
-export function resolveDuelScoreRound(input: ResolverInput) {
-  if (input.participants.length !== 2) {
-    throw new Error("duel-score resolver requires exactly two participants");
-  }
-  return resolveScoreRound(input, "duel-score");
-}
-
-export function resolveRound(input: ResolverInput) {
-  if (input.config.family === "solo-score") return resolveSoloScoreRound(input);
-  if (input.config.family === "duel-score") return resolveDuelScoreRound(input);
-  throw new Error(`Unsupported resolver family: ${input.config.family}`);
-}
-
-export { getRuntime, RUNTIMES } from "./runtimes/index.js";
-export type { GameRuntime, RuntimeResolverInput } from "./runtimes/types.js";
+export {
+  ROOM_TILE_SIZE,
+  ROOM_MAP_WIDTH,
+  ROOM_MAP_HEIGHT,
+  ROOM_WORLD_WIDTH,
+  ROOM_WORLD_HEIGHT,
+  ROOM_PLAYER_RADIUS,
+  ROOM_PLAYER_SPEED,
+  ROOM_COLLISION_GRID,
+  ROOM_SPAWNS,
+  type RoomPoint,
+  type RoomMovementInput,
+  isRoomTileBlocked,
+  canOccupyRoomPosition,
+  resolveRoomMovement,
+} from "./spatial/index.js"

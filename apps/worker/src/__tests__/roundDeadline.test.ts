@@ -1,169 +1,103 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { resetMetrics } from "../metrics.js";
 
 const dbMocks = vi.hoisted(() => ({
-  prisma: {
-    roundDeadline: {
-      findUnique: vi.fn(),
-      update: vi.fn(),
-    },
-    roundInstance: {
-      update: vi.fn(),
-    },
-    liveSessionState: {
-      updateMany: vi.fn(),
-    },
-    auditLog: {
-      create: vi.fn(),
-    },
-    $transaction: vi.fn(),
+  partyRepository: {
+    updatePartyStatus: vi.fn(),
+  },
+  participationRepository: {
+    updateParticipationStatus: vi.fn(),
+  },
+  roundRepository: {
+    listDueRoundDeadlines: vi.fn(),
+    claimDueRoundDeadline: vi.fn(),
+    updateRoundLifecycle: vi.fn(),
+    updateRoundDeadline: vi.fn(),
+    listRoundParticipants: vi.fn(),
+    markRoundParticipantsWaitingReview: vi.fn(),
   },
 }));
 
-const redisNotifyMocks = vi.hoisted(() => ({
-  publishRoundResolved: vi.fn(),
-}));
+vi.mock("@session-jeu/db", () => dbMocks);
 
-const fetchMocks = vi.hoisted(() => {
-  const mockFetch = vi.fn();
-  vi.stubGlobal("fetch", mockFetch);
-  return { mockFetch };
+const { closeDueRoundDeadlines } = await import("../jobs/roundDeadline.js");
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  resetMetrics();
+  dbMocks.partyRepository.updatePartyStatus.mockResolvedValue({});
+  dbMocks.participationRepository.updateParticipationStatus.mockResolvedValue({});
+  dbMocks.roundRepository.claimDueRoundDeadline.mockResolvedValue(true);
+  dbMocks.roundRepository.updateRoundLifecycle.mockResolvedValue({});
+  dbMocks.roundRepository.updateRoundDeadline.mockResolvedValue({});
+  dbMocks.roundRepository.listRoundParticipants.mockResolvedValue([
+    { participationId: "participation-1" },
+    { participationId: "participation-2" },
+  ]);
+  dbMocks.roundRepository.markRoundParticipantsWaitingReview.mockResolvedValue({ count: 2 });
 });
 
-vi.mock("@session-jeu/db", () => ({
-  prisma: dbMocks.prisma,
-  LivePhase: {
-    RESOLVING: "RESOLVING",
-  },
-  RoundStatus: {
-    COMPLETED: "COMPLETED",
-  },
-}));
+describe("closeDueRoundDeadlines", () => {
+  it("closes active due rounds to verification without publishing scores or starting party", async () => {
+    const now = new Date("2026-01-01T00:02:00.000Z");
+    dbMocks.roundRepository.listDueRoundDeadlines.mockResolvedValueOnce([
+      {
+        roundId: "round-1",
+        round: { id: "round-1", partyId: "party-1", status: "ACTIVE" },
+      },
+    ]);
 
-vi.mock("../redisNotify.js", () => redisNotifyMocks);
+    const result = await closeDueRoundDeadlines(now);
 
-import { processRoundDeadline } from "../roundDeadline.js";
-
-describe("round deadline worker", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    dbMocks.prisma.roundDeadline.findUnique.mockResolvedValue({
-      id: "deadline-1",
-      sessionId: "session-1",
-      roundId: "round-1",
-      deadlineAt: new Date("2026-07-08T00:00:30Z"),
-      closedAt: null,
-      round: { id: "round-1" },
+    expect(result).toMatchObject({ closed: 1, skipped: 0, failed: 0 });
+    expect(dbMocks.roundRepository.claimDueRoundDeadline).toHaveBeenCalledWith("round-1", now);
+    expect(dbMocks.roundRepository.updateRoundLifecycle).toHaveBeenCalledWith("round-1", {
+      status: "VERIFICATION",
     });
-    dbMocks.prisma.roundDeadline.update.mockReturnValue({ id: "deadline-1" });
-    dbMocks.prisma.roundInstance.update.mockReturnValue({
-      id: "round-1",
-      status: "COMPLETED",
-    });
-    dbMocks.prisma.liveSessionState.updateMany.mockReturnValue({ count: 1 });
-    dbMocks.prisma.auditLog.create.mockReturnValue({ id: "audit-1" });
-    dbMocks.prisma.$transaction.mockImplementation(async (operations: unknown[]) => operations);
-    fetchMocks.mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        status: "finalized",
-        resolutionLogId: "log-1",
-        outputHash: "hash-abc",
-        output: {
-          scores: { p1: 10, p2: 5 },
-          ranks: { p1: 1, p2: 2 },
-          qualifiedIds: ["p1"],
-          eliminatedIds: ["p2"],
-          tieGroups: [],
-        },
-      }),
-    });
+    expect(dbMocks.partyRepository.updatePartyStatus).toHaveBeenCalledWith(
+      "party-1",
+      "ROUND_VERIFICATION",
+    );
+    expect(dbMocks.partyRepository.updatePartyStatus).not.toHaveBeenCalledWith(
+      expect.anything(),
+      "ACTIVE",
+    );
   });
 
-  it("does not close a round before its deadline", async () => {
-    const result = await processRoundDeadline(
+  it("skips rounds that are no longer active", async () => {
+    dbMocks.roundRepository.listDueRoundDeadlines.mockResolvedValueOnce([
       {
-        sessionId: "session-1",
-        roundId: "round-1",
-        deadlineAt: "2026-07-08T00:00:30Z",
+        roundId: "round-2",
+        round: { id: "round-2", partyId: "party-1", status: "VERIFICATION" },
       },
-      new Date("2026-07-08T00:00:20Z"),
-    );
+    ]);
 
-    expect(result).toEqual({ processed: false, reason: "deadline-not-reached" });
-    expect(dbMocks.prisma.roundDeadline.findUnique).not.toHaveBeenCalled();
+    await expect(closeDueRoundDeadlines()).resolves.toMatchObject({ closed: 0, skipped: 1 });
+    expect(dbMocks.roundRepository.updateRoundLifecycle).not.toHaveBeenCalled();
   });
 
-  it("closes the round, finalizes via API, and publishes Redis notification", async () => {
-    const result = await processRoundDeadline(
+  it("does not close suspended rounds while the timer is frozen", async () => {
+    dbMocks.roundRepository.listDueRoundDeadlines.mockResolvedValueOnce([
       {
-        sessionId: "session-1",
-        roundId: "round-1",
-        deadlineAt: "2026-07-08T00:00:30Z",
+        roundId: "round-3",
+        round: { id: "round-3", partyId: "party-1", status: "SUSPENDED" },
       },
-      new Date("2026-07-08T00:00:31Z"),
-    );
+    ]);
 
-    expect(result.processed).toBe(true);
-    expect(result.roundId).toBe("round-1");
-    expect(result.status).toBe("COMPLETED");
-    expect(result.finalized).toBe("finalized");
-    expect(dbMocks.prisma.roundDeadline.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { closedAt: expect.any(Date) } }),
-    );
-    expect(dbMocks.prisma.liveSessionState.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ phase: "RESOLVING" }),
-      }),
-    );
-    expect(fetchMocks.mockFetch).toHaveBeenCalled();
-    expect(redisNotifyMocks.publishRoundResolved).toHaveBeenCalledWith({
-      sessionId: "session-1",
-      roundId: "round-1",
-      scores: { p1: 10, p2: 5 },
-      ranks: { p1: 1, p2: 2 },
-      qualifiedIds: ["p1"],
-      eliminatedIds: ["p2"],
-      tieGroups: [],
-    });
+    await expect(closeDueRoundDeadlines()).resolves.toMatchObject({ closed: 0, skipped: 1 });
+    expect(dbMocks.roundRepository.claimDueRoundDeadline).not.toHaveBeenCalled();
   });
 
-  it("returns already-closed without calling finalize", async () => {
-    dbMocks.prisma.roundDeadline.findUnique.mockResolvedValue({
-      id: "deadline-1",
-      sessionId: "session-1",
-      roundId: "round-1",
-      deadlineAt: new Date("2026-07-08T00:00:30Z"),
-      closedAt: new Date("2026-07-08T00:00:31Z"),
-      round: { id: "round-1" },
-    });
-
-    const result = await processRoundDeadline(
+  it("skips deadlines already claimed by another worker", async () => {
+    dbMocks.roundRepository.listDueRoundDeadlines.mockResolvedValueOnce([
       {
-        sessionId: "session-1",
-        roundId: "round-1",
-        deadlineAt: "2026-07-08T00:00:30Z",
+        roundId: "round-4",
+        round: { id: "round-4", partyId: "party-1", status: "ACTIVE" },
       },
-      new Date("2026-07-08T00:00:31Z"),
-    );
+    ]);
+    dbMocks.roundRepository.claimDueRoundDeadline.mockResolvedValueOnce(false);
 
-    expect(result).toEqual({ processed: false, reason: "already-closed" });
-    expect(fetchMocks.mockFetch).not.toHaveBeenCalled();
-  });
-
-  it("handles API failure gracefully without throwing", async () => {
-    fetchMocks.mockFetch.mockRejectedValue(new Error("Network error"));
-
-    const result = await processRoundDeadline(
-      {
-        sessionId: "session-1",
-        roundId: "round-1",
-        deadlineAt: "2026-07-08T00:00:30Z",
-      },
-      new Date("2026-07-08T00:00:31Z"),
-    );
-
-    expect(result.processed).toBe(true);
-    expect(result.finalized).toBe("errored");
-    expect(redisNotifyMocks.publishRoundResolved).not.toHaveBeenCalled();
+    await expect(closeDueRoundDeadlines()).resolves.toMatchObject({ closed: 0, skipped: 1 });
+    expect(dbMocks.roundRepository.updateRoundLifecycle).not.toHaveBeenCalled();
   });
 });

@@ -1,0 +1,251 @@
+syntax = "proto3";
+
+package sessionjeu.compliance.v1;
+
+import "common/v1/shared.proto";
+
+// Sprint 18 — compliance, support, audit, anti-cheat contracts.
+// No secrets, cached answers, or competitive command authority for support.
+
+enum ComplianceGateStatus {
+  COMPLIANCE_GATE_STATUS_UNSPECIFIED = 0;
+  COMPLIANCE_GATE_STATUS_OPEN = 1;
+  COMPLIANCE_GATE_STATUS_BLOCKED = 2;
+  COMPLIANCE_GATE_STATUS_APPROVED = 3;
+  COMPLIANCE_GATE_STATUS_WAIVED = 4;
+}
+
+enum IncidentStatus {
+  INCIDENT_STATUS_UNSPECIFIED = 0;
+  INCIDENT_STATUS_OPEN = 1;
+  INCIDENT_STATUS_INVESTIGATING = 2;
+  INCIDENT_STATUS_RESOLVED = 3;
+  INCIDENT_STATUS_CLOSED = 4;
+}
+
+enum ComplianceDecision {
+  COMPLIANCE_DECISION_UNSPECIFIED = 0;
+  COMPLIANCE_DECISION_APPROVE = 1;
+  COMPLIANCE_DECISION_WAIVE = 2;
+  COMPLIANCE_DECISION_REJECT = 3;
+}
+
+message ComplianceGate {
+  string gate_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  string gate_type = 3;
+  ComplianceGateStatus status = 4;
+  string summary = 5;
+  sessionjeu.common.v1.Timestamp created_at = 6;
+  // Evidence refs only — no raw secrets.
+  repeated string evidence_refs = 7;
+}
+
+message ListComplianceGatesQuery {
+  sessionjeu.common.v1.PartyId party_id = 1;
+  ComplianceGateStatus status_filter = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListComplianceGatesResponse {
+  repeated ComplianceGate gates = 1;
+  string next_page_token = 2;
+}
+
+message DecideComplianceGateCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  string gate_id = 2;
+  ComplianceDecision decision = 3;
+  string reason = 4;
+  string decided_by = 5;
+}
+
+message DecideComplianceGateResponse {
+  string gate_id = 1;
+  ComplianceGateStatus status = 2;
+}
+
+message OpenIncidentCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  string subject = 3;
+  string description = 4;
+  string opened_by = 5;
+  // Support must not include round publish/start commands here.
+}
+
+message OpenIncidentResponse {
+  string incident_id = 1;
+  IncidentStatus status = 2;
+}
+
+message Incident {
+  string incident_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  string subject = 3;
+  IncidentStatus status = 4;
+  sessionjeu.common.v1.Timestamp opened_at = 5;
+  string opened_by = 6;
+}
+
+message AuditEvent {
+  string event_id = 1;
+  string actor_id = 2;
+  string action = 3;
+  string entity_type = 4;
+  string entity_id = 5;
+  string reason = 6;
+  string result = 7;
+  sessionjeu.common.v1.CorrelationId correlation_id = 8;
+  sessionjeu.common.v1.Timestamp occurred_at = 9;
+}
+
+message ListAuditEventsQuery {
+  string entity_type = 1;
+  string entity_id = 2;
+  sessionjeu.common.v1.PartyId party_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+}
+
+message ListAuditEventsResponse {
+  repeated AuditEvent events = 1;
+  string next_page_token = 2;
+}
+
+message RecordAntiCheatEventCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.PlayerId player_id = 3;
+  string signal_type = 4;
+  string summary = 5;
+  // Redacted only — never store secrets or cached correct answers.
+  string redacted_detail = 6;
+}
+
+message RecordAntiCheatEventResponse {
+  string event_id = 1;
+}
+
+message RiskSignal {
+  string signal_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.PlayerId player_id = 3;
+  string signal_type = 4;
+  string summary = 5;
+  sessionjeu.common.v1.Timestamp detected_at = 6;
+}
+
+message ListRiskSignalsQuery {
+  sessionjeu.common.v1.PartyId party_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListRiskSignalsResponse {
+  repeated RiskSignal signals = 1;
+  string next_page_token = 2;
+}
+
+// --- Export / retention / support (P-SEQ-02 production) ---
+
+enum DataExportStatus {
+  DATA_EXPORT_STATUS_UNSPECIFIED = 0;
+  DATA_EXPORT_STATUS_REQUESTED = 1;
+  DATA_EXPORT_STATUS_PROCESSING = 2;
+  DATA_EXPORT_STATUS_READY = 3;
+  DATA_EXPORT_STATUS_FAILED = 4;
+  DATA_EXPORT_STATUS_EXPIRED = 5;
+}
+
+enum RetentionAction {
+  RETENTION_ACTION_UNSPECIFIED = 0;
+  RETENTION_ACTION_KEEP = 1;
+  RETENTION_ACTION_ANONYMIZE = 2;
+  RETENTION_ACTION_DELETE = 3;
+  RETENTION_ACTION_LEGAL_HOLD = 4;
+}
+
+enum SupportCaseStatus {
+  SUPPORT_CASE_STATUS_UNSPECIFIED = 0;
+  SUPPORT_CASE_STATUS_OPEN = 1;
+  SUPPORT_CASE_STATUS_PENDING = 2;
+  SUPPORT_CASE_STATUS_RESOLVED = 3;
+  SUPPORT_CASE_STATUS_CLOSED = 4;
+}
+
+message RequestDataExportCommand {
+  sessionjeu.common.v1.CorrelationId correlation_id = 1;
+  sessionjeu.common.v1.PlayerId subject_player_id = 2;
+  string requested_by = 3;
+  string reason = 4;
+  string idempotency_key = 5;
+}
+
+message RequestDataExportResponse {
+  string export_id = 1;
+  DataExportStatus status = 2;
+}
+
+message DataExportRecord {
+  string export_id = 1;
+  sessionjeu.common.v1.PlayerId subject_player_id = 2;
+  DataExportStatus status = 3;
+  sessionjeu.common.v1.Timestamp requested_at = 4;
+  // Download reference token id only — not a raw secret blob.
+  string download_ref_id = 5;
+  sessionjeu.common.v1.Timestamp expires_at = 6;
+}
+
+message GetRetentionPolicyQuery {
+  string domain = 1;
+}
+
+message RetentionPolicyRule {
+  string domain = 1;
+  string entity_type = 2;
+  int32 retain_days = 3;
+  RetentionAction action = 4;
+  string notes = 5;
+}
+
+message GetRetentionPolicyResponse {
+  repeated RetentionPolicyRule rules = 1;
+}
+
+message SupportCase {
+  string case_id = 1;
+  sessionjeu.common.v1.PartyId party_id = 2;
+  sessionjeu.common.v1.PlayerId player_id = 3;
+  string subject = 4;
+  SupportCaseStatus status = 5;
+  sessionjeu.common.v1.Timestamp opened_at = 6;
+  string opened_by = 7;
+  // Linked incident id if any — no competitive command authority.
+  string incident_id = 8;
+}
+
+message ListSupportCasesQuery {
+  sessionjeu.common.v1.PartyId party_id = 1;
+  SupportCaseStatus status_filter = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListSupportCasesResponse {
+  repeated SupportCase cases = 1;
+  string next_page_token = 2;
+}
+
+service ComplianceService {
+  rpc ListComplianceGates(ListComplianceGatesQuery) returns (ListComplianceGatesResponse);
+  rpc DecideComplianceGate(DecideComplianceGateCommand) returns (DecideComplianceGateResponse);
+  rpc OpenIncident(OpenIncidentCommand) returns (OpenIncidentResponse);
+  rpc ListAuditEvents(ListAuditEventsQuery) returns (ListAuditEventsResponse);
+  rpc RecordAntiCheatEvent(RecordAntiCheatEventCommand) returns (RecordAntiCheatEventResponse);
+  rpc ListRiskSignals(ListRiskSignalsQuery) returns (ListRiskSignalsResponse);
+  rpc RequestDataExport(RequestDataExportCommand) returns (RequestDataExportResponse);
+  rpc GetRetentionPolicy(GetRetentionPolicyQuery) returns (GetRetentionPolicyResponse);
+  rpc ListSupportCases(ListSupportCasesQuery) returns (ListSupportCasesResponse);
+}
