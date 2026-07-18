@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Plus } from "lucide-react";
 import {
   AdminSection,
@@ -8,53 +11,35 @@ import {
 } from "@/components/admin/AdminWorkspace";
 import { AppShell } from "@/components/ui/AppShell";
 import { Button } from "@/components/ui/button";
+import { listAdminParties } from "@/services/admin/adminPartyClient";
+
+function toneForStatus(status: string): "neutral" | "success" | "warning" | "danger" | "info" {
+  if (status.includes("VERIFICATION")) return "warning";
+  if (status.includes("ACTIVE") || status.includes("BRIEFING")) return "success";
+  if (status.includes("CANCEL")) return "danger";
+  if (status.includes("PREPARATION") || status === "SCHEDULED") return "info";
+  return "neutral";
+}
 
 export default function AdminPartiesPage() {
-  const parties = [
-    [
-      "arena-qualifier-07",
-      "Qualificatif Douala #07",
-      "Préparation",
-      "15 juil. 18:30",
-      "42 / 64",
-      "3 absents",
-      "il y a 1 min",
-    ],
-    [
-      "friday-rush-12",
-      "Friday Rush #12",
-      "Manche active",
-      "En direct",
-      "31 / 32",
-      "1 reconnexion",
-      "il y a 4 s",
-    ],
-    [
-      "champions-night",
-      "Champions Night",
-      "Vérification",
-      "Manche terminée",
-      "16 / 16",
-      "2 revues",
-      "il y a 22 s",
-    ],
-    ["august-open", "Open d’août", "Brouillon", "2 août 19:00", "0 / 128", "Gate contenu", "hier"],
-    [
-      "saturday-finals",
-      "Finale du samedi",
-      "Terminée",
-      "12 juil. 20:00",
-      "24 / 24",
-      "Aucun",
-      "12 juil.",
-    ],
-  ];
+  const partiesQuery = useQuery({
+    queryKey: ["admin", "parties", "list"],
+    queryFn: async () => {
+      const res = await listAdminParties({ take: 100 });
+      if (!res.success) throw new Error(`${res.error.code}: ${res.error.message}`);
+      return res.data;
+    },
+    refetchInterval: 12_000,
+  });
+
+  const parties = partiesQuery.data?.parties ?? [];
+
   return (
     <AppShell
       audience="Admin"
-      eyebrow="Opérations"
+      eyebrow="Catalogue opérationnel"
       title="Parties"
-      subtitle="Créer, planifier et piloter les sessions. Publier une fiche ne démarre jamais le live."
+      subtitle="Création, configuration et pilotage. Aucune donnée fictive."
       actions={
         <Button render={<Link href="/admin/parties/new" />}>
           <Plus />
@@ -62,69 +47,69 @@ export default function AdminPartiesPage() {
         </Button>
       }
     >
-      <div className="space-y-4">
-        <div className="flex flex-wrap gap-2" aria-label="Filtres de phases">
-          {[
-            "Toutes 12",
-            "Brouillon 3",
-            "Planifiées 4",
-            "Préparation 2",
-            "Live 1",
-            "Vérification 1",
-            "Terminées 1",
-          ].map((filter, index) => (
-            <Button key={filter} size="sm" variant={index === 0 ? "default" : "outline"}>
-              {filter}
-            </Button>
-          ))}
-        </div>
-        <AdminSection
-          title="Toutes les parties"
-          description="État autoritaire, anomalies et raccourcis vers la surface adaptée."
-        >
+      <AdminSection
+        title="Toutes les parties"
+        description={
+          partiesQuery.isFetching
+            ? "Actualisation en cours…"
+            : `${partiesQuery.data?.total ?? 0} partie(s)`
+        }
+      >
+        {partiesQuery.isLoading ? (
+          <p className="p-4 text-sm text-muted-foreground">Chargement…</p>
+        ) : null}
+        {partiesQuery.isError ? (
+          <p className="p-4 text-sm text-rose-300" role="alert">
+            {partiesQuery.error instanceof Error
+              ? partiesQuery.error.message
+              : "Erreur de chargement"}
+          </p>
+        ) : null}
+        {!partiesQuery.isLoading && !partiesQuery.isError && parties.length === 0 ? (
+          <p className="p-4 text-sm text-muted-foreground">Aucune partie enregistrée.</p>
+        ) : null}
+        {parties.length > 0 ? (
           <AdminTable
-            headers={[
-              "Nom",
-              "État",
-              "Horaire",
-              "Participants",
-              "Anomalies",
-              "Dernière mise à jour",
-              "Actions",
-            ]}
-            label="Liste des parties administrées"
+            headers={["Partie", "Phase", "Planifié", "Participants", "Frais", "MAJ", "Actions"]}
+            label="Liste des parties admin"
           >
-            {parties.map(([id, name, phase, schedule, participants, anomaly, updated]) => (
-              <tr key={id}>
-                <td className={`${adminCell} font-medium`}>{name}</td>
-                <td className={adminCell}>
-                  <AdminStatus
-                    tone={
-                      phase === "Manche active"
-                        ? "success"
-                        : phase === "Vérification" || phase === "Préparation"
-                          ? "warning"
-                          : "neutral"
-                    }
-                  >
-                    {phase}
-                  </AdminStatus>
+            {parties.map((party) => (
+              <tr key={party.id}>
+                <td className={`${adminCell} font-medium`}>
+                  {party.name}
+                  <div className="font-mono text-xs text-muted-foreground">{party.code}</div>
                 </td>
-                <td className={adminCell}>{schedule}</td>
-                <td className={adminCell}>{participants}</td>
-                <td className={adminCell}>{anomaly}</td>
-                <td className={adminCell}>{updated}</td>
                 <td className={adminCell}>
-                  <div className="flex gap-2">
+                  <AdminStatus tone={toneForStatus(party.status)}>{party.status}</AdminStatus>
+                </td>
+                <td className={adminCell}>
+                  {party.scheduledAt ? new Date(party.scheduledAt).toLocaleString() : "—"}
+                </td>
+                <td className={adminCell}>
+                  {party.participantCount}
+                  {party.maxPlayers != null ? ` / ${party.maxPlayers}` : ""}
+                </td>
+                <td className={adminCell}>
+                  {party.entryFeeAmount != null
+                    ? `${party.entryFeeAmount} ${party.entryFeeCurrency}`
+                    : "Gratuit"}
+                </td>
+                <td className={adminCell}>{new Date(party.updatedAt).toLocaleString()}</td>
+                <td className={adminCell}>
+                  <div className="flex flex-wrap gap-1">
                     <Button
                       size="sm"
                       variant="outline"
-                      render={<Link href={`/admin/parties/${id}/setup`} />}
+                      render={<Link href={`/admin/parties/${party.id}/setup`} />}
                     >
                       Setup
                     </Button>
-                    <Button size="sm" render={<Link href={`/admin/parties/${id}/control`} />}>
-                      Ouvrir
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      render={<Link href={`/admin/parties/${party.id}/control`} />}
+                    >
+                      Contrôle
                       <ArrowRight />
                     </Button>
                   </div>
@@ -132,8 +117,8 @@ export default function AdminPartiesPage() {
               </tr>
             ))}
           </AdminTable>
-        </AdminSection>
-      </div>
+        ) : null}
+      </AdminSection>
     </AppShell>
   );
 }

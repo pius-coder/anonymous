@@ -14,7 +14,6 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-import type { UiParty } from "@/lib/ui-data";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,14 +43,14 @@ function readinessOf(state: PreparationState | undefined, userIdHint?: string) {
   return { present: false, ready: false, status: "unknown" as const };
 }
 
-export function LobbyPanel({ party }: { party: UiParty }) {
+export function LobbyPanel({ partyCode }: { partyCode: string }) {
   const queryClient = useQueryClient();
-  const queryKey = ["preparation", "player", party.code] as const;
+  const queryKey = ["preparation", "player", partyCode] as const;
 
   const prepQuery = useQuery({
     queryKey,
     queryFn: async () => {
-      const res = await getPlayerPreparation(party.code);
+      const res = await getPlayerPreparation(partyCode);
       if (!res.success) {
         const err = new Error(res.error.message) as Error & { code?: string };
         err.code = res.error.code;
@@ -68,7 +67,7 @@ export function LobbyPanel({ party }: { party: UiParty }) {
 
   const presentMutation = useMutation({
     mutationFn: async () => {
-      const res = await markPresent(party.code);
+      const res = await markPresent(partyCode);
       if (!res.success) throw Object.assign(new Error(res.error.message), { code: res.error.code });
       return res.data;
     },
@@ -77,7 +76,7 @@ export function LobbyPanel({ party }: { party: UiParty }) {
 
   const readyMutation = useMutation({
     mutationFn: async () => {
-      const res = await markReady(party.code);
+      const res = await markReady(partyCode);
       if (!res.success) throw Object.assign(new Error(res.error.message), { code: res.error.code });
       return res.data;
     },
@@ -86,7 +85,7 @@ export function LobbyPanel({ party }: { party: UiParty }) {
 
   const leaveMutation = useMutation({
     mutationFn: async () => {
-      const res = await leavePreparation(party.code);
+      const res = await leavePreparation(partyCode);
       if (!res.success) throw Object.assign(new Error(res.error.message), { code: res.error.code });
       return res.data;
     },
@@ -244,7 +243,7 @@ export function LobbyPanel({ party }: { party: UiParty }) {
         <Card>
           <CardHeader>
             <CardTitle>Prochaine action</CardTitle>
-            <CardDescription>{party.startsAt}</CardDescription>
+            <CardDescription>Horaire communiqué par l’équipe de session</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {(presentMutation.isError || readyMutation.isError || leaveMutation.isError) && (
@@ -291,7 +290,7 @@ export function LobbyPanel({ party }: { party: UiParty }) {
               className="w-full"
               size="lg"
               disabled={!canEnter}
-              render={canEnter ? <Link href={`/parties/${party.code}/room`} /> : undefined}
+              render={canEnter ? <Link href={`/parties/${partyCode}/room`} /> : undefined}
             >
               Entrer dans la room <ArrowRight />
             </Button>

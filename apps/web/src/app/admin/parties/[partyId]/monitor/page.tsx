@@ -1,3 +1,6 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
 import { Activity, Eye, Radio, Users } from "lucide-react";
 import {
   AdminMetric,
@@ -10,14 +13,53 @@ import {
 import { AppShell } from "@/components/ui/AppShell";
 import { ConnectionStatus } from "@/components/ui/ConnectionStatus";
 import { ReadonlyBadge } from "@/components/ui/ReadonlyBadge";
+import { getAdminParty } from "@/services/admin/adminPartyClient";
+import { getAdminPreparationState } from "@/services/preparationClient";
+import { use } from "react";
 
-export default async function AdminPartyMonitorPage({
+export default function AdminPartyMonitorPage({
   params,
 }: {
   params: Promise<{ partyId: string }>;
 }) {
-  const { partyId: raw } = await params;
+  const { partyId: raw } = use(params);
   const partyId = decodeURIComponent(raw);
+
+  const partyQuery = useQuery({
+    queryKey: ["admin", "party", partyId, "monitor"],
+    queryFn: async () => {
+      const res = await getAdminParty(partyId);
+      if (!res.success) throw new Error(`${res.error.code}: ${res.error.message}`);
+      return res.data;
+    },
+    refetchInterval: 8_000,
+    staleTime: 5_000,
+  });
+
+  const prepQuery = useQuery({
+    queryKey: ["preparation", "admin", partyId, "monitor"],
+    queryFn: async () => {
+      const res = await getAdminPreparationState(partyId);
+      if (!res.success) throw new Error(`${res.error.code}: ${res.error.message}`);
+      return res.data;
+    },
+    refetchInterval: 8_000,
+    retry: 1,
+  });
+
+  const party = partyQuery.data;
+  const participants = prepQuery.data?.participants ?? [];
+  // Derive stale only from React Query flags (no Date.now — purity lint).
+  const stale = partyQuery.isStale || prepQuery.isStale;
+  const connState =
+    partyQuery.isError || prepQuery.isError
+      ? "offline"
+      : partyQuery.isFetching || prepQuery.isFetching
+        ? "reconnecting"
+        : stale
+          ? "stale"
+          : "stable";
+
   return (
     <AppShell
       audience="Admin"
@@ -27,104 +69,98 @@ export default async function AdminPartyMonitorPage({
       actions={
         <div className="flex gap-2">
           <ReadonlyBadge />
-          <ConnectionStatus state="stable" />
+          <ConnectionStatus state={connState} />
         </div>
       }
     >
       <div className="space-y-4">
         <PartyAdminNav partyId={partyId} current="monitor" />
-        <div className="flex items-center justify-between border border-cyan-800 bg-cyan-950/30 px-4 py-3">
-          <div>
-            <p className="text-xs font-semibold text-cyan-200">ROUND_ACTIVE · Manche 2/4</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Deadline serveur 18:27:30 · snapshot il y a 3 s
-            </p>
+        {partyQuery.isLoading ? (
+          <p className="text-sm text-muted-foreground">Chargement de l’état…</p>
+        ) : null}
+        {partyQuery.isError ? (
+          <p className="text-sm text-rose-300" role="alert">
+            {partyQuery.error instanceof Error ? partyQuery.error.message : "Erreur"}
+          </p>
+        ) : null}
+        {party ? (
+          <div className="flex items-center justify-between border border-cyan-800 bg-cyan-950/30 px-4 py-3">
+            <div>
+              <p className="text-xs font-semibold text-cyan-200">
+                {party.status} · {party.name}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Snapshot{" "}
+                {partyQuery.dataUpdatedAt
+                  ? new Date(partyQuery.dataUpdatedAt).toLocaleTimeString()
+                  : "—"}
+                {stale ? " · données potentiellement obsolètes" : ""}
+              </p>
+            </div>
+            <AdminStatus tone={stale ? "warning" : "success"}>
+              {stale ? "STALE" : "LIVE"}
+            </AdminStatus>
           </div>
-          <AdminStatus tone="success">LIVE STABLE</AdminStatus>
-        </div>
+        ) : null}
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <AdminMetric icon={Users} label="Connectés" value="38 / 39" detail="1 reconnexion" />
+          <AdminMetric
+            icon={Users}
+            label="Participants"
+            value={String(prepQuery.data?.stats.total ?? party?.participantCount ?? "—")}
+            detail={`${prepQuery.data?.stats.present ?? "—"} présents`}
+          />
           <AdminMetric
             icon={Activity}
-            label="Progression"
-            value="64%"
-            detail="24 joueurs terminés"
+            label="Prêts"
+            value={String(prepQuery.data?.stats.ready ?? "—")}
+            detail={`${prepQuery.data?.stats.absent ?? 0} absents`}
           />
-          <AdminMetric icon={Radio} label="Latence P95" value="86 ms" detail="dans la cible" />
-          <AdminMetric icon={Eye} label="Spectateurs" value="127" detail="snapshot public filtré" />
+          <AdminMetric
+            icon={Radio}
+            label="Phase"
+            value={party?.status ?? "—"}
+            detail="état serveur"
+          />
+          <AdminMetric
+            icon={Eye}
+            label="Capacité"
+            value={party?.maxPlayers != null ? String(party.maxPlayers) : "—"}
+            detail="lecture seule"
+          />
         </section>
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-          <AdminSection
-            title="Progression participants"
-            description="État autorisé uniquement; aucune réponse privée ni score provisoire."
-          >
+        <AdminSection
+          title="Progression participants"
+          description="État autorisé uniquement; aucune commande joueur."
+        >
+          {prepQuery.isError ? (
+            <p className="p-4 text-sm text-amber-300">
+              Préparation indisponible:{" "}
+              {prepQuery.error instanceof Error ? prepQuery.error.message : "erreur"}
+            </p>
+          ) : null}
+          {!prepQuery.isLoading && participants.length === 0 ? (
+            <p className="p-4 text-sm text-muted-foreground">Aucun participant à afficher.</p>
+          ) : null}
+          {participants.length > 0 ? (
             <AdminTable
-              headers={["Joueur", "Connexion", "État", "Dernier événement", "Anomalie"]}
+              headers={["Joueur", "Connexion", "État", "Ready", "Anomalie"]}
               label="Progression des participants"
             >
-              <tr>
-                <td className={adminCell}>Mireille N.</td>
-                <td className={adminCell}>
-                  <AdminStatus tone="success">Connectée</AdminStatus>
-                </td>
-                <td className={adminCell}>En jeu</td>
-                <td className={adminCell}>commande acceptée · 4 s</td>
-                <td className={adminCell}>Aucune</td>
-              </tr>
-              <tr>
-                <td className={adminCell}>Cedric M.</td>
-                <td className={adminCell}>
-                  <AdminStatus tone="warning">Reconnexion</AdminStatus>
-                </td>
-                <td className={adminCell}>Gelé</td>
-                <td className={adminCell}>socket fermé · 18 s</td>
-                <td className={adminCell}>Recovery #2</td>
-              </tr>
-              <tr>
-                <td className={adminCell}>Aïcha B.</td>
-                <td className={adminCell}>
-                  <AdminStatus tone="success">Connectée</AdminStatus>
-                </td>
-                <td className={adminCell}>Terminé</td>
-                <td className={adminCell}>round completed · 31 s</td>
-                <td className={adminCell}>Aucune</td>
-              </tr>
+              {participants.map((p) => (
+                <tr key={p.id}>
+                  <td className={adminCell}>{p.userName ?? p.userId}</td>
+                  <td className={adminCell}>
+                    <AdminStatus tone="info">{p.status}</AdminStatus>
+                  </td>
+                  <td className={adminCell}>{p.readinessState}</td>
+                  <td className={adminCell}>
+                    {p.readinessState === "ready" || p.readinessState === "READY" ? "oui" : "non"}
+                  </td>
+                  <td className={adminCell}>—</td>
+                </tr>
+              ))}
             </AdminTable>
-          </AdminSection>
-          <AdminSection title="Snapshot public">
-            <div className="aspect-video bg-zinc-950 p-4">
-              <div className="flex h-full items-center justify-center border border-dashed border-zinc-700 text-center">
-                <div>
-                  <Eye className="mx-auto text-cyan-400" />
-                  <p className="mt-3 text-sm font-medium">Memory Sequence · vue filtrée</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Séquences privées et réponses masquées
-                  </p>
-                </div>
-              </div>
-            </div>
-          </AdminSection>
-        </div>
-        <AdminSection title="Événements live filtrés">
-          <AdminTable
-            headers={["Heure", "Type", "Audience", "Résumé", "Corrélation"]}
-            label="Événements live filtrés"
-          >
-            <tr>
-              <td className={adminCell}>18:24:27</td>
-              <td className={adminCell}>player.progressed</td>
-              <td className={adminCell}>ADMIN_READONLY</td>
-              <td className={adminCell}>Progression agrégée mise à jour</td>
-              <td className={adminCell}>evt_c82f</td>
-            </tr>
-            <tr>
-              <td className={adminCell}>18:24:12</td>
-              <td className={adminCell}>player.reconnecting</td>
-              <td className={adminCell}>ADMIN_READONLY</td>
-              <td className={adminCell}>Recovery window ouverte</td>
-              <td className={adminCell}>evt_c7aa</td>
-            </tr>
-          </AdminTable>
+          ) : null}
         </AdminSection>
       </div>
     </AppShell>

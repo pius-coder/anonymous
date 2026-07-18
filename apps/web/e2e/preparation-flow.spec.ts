@@ -10,13 +10,20 @@ const webUrl = (
 ).replace(/\/$/, "");
 const apiProxyUrl = `${webUrl}/api`;
 const monorepoRoot = process.env.MONOREPO_ROOT || resolve(process.cwd(), "../..");
-const partyCode = "AURORA-21";
 
 async function login(context: BrowserContext, email: string) {
   const response = await context.request.post(`${apiProxyUrl}/v1/auth/login`, {
     data: { email, password: "SeedPass123!" },
   });
   expect(response.ok(), await response.text()).toBeTruthy();
+}
+
+async function acquireControlLease(context: BrowserContext, partyId: string) {
+  const lease = await context.request.post(
+    `${apiProxyUrl}/v1/admin/parties/${partyId}/control-lease`,
+    { data: { ttlSeconds: 300 } },
+  );
+  expect(lease.ok(), await lease.text()).toBeTruthy();
 }
 
 test.describe("L5 preparation flow", () => {
@@ -31,7 +38,12 @@ test.describe("L5 preparation flow", () => {
 
   test("admin opens and announces, player becomes ready, admin confirms with an absent", async ({
     browser,
-  }) => {
+  }, testInfo) => {
+    // Unique code avoids CODE_ALREADY_EXISTS on retries / parallel workers.
+    const partyCode = `AUR${testInfo.workerIndex}${testInfo.parallelIndex}${Date.now().toString(36).toUpperCase()}`.slice(
+      0,
+      20,
+    );
     const contextOptions = {
       baseURL: webUrl,
       extraHTTPHeaders: { "x-forwarded-proto": "http" },
@@ -59,14 +71,18 @@ test.describe("L5 preparation flow", () => {
       expect(create.status(), JSON.stringify(created)).toBe(201);
       const partyId = created.data.id as string;
 
+      // Sensitive admin commands require an exclusive control lease (P-A-ADMIN).
+      await acquireControlLease(adminContext, partyId);
+
       const publish = await adminContext.request.post(
         `${apiProxyUrl}/v1/admin/parties/${partyId}/publish`,
+        { data: {} },
       );
       expect(publish.ok(), await publish.text()).toBeTruthy();
 
       for (const [context, key] of [
-        [playerContext, "prep-player-ready"],
-        [absentContext, "prep-player-absent"],
+        [playerContext, `prep-player-ready-${partyCode}`],
+        [absentContext, `prep-player-absent-${partyCode}`],
       ] as const) {
         const registration = await context.request.post(
           `${apiProxyUrl}/v1/parties/${partyCode}/register`,
@@ -88,7 +104,8 @@ test.describe("L5 preparation flow", () => {
       await expect(adminPage.getByText("Annonce E2E préparation").last()).toBeVisible();
 
       const playerPage = await playerContext.newPage();
-      await playerPage.goto(`/parties/${partyCode}/lobby`);
+      const lobbyResponse = await playerPage.goto(`/parties/${partyCode}/lobby`);
+      expect(lobbyResponse?.status()).toBe(200);
       await expect(playerPage.getByText("Annonce E2E préparation")).toBeVisible();
       await playerPage.getByRole("button", { name: "Je suis présent" }).click();
       await expect(playerPage.getByRole("button", { name: "Présence confirmée" })).toBeDisabled();

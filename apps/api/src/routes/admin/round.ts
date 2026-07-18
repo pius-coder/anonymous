@@ -6,6 +6,7 @@ import { requireAuth } from "../../middleware/auth.js";
 import { requireRole } from "../../middleware/rbac.js";
 import { auditLog } from "../../middleware/audit.js";
 import { successResponse, errorResponse } from "../../lib/responses.js";
+import { roundRepository } from "@session-jeu/db";
 import {
   activateRound,
   closeRound,
@@ -15,6 +16,7 @@ import {
   RoundUseCaseError,
   startRoundBriefing,
 } from "../../use-cases/round/round.use-case.js";
+import { assertLease, AdminLeaseError } from "../../lib/admin-control-lease.js";
 import type { StatusCode } from "hono/utils/http-status";
 
 const adminRoundRouter = new Hono<AppEnv>();
@@ -47,8 +49,19 @@ function handleError(c: Parameters<typeof errorResponse>[0], err: unknown) {
   if (err instanceof RoundUseCaseError) {
     return errorResponse(c, err.httpStatus as StatusCode, err.code, err.message);
   }
+  if (err instanceof AdminLeaseError) {
+    return errorResponse(c, err.httpStatus as StatusCode, err.code, err.message);
+  }
   console.error("Unexpected admin round error:", err);
   return errorResponse(c, 500 as StatusCode, "INTERNAL", "Erreur interne du serveur");
+}
+
+async function assertRoundLease(roundId: string, userId: string): Promise<void> {
+  const round = await roundRepository.findRoundById(roundId);
+  if (!round) {
+    throw new RoundUseCaseError("ROUND_NOT_FOUND", "Manche introuvable", 404);
+  }
+  await assertLease(round.partyId, userId);
 }
 
 adminRoundRouter.post(
@@ -99,6 +112,7 @@ adminRoundRouter.post(
     try {
       const { roundId } = c.req.valid("param");
       const user = c.get("user");
+      await assertRoundLease(roundId, user.id);
       const result = await activateRound({ roundId, actorId: user.id });
       return successResponse(c, result);
     } catch (err) {
@@ -119,6 +133,7 @@ adminRoundRouter.post(
       const { roundId } = c.req.valid("param");
       const reason = getAuditReason(c.req.valid("json"));
       const user = c.get("user");
+      await assertRoundLease(roundId, user.id);
       const result = await pauseRound({ roundId, actorId: user.id, reason });
       return successResponse(c, result);
     } catch (err) {
@@ -139,6 +154,7 @@ adminRoundRouter.post(
       const { roundId } = c.req.valid("param");
       const reason = getAuditReason(c.req.valid("json"));
       const user = c.get("user");
+      await assertRoundLease(roundId, user.id);
       const result = await resumeRound({ roundId, actorId: user.id, reason });
       return successResponse(c, result);
     } catch (err) {
@@ -159,6 +175,7 @@ adminRoundRouter.post(
       const { roundId } = c.req.valid("param");
       const reason = getAuditReason(c.req.valid("json"));
       const user = c.get("user");
+      await assertRoundLease(roundId, user.id);
       const result = await closeRound({ roundId, actorId: user.id, reason });
       return successResponse(c, result);
     } catch (err) {

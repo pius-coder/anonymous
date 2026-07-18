@@ -60,9 +60,9 @@ export function AdminRoundControls({
     resolver: zodResolver(configureRoundSchema),
     defaultValues: {
       roundNumber: defaultValues?.roundNumber ?? 1,
-      minigameId: defaultValues?.minigameId ?? "pilot-memory-sequence",
+      minigameId: defaultValues?.minigameId ?? "",
       durationSeconds: defaultValues?.durationSeconds ?? 180,
-      auditReason: defaultValues?.auditReason ?? "Configuration sprint 10",
+      auditReason: defaultValues?.auditReason ?? "",
     },
   });
 
