@@ -28,7 +28,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 
-type ConnectionState = "connecting" | "connected" | "reconnecting" | "preview" | "offline";
+type ConnectionState = "connecting" | "connected" | "reconnecting" | "offline";
 
 type RoomExperienceProps = {
   party: { id: string; code: string; name: string; game: string };
@@ -38,7 +38,6 @@ const connectionCopy: Record<ConnectionState, string> = {
   connecting: "Connexion",
   connected: "Live",
   reconnecting: "Reconnexion",
-  preview: "Aperçu local",
   offline: "Hors ligne",
 };
 
@@ -92,7 +91,6 @@ export function RoomExperience({ party }: RoomExperienceProps) {
             type="button"
             aria-label={`État réseau: ${connectionCopy[connection]}`}
             data-connection-state={connection}
-            data-live-preview={connection === "preview" ? "true" : "false"}
           >
             {connection === "connected" ? <Wifi /> : <WifiOff />}
             <span>{connectionCopy[connection]}</span>
@@ -120,10 +118,10 @@ export function RoomExperience({ party }: RoomExperienceProps) {
         </button>
       </div>
 
-      {connection === "connecting" || connection === "reconnecting" ? (
+      {connection === "connecting" || connection === "reconnecting" || connection === "offline" ? (
         <div className="game-status-overlay" role="status">
-          <span className="game-spinner" />
-          <strong>{connectionCopy[connection]}</strong>
+          {connection === "offline" ? null : <span className="game-spinner" />}
+          <strong>{connection === "offline" ? "Live indisponible" : connectionCopy[connection]}</strong>
         </div>
       ) : null}
 

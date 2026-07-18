@@ -57,6 +57,16 @@ mock.module("@session-jeu/db", {
       markRoundParticipantsWaitingReview: async () => ({ count: 0 }),
     },
     participationRepository: {
+      findParticipationById: async () => ({
+        id: "participation-live",
+        partyId: "party-live",
+        userId: "user-live",
+        role: "PLAYER",
+        status: "PLAYING",
+        paymentState: "PAID",
+        admissionState: "ADMITTED",
+      }),
+      updateParticipation: async () => ({}),
       updateParticipationStatus: async () => ({}),
     },
   },
@@ -144,8 +154,8 @@ async function run(): Promise<void> {
       const playerSnap = getPlayerSnapshotForClient(room.state, {
         sessionId: client.sessionId,
       } as never);
-      assert(playerSnap?.id === "participation-live", "player snapshot id");
-      assert(Object.hasOwn(playerSnap ?? {}, "answer") === false, "no answer on player snap");
+      assert(playerSnap?.self.id === "participation-live", "player snapshot id");
+      assert(Object.hasOwn(playerSnap?.self ?? {}, "answer") === false, "no answer on player snap");
       const adminSnap = getAdminSnapshot(room.state);
       assert(Array.isArray(adminSnap.players), "admin has players");
       const ro = getReadonlySnapshot(room.state);

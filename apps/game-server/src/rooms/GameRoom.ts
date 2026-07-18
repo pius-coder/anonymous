@@ -25,6 +25,7 @@ import {
   getAdminSnapshot,
   getPlayerSnapshotForClient,
   getReadonlySnapshot,
+  getSupportSnapshot,
   registerReadonlyHandlers,
 } from "../handlers/readonly-handler.js";
 import { applyMovementTick, registerMovementHandler } from "../handlers/movement-handler.js";
@@ -32,9 +33,11 @@ import { participationRepository, partyRepository, roundRepository } from "@sess
 import {
   canRequestAdminSnapshot,
   canRequestReadonlySnapshot,
+  canRequestSupportSnapshot,
   isPlayerRole,
 } from "../auth/live-roles.js";
 import { config } from "../config.js";
+import { recordDrop, recordDuplicateInput, recordJoin, recordReconnect, recordReject } from "../metrics.js";
 import { loadServerRoundSnapshot } from "./server-round-source.js";
 
 /**
@@ -61,6 +64,7 @@ type GameRoomJoinOptions = {
 export class GameRoom extends Room<{ state: LiveRoomState }> {
   /** Authoritative reconnect window from server config (never from client options). */
   private reconnectTimeoutMs = config.reconnectTimeoutMs;
+  private commandWindow = new Map<string, { startedAt: number; count: number }>();
 
   async onCreate(options: GameRoomJoinOptions = {}) {
     // Server policy — client cannot override.
@@ -104,6 +108,18 @@ export class GameRoom extends Room<{ state: LiveRoomState }> {
     type: string | number,
     message: unknown,
   ): Promise<void> {
+    if (this.isPayloadTooLarge(message)) {
+      recordReject("PAYLOAD_TOO_LARGE");
+      client.send("command:rejected", { type: String(type), error: "PAYLOAD_TOO_LARGE" });
+      return;
+    }
+
+    if (!this.consumeMessageBudget(client)) {
+      recordReject("RATE_LIMITED");
+      client.send("command:rejected", { type: String(type), error: "RATE_LIMITED" });
+      return;
+    }
+
     const command: CommandMessage = {
       type: String(type),
       payload:
@@ -136,8 +152,14 @@ export class GameRoom extends Room<{ state: LiveRoomState }> {
           error: result.error,
         });
       }
+      if (result.error) {
+        recordReject(result.error);
+      }
       client.send("command:rejected", { type: command.type, error: result.error });
     } else if (result.acknowledge !== false) {
+      if (result.idempotent) {
+        recordDuplicateInput();
+      }
       client.send("command:accepted", {
         type: command.type,
         idempotent: result.idempotent === true,
@@ -169,7 +191,7 @@ export class GameRoom extends Room<{ state: LiveRoomState }> {
     return result;
   }
 
-  onJoin(client: Client, options: GameRoomJoinOptions, auth: LiveAuthResult) {
+  async onJoin(client: Client, options: GameRoomJoinOptions, auth: LiveAuthResult) {
     addPlayer(this.state, client, {
       participationId: auth.participationId!,
       partyId: auth.partyId!,
@@ -178,7 +200,15 @@ export class GameRoom extends Room<{ state: LiveRoomState }> {
       connectionToken: options.connectionToken!,
       participationStatus: auth.participationStatus,
     });
-    void persistConnected(auth.participationId);
+    try {
+      await persistConnected(auth.participationId);
+    } catch (error) {
+      removePlayer(this.state, client);
+      throw new Error(
+        `LIVE_PERSISTENCE_FAILED:${error instanceof Error ? error.message : "unknown error"}`,
+      );
+    }
+    recordJoin();
 
     client.send("player:connected", {
       sessionId: client.sessionId,
@@ -198,13 +228,14 @@ export class GameRoom extends Room<{ state: LiveRoomState }> {
   async onLeave(client: Client, code?: number) {
     if (code !== undefined && code !== CloseCode.CONSENTED) {
       markDisconnected(this.state, client);
-      await persistReconnecting(getParticipationId(client));
       try {
+        await persistReconnecting(getParticipationId(client));
         // Timeout from server config only (milliseconds → seconds for Colyseus API).
         const reconnectionTimeoutSec = Math.max(1, Math.floor(this.reconnectTimeoutMs / 1000));
         await this.allowReconnection(client, reconnectionTimeoutSec);
         markReconnected(this.state, client);
         await persistReconnect(getParticipationId(client));
+        recordReconnect();
         client.send("player:reconnected", {
           sessionId: client.sessionId,
           currentRoundId: this.state.currentRoundId,
@@ -215,23 +246,35 @@ export class GameRoom extends Room<{ state: LiveRoomState }> {
         const role = (client.userData as Partial<LiveAuthInfo> | undefined)?.role;
         if (role) this.sendAudienceSnapshot(client, role);
         return;
-      } catch {
-        // Timed out or reconnection was rejected; fall through to final disconnect cleanup.
+      } catch (error) {
+        console.error("live reconnect failed", {
+          roomId: this.roomId,
+          participationId: getParticipationId(client),
+          error: error instanceof Error ? error.message : "unknown error",
+        });
+        // Timed out or reconnection persistence failed; fall through to final disconnect cleanup.
       }
     }
 
     removePlayer(this.state, client);
     await persistDisconnect(getParticipationId(client));
+    this.commandWindow.delete(getParticipationId(client) ?? client.sessionId);
+    recordDrop();
   }
 
   onDispose() {
     this.state.players.clear();
     this.state.acceptedActionNonces.clear();
+    this.commandWindow.clear();
   }
 
   private sendAudienceSnapshot(client: Client, role: string): void {
     if (canRequestAdminSnapshot(role)) {
       client.send("snapshot:admin", getAdminSnapshot(this.state));
+      return;
+    }
+    if (canRequestSupportSnapshot(role)) {
+      client.send("snapshot:support", getSupportSnapshot(this.state));
       return;
     }
     if (canRequestReadonlySnapshot(role) && !isPlayerRole(role)) {
@@ -261,32 +304,63 @@ export class GameRoom extends Room<{ state: LiveRoomState }> {
     const roundId = this.state.currentRoundId;
     const now = new Date();
 
-    if (roundId) {
-      const claimed = await roundRepository.claimDueRoundDeadline(roundId, now).catch(() => false);
-      if (!claimed) return;
+    try {
+      if (roundId) {
+        const claimed = await roundRepository.claimDueRoundDeadline(roundId, now);
+        if (!claimed) return;
 
-      await roundRepository.updateRoundLifecycle(roundId, { status: "VERIFICATION" });
-      if (this.state.partyId) {
-        await partyRepository
-          .updatePartyStatus(this.state.partyId, "ROUND_VERIFICATION")
-          .catch(() => undefined);
+        await roundRepository.updateRoundLifecycle(roundId, { status: "VERIFICATION" });
+        if (this.state.partyId) {
+          await partyRepository.updatePartyStatus(this.state.partyId, "ROUND_VERIFICATION");
+        }
+        const participants = await roundRepository.listRoundParticipants(roundId);
+        await roundRepository.markRoundParticipantsWaitingReview(roundId);
+        await Promise.all(
+          participants.map(async (participant: { participationId: string }) => {
+            await participationRepository.updateParticipationStatus(
+              participant.participationId,
+              "WAITING_REVIEW",
+            );
+          }),
+        );
       }
-      const participants = await roundRepository.listRoundParticipants(roundId).catch(() => []);
-      await roundRepository.markRoundParticipantsWaitingReview(roundId).catch(() => undefined);
-      await Promise.all(
-        participants.map(async (participant) => {
-          await participationRepository
-            .updateParticipationStatus(participant.participationId, "WAITING_REVIEW")
-            .catch(() => undefined);
-        }),
-      );
+
+      this.state.currentRoundStatus = "verification";
+      this.broadcast("round:closed", {
+        roundId,
+        reason: "DEADLINE_REACHED",
+      });
+    } catch (error) {
+      console.error("round deadline close failed", {
+        roomId: this.roomId,
+        roundId,
+        error: error instanceof Error ? error.message : "unknown error",
+      });
+    }
+  }
+
+  private isPayloadTooLarge(message: unknown): boolean {
+    const serialized =
+      typeof message === "string" ? message : JSON.stringify(message ?? {});
+    return Buffer.byteLength(serialized, "utf8") > config.maxPayloadBytes;
+  }
+
+  private consumeMessageBudget(client: Client): boolean {
+    const now = Date.now();
+    const key = getParticipationId(client) ?? client.sessionId;
+    const entry = this.commandWindow.get(key);
+
+    if (!entry || now - entry.startedAt >= config.messageWindowMs) {
+      this.commandWindow.set(key, { startedAt: now, count: 1 });
+      return true;
     }
 
-    this.state.currentRoundStatus = "verification";
-    this.broadcast("round:closed", {
-      roundId,
-      reason: "DEADLINE_REACHED",
-    });
+    entry.count += 1;
+    if (entry.count > config.maxMessagesPerWindow) {
+      return false;
+    }
+
+    return true;
   }
 }
 

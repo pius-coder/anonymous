@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 const SEEDED_ROOM_CODE = "SEED-PARTY-01";
 
 /**
- * Hors E2E live Colyseus.
+ * Hors preuve E2E live Colyseus.
  *
  * The player route is now guarded by real participation + payment state.
  * This suite validates that a newly created account cannot bypass the room guard
@@ -19,9 +19,6 @@ test("blocks room access without an eligible paid participation", async ({ page 
   page.on("console", (message) => {
     if (message.type() === "error") {
       const location = message.location();
-      const expectedPreviewFallback = message.text().includes("Failed to load resource")
-        && location.url.includes("RealtimeAccessService/CreateLiveAccess");
-      if (expectedPreviewFallback) return;
       runtimeErrors.push(`${message.text()}${location.url ? ` (${location.url})` : ""}`);
     }
   });
@@ -31,7 +28,10 @@ test("blocks room access without an eligible paid participation", async ({ page 
   await page.getByLabel("Adresse email").fill(email);
   await page.getByLabel("Mot de passe").fill("NoyaTest2026!");
   await page.getByRole("checkbox", { name: /J’accepte/ }).click();
-  await page.getByRole("button", { name: "Créer mon compte" }).click();
+  await Promise.all([
+    page.waitForResponse((response) => response.url().includes("IdentityService/Register")),
+    page.getByRole("button", { name: "Créer mon compte" }).click(),
+  ]);
   await expect(page).toHaveURL(/\/parties$/);
 
   for (let visit = 0; visit < 2; visit += 1) {
@@ -46,5 +46,7 @@ test("blocks room access without an eligible paid participation", async ({ page 
     await page.goto("/parties");
   }
 
-  expect(runtimeErrors).toEqual([]);
+  expect(
+    runtimeErrors.filter((message) => !message.includes("RealtimeAccessService/CreateLiveAccess")),
+  ).toEqual([]);
 });

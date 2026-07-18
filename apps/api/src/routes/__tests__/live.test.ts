@@ -13,6 +13,9 @@ const dbMocks = vi.hoisted(() => ({
   participationRepository: {
     findParticipation: vi.fn(),
   },
+  roundRepository: {
+    listRoundsByParty: vi.fn(),
+  },
   realtimeRepository: {
     upsertConnection: vi.fn(),
   },
@@ -49,19 +52,24 @@ function mockAuthSession() {
 
 beforeEach(() => {
   process.env.ALLOW_INSECURE_AUTH_COOKIE = "true";
-  process.env.LIVE_SERVER_URL = "ws://live.test";
+  process.env.GAME_WS_URL = "ws://live.test";
   vi.clearAllMocks();
   mockAuthSession();
   dbMocks.partyRepository.findPartyById.mockResolvedValue({
     id: "party-1",
     status: "ROUND_ACTIVE",
   });
+  dbMocks.roundRepository.listRoundsByParty.mockResolvedValue([
+    { id: "round-1", number: 1, status: "ACTIVE", deadline: null },
+  ]);
   dbMocks.participationRepository.findParticipation.mockResolvedValue({
     id: "participation-1",
     partyId: "party-1",
     userId: "user-1",
     role: "PLAYER",
     status: "READY",
+    paymentState: "PAID",
+    admissionState: "ADMITTED",
   });
   dbMocks.realtimeRepository.upsertConnection.mockImplementation((_participationId, data) =>
     Promise.resolve({
@@ -75,7 +83,7 @@ beforeEach(() => {
 
 afterEach(() => {
   delete process.env.ALLOW_INSECURE_AUTH_COOKIE;
-  delete process.env.LIVE_SERVER_URL;
+  delete process.env.GAME_WS_URL;
 });
 
 describe("POST /v1/live/parties/:partyId/access", () => {
@@ -132,5 +140,23 @@ describe("POST /v1/live/parties/:partyId/access", () => {
 
     expect(res.status).toBe(422);
     expect(body.error.code).toBe("PARTY_NOT_LIVE");
+  });
+
+  it("rejects unpaid players before issuing live access", async () => {
+    dbMocks.participationRepository.findParticipation.mockResolvedValueOnce({
+      id: "participation-1",
+      partyId: "party-1",
+      userId: "user-1",
+      role: "PLAYER",
+      status: "READY",
+      paymentState: "NONE",
+      admissionState: "PENDING",
+    });
+
+    const res = await authenticatedRequest("/v1/live/parties/party-1/access");
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body.error.code).toBe("PAYMENT_REQUIRED");
   });
 });
