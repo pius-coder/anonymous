@@ -8,6 +8,7 @@ import { PixelAvatar } from "@/components/ui/PixelAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { paymentApi } from "@/services/payment/payment-api";
 import { ScoringService } from "@/services/rpcServices";
 
 type PlayerResultsPanelProps = {
@@ -35,9 +36,28 @@ export function PlayerResultsPanel({ partyId, partyCode, preferWaiting = false }
     },
   });
 
+  const ledgerQuery = useQuery({
+    queryKey: ["player", "wallet-ledger", partyId],
+    enabled: Boolean(partyId) && Boolean(resultsQuery.data?.publishedAt) && Boolean(resultsQuery.data?.roundId),
+    queryFn: async () => {
+      const result = await paymentApi.getLedger();
+      if (!result.success) {
+        throw new Error(result.error.message);
+      }
+      return result.data;
+    },
+  });
+
   const scores = resultsQuery.data?.finalScores ?? [];
   const published = scores.length > 0 && Boolean(resultsQuery.data?.publishedAt);
   const waiting = preferWaiting || !published;
+  const ledgerPrize = (ledgerQuery.data ?? []).find(
+    (entry) =>
+      entry.credit > 0 &&
+      entry.reason.toLowerCase().includes("prize round") &&
+      resultsQuery.data?.roundId &&
+      entry.reason.includes(resultsQuery.data.roundId),
+  );
 
   if (resultsQuery.isError) {
     return (
@@ -126,6 +146,11 @@ export function PlayerResultsPanel({ partyId, partyCode, preferWaiting = false }
               <Share2 /> Partager
             </Button>
           </div>
+          <p className="mt-4 text-sm text-muted-foreground">
+            {ledgerPrize
+              ? `Gain officiel crédité : +${ledgerPrize.credit.toLocaleString("fr-FR")} XAF dans le ledger.`
+              : "Aucun gain crédité pour cette manche, ou ledger en attente de synchronisation officielle."}
+          </p>
         </CardContent>
       </Card>
       <Card className="ranking-card">

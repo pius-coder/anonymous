@@ -6,7 +6,13 @@ import {
   Prisma,
   ProviderServiceKind,
 } from "@prisma/client";
-import type { ProvisionalScore, PublishedScore, ScoreReview, LedgerEntry } from "@prisma/client";
+import type {
+  ProvisionalScore,
+  PublishedScore,
+  ScoreReview,
+  LedgerEntry,
+  ScoreEvidence,
+} from "@prisma/client";
 import { prisma } from "../prisma.js";
 import type { CreateProvisionalScoreData, CreateScoreReviewData } from "./types.js";
 
@@ -77,6 +83,7 @@ export type PublishRoundScoreRow = {
   participationId: string;
   score: number;
   rank: number;
+  evidenceHash?: string | null;
 };
 
 export type PublishRoundScoresResult = {
@@ -116,6 +123,7 @@ export async function publishRoundScores(input: {
               score: row.score,
               rank: row.rank,
               publishedBy: input.publishedBy,
+              evidenceHash: row.evidenceHash ?? undefined,
             },
           });
           published.push(created);
@@ -160,6 +168,65 @@ export function findPublishedScoreByRound(roundId: string, participationId: stri
 
 export function listPublishedScoresByRound(roundId: string): Promise<PublishedScore[]> {
   return prisma.publishedScore.findMany({ where: { roundId } });
+}
+
+export type ScoreVerificationRow = ProvisionalScore & {
+  scoreEvidence: ScoreEvidence | null;
+  reviews: ScoreReview[];
+  published: PublishedScore | null;
+  participation: {
+    id: string;
+    userId: string;
+    paymentState: string;
+    admissionState: string;
+    paymentTransactionId: string | null;
+    user: {
+      id: string;
+      name: string | null;
+      email: string;
+    };
+  };
+};
+
+export function listScoreVerificationRowsByRound(roundId: string): Promise<ScoreVerificationRow[]> {
+  return prisma.provisionalScore.findMany({
+    where: { roundId },
+    include: {
+      scoreEvidence: true,
+      reviews: {
+        orderBy: { createdAt: "asc" },
+      },
+      published: true,
+      participation: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      },
+    },
+    orderBy: [{ score: "desc" }, { participationId: "asc" }],
+  });
+}
+
+export function listPrizeLedgerEntriesByRound(roundId: string) {
+  return prisma.ledgerEntry.findMany({
+    where: {
+      ledgerType: LedgerType.PRIZE,
+      idempotencyKey: {
+        startsWith: `prize:${roundId}:`,
+      },
+    },
+    include: {
+      transaction: true,
+      wallet: true,
+    },
+    orderBy: { createdAt: "asc" },
+  });
 }
 
 export function createScoreReview(data: CreateScoreReviewData): Promise<ScoreReview> {
@@ -300,6 +367,7 @@ export async function publishRoundScoresWithGainsAndAudit(input: {
               score: row.score,
               rank: row.rank,
               publishedBy: input.publishedBy,
+              evidenceHash: row.evidenceHash ?? undefined,
             },
           });
           published.push(created);

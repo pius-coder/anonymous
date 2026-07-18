@@ -3,10 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const dbMocks = vi.hoisted(() => ({
   scoreRepository: {
     listProvisionalScoresByRound: vi.fn(),
+    listScoreVerificationRowsByRound: vi.fn(),
+    listPrizeLedgerEntriesByRound: vi.fn(),
     findProvisionalScoreByRound: vi.fn(),
     createScoreReviewAndUpdateProvisional: vi.fn(),
     listPublishedScoresByRound: vi.fn(),
     publishRoundScores: vi.fn(),
+    publishRoundScoresWithGainsAndAudit: vi.fn(),
   },
   roundRepository: {
     findRoundById: vi.fn(),
@@ -24,6 +27,9 @@ const dbMocks = vi.hoisted(() => ({
   auditRepository: {
     createAuditLog: vi.fn(),
   },
+  paymentRepository: {
+    findWalletByUserId: vi.fn(),
+  },
 }));
 
 vi.mock("@session-jeu/db", () => dbMocks);
@@ -31,6 +37,7 @@ vi.mock("@session-jeu/db", () => dbMocks);
 const {
   ScoringUseCaseError,
   correctProvisionalScore,
+  getAdminScoreVerificationDossier,
   getPublishedResults,
   listProvisionalScores,
   publishResults,
@@ -49,6 +56,7 @@ const party = {
   code: "SEED-01",
   name: "Party",
   status: "VERIFICATION",
+  entryFeeAmount: { toNumber: () => 500 },
 };
 
 const partA = {
@@ -83,11 +91,65 @@ function provisionalRow(
     score: overrides.score ?? 10,
     rank: overrides.rank ?? null,
     status: overrides.status ?? "PROVISIONAL",
-    evidence: { source: "test" },
-    reviewedBy: null,
-    reviewedAt: null,
-    createdAt: new Date("2026-01-01T00:00:00.000Z"),
-    updatedAt: overrides.updatedAt ?? new Date("2026-01-01T00:00:00.000Z"),
+      evidence: { source: "test" },
+      evidenceHash: "hash-test",
+      reviewedBy: null,
+      reviewedAt: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+      updatedAt: overrides.updatedAt ?? new Date("2026-01-01T00:00:00.000Z"),
+    };
+}
+
+function verificationRow(
+  overrides: Partial<{
+    id: string;
+    participationId: string;
+    score: number;
+    status: string;
+    updatedAt: Date;
+    rank: number | null;
+    evidence: Record<string, unknown>;
+    evidenceHash: string;
+    minigameVersion: string | null;
+  }> = {},
+) {
+  return {
+    ...provisionalRow(overrides),
+    evidence:
+      overrides.evidence ?? {
+        source: "test",
+        inputRef: "input://test",
+        configRef: "config://test",
+        seedRef: "seed://test",
+        minigameVersion: "v1",
+      },
+    evidenceHash: overrides.evidenceHash ?? "hash-test",
+    scoreEvidence: {
+      id: "sev-1",
+      provisionalScoreId: overrides.id ?? "prov-a",
+      evidenceHash: overrides.evidenceHash ?? "hash-test",
+      ciphertext: new Uint8Array([1, 2, 3]),
+      nonce: null,
+      keyId: "key-1",
+      minigameVersion: overrides.minigameVersion ?? "v1",
+      classification: "SYSTEM_ONLY",
+      purgedAt: null,
+      createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    },
+    reviews: [],
+    published: null,
+    participation: {
+      id: overrides.participationId ?? "part-a",
+      userId: overrides.participationId === "part-b" ? "user-b" : "user-a",
+      paymentState: "PAID",
+      admissionState: "ADMITTED",
+      paymentTransactionId: "pay-1",
+      user: {
+        id: overrides.participationId === "part-b" ? "user-b" : "user-a",
+        name: overrides.participationId === "part-b" ? "Player B" : "Player A",
+        email: overrides.participationId === "part-b" ? "b@example.test" : "a@example.test",
+      },
+    },
   };
 }
 
@@ -108,6 +170,8 @@ beforeEach(() => {
   );
   dbMocks.auditRepository.createAuditLog.mockResolvedValue({});
   dbMocks.scoreRepository.listPublishedScoresByRound.mockResolvedValue([]);
+  dbMocks.scoreRepository.listPrizeLedgerEntriesByRound.mockResolvedValue([]);
+  dbMocks.paymentRepository.findWalletByUserId.mockResolvedValue({ id: "wallet-1" });
 });
 
 afterEach(() => {
@@ -237,10 +301,32 @@ describe("getPublishedResults (no provisional leak)", () => {
   });
 });
 
+describe("getAdminScoreVerificationDossier", () => {
+  it("returns evidence validation and gain metrics for admin dossier", async () => {
+    dbMocks.scoreRepository.listScoreVerificationRowsByRound.mockResolvedValue([
+      verificationRow(),
+    ]);
+    dbMocks.scoreRepository.listPrizeLedgerEntriesByRound.mockResolvedValue([
+      {
+        id: "ledger-1",
+        transactionId: "tx-1",
+        walletId: "wallet-1",
+        credit: 500,
+        transaction: { userId: "user-a", walletId: "wallet-1" },
+      },
+    ]);
+
+    const dossier = await getAdminScoreVerificationDossier("party-1", "round-1");
+    expect(dossier.rows[0]?.evidence.validationStatus).toBe("VALID");
+    expect(dossier.rows[0]?.gainPreview.credited).toBe(true);
+    expect(dossier.metrics.creditedGainTotal).toBe(500);
+  });
+});
+
 describe("publishResults", () => {
   it("rejects when scores are not verified", async () => {
-    dbMocks.scoreRepository.listProvisionalScoresByRound.mockResolvedValue([
-      provisionalRow({ status: "PROVISIONAL" }),
+    dbMocks.scoreRepository.listScoreVerificationRowsByRound.mockResolvedValue([
+      verificationRow({ status: "PROVISIONAL" }),
     ]);
 
     await expect(
@@ -248,12 +334,26 @@ describe("publishResults", () => {
     ).rejects.toMatchObject({ code: "SCORE_NOT_VERIFIED" });
   });
 
+  it("rejects when runtime evidence is missing or mismatched", async () => {
+    dbMocks.scoreRepository.listScoreVerificationRowsByRound.mockResolvedValue([
+      verificationRow({
+        status: "VERIFIED",
+        evidenceHash: "",
+        minigameVersion: null,
+      }),
+    ]);
+
+    await expect(
+      publishResults({ roundId: "round-1", partyId: "party-1", actorId: "admin-1" }),
+    ).rejects.toMatchObject({ code: "EVIDENCE_HASH_EMPTY" });
+  });
+
   it("publishes verified scores and is idempotent on second call", async () => {
     const verified = [
-      provisionalRow({ id: "prov-a", participationId: "part-a", score: 12, status: "VERIFIED" }),
-      provisionalRow({ id: "prov-b", participationId: "part-b", score: 8, status: "VERIFIED" }),
+      verificationRow({ id: "prov-a", participationId: "part-a", score: 12, status: "VERIFIED" }),
+      verificationRow({ id: "prov-b", participationId: "part-b", score: 8, status: "VERIFIED" }),
     ];
-    dbMocks.scoreRepository.listProvisionalScoresByRound.mockResolvedValue(verified);
+    dbMocks.scoreRepository.listScoreVerificationRowsByRound.mockResolvedValue(verified);
 
     const publishedRows = [
       {
@@ -278,9 +378,11 @@ describe("publishResults", () => {
       },
     ];
 
-    dbMocks.scoreRepository.publishRoundScores.mockResolvedValue({
+    dbMocks.scoreRepository.publishRoundScoresWithGainsAndAudit.mockResolvedValue({
       alreadyPublished: false,
       published: publishedRows,
+      gains: [],
+      auditLogId: "audit-1",
     });
     dbMocks.scoreRepository.listPublishedScoresByRound
       .mockResolvedValueOnce([]) // pre-check
@@ -300,6 +402,13 @@ describe("publishResults", () => {
     );
     expect(dbMocks.auditRepository.createAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ action: "RESULTS_PUBLISH" }),
+    );
+    expect(dbMocks.scoreRepository.publishRoundScoresWithGainsAndAudit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        rows: expect.arrayContaining([
+          expect.objectContaining({ prizeAmount: 1000 }),
+        ]),
+      }),
     );
 
     // Idempotent second call
