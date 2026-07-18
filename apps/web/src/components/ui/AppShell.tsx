@@ -91,11 +91,6 @@ const adminNavigation: NavItem[] = [
   { label: "Mini-jeux", href: "/admin/minigames", icon: Sparkles },
 ];
 
-const observerNavigation: NavItem[] = [
-  { label: "Vue d’ensemble", href: "/observe/parties/demo-party", icon: House },
-  { label: "Parties en direct", href: "/observe/parties/demo-party", icon: Binoculars },
-];
-
 const supportNavigation: NavItem[] = [
   { label: "File support", href: "/support", icon: CircleHelp },
   { label: "Dossiers parties", href: "/support/parties/demo-party", icon: Gamepad2 },
@@ -114,21 +109,34 @@ const superAdminNavigation: NavItem[] = [
   { label: "Conformité", href: "/admin/compliance", icon: TicketCheck },
 ];
 
-function navigationFor(audience: Audience): NavItem[] {
+function observerHomeFromPath(pathname: string) {
+  const match = pathname.match(/^\/observe\/parties\/([^/]+)/);
+  return match ? `/observe/parties/${match[1]}` : "/parties";
+}
+
+function observerNavigationForPath(pathname: string): NavItem[] {
+  const base = observerHomeFromPath(pathname);
+  return [
+    { label: "Vue d’ensemble", href: base, icon: House },
+    { label: "Résultats publics", href: `${base}/results`, icon: Binoculars },
+  ];
+}
+
+function navigationFor(audience: Audience, pathname: string): NavItem[] {
   if (audience === "Super admin") return superAdminNavigation;
   if (audience === "Support") return supportNavigation;
   if (audience === "Finance") return financeNavigation;
   if (audience === "Admin") return adminNavigation;
-  if (audience === "Observateur") return observerNavigation;
+  if (audience === "Observateur") return observerNavigationForPath(pathname);
   return playerNavigation;
 }
 
-function homeFor(audience: Audience) {
+function homeFor(audience: Audience, pathname: string) {
   if (audience === "Super admin") return "/super-admin";
   if (audience === "Support") return "/support";
   if (audience === "Finance") return "/finance";
   if (audience === "Admin") return "/admin";
-  if (audience === "Observateur") return "/observe/parties/demo-party";
+  if (audience === "Observateur") return observerHomeFromPath(pathname);
   return "/parties";
 }
 
@@ -136,7 +144,7 @@ export function AppShell({ audience, eyebrow, title, subtitle, actions, children
   const pathname = usePathname();
   const router = useRouter();
   const { user, logout } = useSession();
-  const navigation = navigationFor(audience);
+  const navigation = navigationFor(audience, pathname);
   const displayName = user?.name || user?.email || audience;
 
   async function signOut() {
@@ -149,7 +157,7 @@ export function AppShell({ audience, eyebrow, title, subtitle, actions, children
       <div className="app-shell-frame">
         <Sidebar collapsible="icon" variant="sidebar">
           <SidebarHeader className="p-3">
-            <Link className="brand-lockup" href={homeFor(audience)} aria-label="Noya — accueil">
+            <Link className="brand-lockup" href={homeFor(audience, pathname)} aria-label="Noya — accueil">
               <span className="brand-mark" aria-hidden="true">
                 <Sparkles />
               </span>

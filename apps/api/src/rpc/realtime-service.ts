@@ -4,7 +4,8 @@ import {
   createLiveAccess,
   LiveAccessUseCaseError,
 } from "../use-cases/live/live-access.use-case.js";
-import { connectCodeFromHttpStatus, requireRpcUser } from "./auth-context.js";
+import { getReadonlySnapshotView } from "../use-cases/live/readonly-snapshot.use-case.js";
+import { connectCodeFromHttpStatus, requireRpcRole, requireRpcUser } from "./auth-context.js";
 
 function toTimestamp(value: string | Date) {
   const milliseconds = new Date(value).getTime();
@@ -40,6 +41,33 @@ export const realtimeService: Partial<ServiceImpl<typeof RealtimeV1.RealtimeAcce
         roomId: result.roomId,
         endpoint: result.endpoint,
         expiresAt: toTimestamp(result.expiresAt),
+      };
+    } catch (error) {
+      handleLiveError(error);
+    }
+  },
+
+  async getReadonlySnapshot(request, context) {
+    await requireRpcRole(context, "OBSERVER", "SUPPORT", "ADMIN", "SUPER_ADMIN");
+    try {
+      const result = await getReadonlySnapshotView({
+        partyId: requiredPartyId(request),
+      });
+      return {
+        snapshot: {
+          currentPhase: result.currentPhase,
+          participantCount: result.participantCount,
+          rounds: result.rounds.map((round) => ({
+            roundId: round.roundId,
+            phase: round.phase,
+            startedAt: round.startedAt ? toTimestamp(round.startedAt) : undefined,
+            endsAt: round.endsAt ? toTimestamp(round.endsAt) : undefined,
+          })),
+          partyId: { value: result.partyId },
+          connectedCount: result.connectedCount,
+          currentRoundNumber: result.currentRoundNumber,
+          currentRoundStatus: result.currentRoundStatus,
+        },
       };
     } catch (error) {
       handleLiveError(error);
