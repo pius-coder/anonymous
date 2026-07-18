@@ -1,7 +1,7 @@
 import type { Client } from "colyseus";
 import type { LiveRoomState } from "../rooms/schema/LiveRoomState.js";
 import { PlayerState } from "../rooms/schema/LiveRoomState.js";
-import { realtimeRepository } from "@session-jeu/db";
+import { participationRepository, realtimeRepository } from "@session-jeu/db";
 import { ROOM_SPAWNS } from "@session-jeu/game-engine";
 
 export type LiveAuthInfo = {
@@ -80,12 +80,22 @@ export function removePlayer(state: LiveRoomState, client: Client): void {
 
 export async function persistReconnecting(participationId: string | undefined): Promise<void> {
   if (!participationId) return;
-  await realtimeRepository.markReconnectingByParticipation(participationId).catch(() => {});
+  await Promise.all([
+    realtimeRepository.markReconnectingByParticipation(participationId),
+    participationRepository.updateParticipation(participationId, {
+      connectionState: "reconnecting",
+    }),
+  ]);
 }
 
 export async function persistConnected(participationId: string | undefined): Promise<void> {
   if (!participationId) return;
-  await realtimeRepository.markConnectedByParticipation(participationId).catch(() => {});
+  await Promise.all([
+    realtimeRepository.markConnectedByParticipation(participationId),
+    participationRepository.updateParticipation(participationId, {
+      connectionState: "connected",
+    }),
+  ]);
 }
 
 export async function persistReconnect(participationId: string | undefined): Promise<void> {
@@ -94,7 +104,12 @@ export async function persistReconnect(participationId: string | undefined): Pro
 
 export async function persistDisconnect(participationId: string | undefined): Promise<void> {
   if (!participationId) return;
-  await realtimeRepository.markDisconnectedByParticipation(participationId).catch(() => {});
+  await Promise.all([
+    realtimeRepository.markDisconnectedByParticipation(participationId),
+    participationRepository.updateParticipation(participationId, {
+      connectionState: "disconnected",
+    }),
+  ]);
 }
 
 export function findPlayerByParticipationId(state: LiveRoomState, participationId: string): PlayerState | undefined {

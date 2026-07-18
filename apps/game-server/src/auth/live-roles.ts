@@ -1,4 +1,5 @@
 const ADMIN_ROLES = new Set(["admin", "superadmin", "super_admin", "adminprimary", "admin_primary"]);
+const SUPPORT_ROLES = new Set(["support", "readsupport", "read_support"]);
 const PLAYER_ROLES = new Set(["player"]);
 const READONLY_ROLES = new Set(["readobserver", "read_observer", "readonlyobserver", "readonly_observer", "observer", "readonly"]);
 
@@ -14,6 +15,10 @@ export function isAdminRole(role: string | null | undefined): boolean {
   return ADMIN_ROLES.has(normalizeLiveRole(role));
 }
 
+export function isSupportRole(role: string | null | undefined): boolean {
+  return SUPPORT_ROLES.has(normalizeLiveRole(role));
+}
+
 export function isReadonlyObserverRole(role: string | null | undefined): boolean {
   return READONLY_ROLES.has(normalizeLiveRole(role));
 }
@@ -27,5 +32,9 @@ export function canRequestAdminSnapshot(role: string | null | undefined): boolea
 }
 
 export function canRequestReadonlySnapshot(role: string | null | undefined): boolean {
-  return isAdminRole(role) || isReadonlyObserverRole(role);
+  return isAdminRole(role) || isSupportRole(role) || isReadonlyObserverRole(role);
+}
+
+export function canRequestSupportSnapshot(role: string | null | undefined): boolean {
+  return isAdminRole(role) || isSupportRole(role);
 }

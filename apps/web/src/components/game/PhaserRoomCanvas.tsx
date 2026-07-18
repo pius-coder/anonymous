@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { RoomGameHandle } from "./phaser/createRoomGame";
 
-type ConnectionState = "connecting" | "connected" | "reconnecting" | "preview" | "offline";
+type ConnectionState = "connecting" | "connected" | "reconnecting" | "offline";
 
 type PhaserRoomCanvasProps = {
   partyId: string;

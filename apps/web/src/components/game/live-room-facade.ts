@@ -4,10 +4,11 @@
  * Ne jamais envoyer reconnectTimeout / maxClients / round state en options de join :
  * la politique et l'état de manche viennent exclusivement du serveur.
  *
- * L'aperçu local (preview) n'est PAS un chemin E2E live — voir e2e/room.spec.ts
- * (hors preuve Colyseus) et e2e/live-smoke.spec.ts (échoue si game-server indisponible).
+ * Aucun fallback preview implicite n'est autorisé sur `/room` :
+ * les erreurs live doivent rester explicites et actionnables.
  */
 import { LiveAccessService } from "@/services/rpcServices";
+import type { RpcFailure } from "@/lib/rpc";
 
 export type LiveAccessGrant = {
   connectionToken: string;
@@ -18,7 +19,7 @@ export type LiveAccessGrant = {
 
 export type LiveAccessResult =
   | { success: true; data: LiveAccessGrant }
-  | { success: false; error?: string; previewAllowed: true };
+  | { success: false; error?: string };
 
 /**
  * Options de join Colyseus strictement limitées au token et à l'identité de partie.
@@ -34,17 +35,17 @@ export async function requestLiveAccess(partyId: string): Promise<LiveAccessResu
   if (!access.success) {
     return {
       success: false,
-      error: "LIVE_ACCESS_UNAVAILABLE",
-      previewAllowed: true,
+      error: (access as RpcFailure).error.message || "LIVE_ACCESS_UNAVAILABLE",
     };
   }
+  const grant = access.data as LiveAccessGrant;
   return {
     success: true,
     data: {
-      connectionToken: access.data.connectionToken,
-      endpoint: access.data.endpoint,
-      roomId: access.data.roomId,
-      expiresAt: access.data.expiresAt,
+      connectionToken: grant.connectionToken,
+      endpoint: grant.endpoint,
+      roomId: grant.roomId,
+      expiresAt: grant.expiresAt,
     },
   };
 }

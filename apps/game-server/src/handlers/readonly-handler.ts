@@ -2,85 +2,25 @@ import type { Client } from "colyseus";
 import type { LiveRoomState } from "../rooms/schema/LiveRoomState.js";
 import type { CommandMessage } from "./command-dispatcher.js";
 import { registerCommandHandler } from "./command-dispatcher.js";
-import { canRequestAdminSnapshot, canRequestReadonlySnapshot, isPlayerRole } from "../auth/live-roles.js";
+import {
+  canRequestAdminSnapshot,
+  canRequestReadonlySnapshot,
+  canRequestSupportSnapshot,
+  isPlayerRole,
+} from "../auth/live-roles.js";
+import {
+  getAdminSnapshot,
+  getPlayerSnapshotForClient,
+  getReadonlySnapshot,
+  getSupportSnapshot,
+} from "../projections/live-projections.js";
 
-export type PlayerSnapshot = {
-  id: string;
-  userId: string;
-  role: string;
-  connected: boolean;
-  status: string;
-};
-
-export type AdminSnapshot = {
-  partyId: string;
-  partyStatus: string;
-  connectedCount: number;
-  currentRoundId: string;
-  currentRoundNumber: number;
-  currentRoundStatus: string;
-  roundDeadlineAt: number;
-  players: PlayerSnapshot[];
-};
-
-export type ReadonlySnapshot = {
-  partyId: string;
-  connectedCount: number;
-  currentRoundId: string;
-  currentRoundNumber: number;
-  currentRoundStatus: string;
-  roundDeadlineAt: number;
-  playerCount: number;
-};
-
-export function getPlayerSnapshotForClient(
-  state: LiveRoomState,
-  client: Client,
-): PlayerSnapshot | null {
-  const player = state.players.get(client.sessionId);
-  if (!player) return null;
-
-  return {
-    id: player.participationId,
-    userId: player.userId,
-    role: player.role,
-    connected: player.connected,
-    status: player.status,
-  };
-}
-
-export function getAdminSnapshot(state: LiveRoomState): AdminSnapshot {
-  const players = Array.from(state.players.values()).map((p) => ({
-    id: p.participationId,
-    userId: p.userId,
-    role: p.role,
-    connected: p.connected,
-    status: p.status,
-  }));
-
-  return {
-    partyId: state.partyId,
-    partyStatus: state.partyStatus,
-    connectedCount: state.connectedCount,
-    currentRoundId: state.currentRoundId,
-    currentRoundNumber: state.currentRoundNumber,
-    currentRoundStatus: state.currentRoundStatus,
-    roundDeadlineAt: state.roundDeadlineAt,
-    players,
-  };
-}
-
-export function getReadonlySnapshot(state: LiveRoomState): ReadonlySnapshot {
-  return {
-    partyId: state.partyId,
-    connectedCount: state.connectedCount,
-    currentRoundId: state.currentRoundId,
-    currentRoundNumber: state.currentRoundNumber,
-    currentRoundStatus: state.currentRoundStatus,
-    roundDeadlineAt: state.roundDeadlineAt,
-    playerCount: state.players.size,
-  };
-}
+export {
+  getAdminSnapshot,
+  getPlayerSnapshotForClient,
+  getReadonlySnapshot,
+  getSupportSnapshot,
+} from "../projections/live-projections.js";
 
 function handleSnapshotRequest(
   state: LiveRoomState,
@@ -96,12 +36,18 @@ function handleSnapshotRequest(
     return { accepted: false, error: "ROLE_NOT_ALLOWED" };
   }
 
+  if (audience === "support" && !canRequestSupportSnapshot(player.role)) {
+    return { accepted: false, error: "ROLE_NOT_ALLOWED" };
+  }
+
   if (audience === "observer" && !canRequestReadonlySnapshot(player.role)) {
     return { accepted: false, error: "ROLE_NOT_ALLOWED" };
   }
 
   if (audience === "admin") {
     client.send("snapshot:admin", getAdminSnapshot(state));
+  } else if (audience === "support") {
+    client.send("snapshot:support", getSupportSnapshot(state));
   } else if (audience === "observer") {
     client.send("snapshot:readonly", getReadonlySnapshot(state));
   } else {

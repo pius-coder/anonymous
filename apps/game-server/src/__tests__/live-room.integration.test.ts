@@ -32,6 +32,8 @@ const dbMocks = vi.hoisted(() => ({
     markRoundParticipantsWaitingReview: vi.fn(),
   },
   participationRepository: {
+    findParticipationById: vi.fn(),
+    updateParticipation: vi.fn(),
     updateParticipationStatus: vi.fn(),
   },
 }));
@@ -70,6 +72,22 @@ beforeEach(() => {
   registerRoundHandlers();
   registerReadonlyHandlers();
   registerMovementHandler();
+  dbMocks.partyRepository.findPartyById.mockResolvedValue({
+    id: "party-1",
+    status: "ROUND_ACTIVE",
+  });
+  dbMocks.roundRepository.listRoundsByParty.mockResolvedValue([
+    { id: "round-1", number: 1, status: "ACTIVE", deadline: null },
+  ]);
+  dbMocks.participationRepository.findParticipationById.mockResolvedValue({
+    id: "participation-1",
+    partyId: "party-1",
+    userId: "user-1",
+    role: "PLAYER",
+    status: "READY",
+    paymentState: "PAID",
+    admissionState: "ADMITTED",
+  });
 });
 
 describe("live token validation", () => {
@@ -128,9 +146,52 @@ describe("live token validation", () => {
         status: "BANNED",
       },
     });
+    dbMocks.participationRepository.findParticipationById.mockResolvedValueOnce({
+      id: "participation-1",
+      partyId: "party-1",
+      userId: "user-1",
+      role: "PLAYER",
+      status: "BANNED",
+      paymentState: "PAID",
+      admissionState: "ADMITTED",
+    });
     await expect(validateLiveToken("live-token")).resolves.toMatchObject({
       valid: false,
       reason: "PARTICIPATION_INACTIVE",
+    });
+  });
+
+  it("rejects unpaid player tokens", async () => {
+    dbMocks.realtimeRepository.findByTokenHash.mockResolvedValueOnce({
+      id: "connection-1",
+      participationId: "participation-1",
+      connectionId: "connection-id",
+      state: "pending",
+      tokenHash: "live-token-hash",
+      tokenExpiresAt: new Date(Date.now() + 60_000),
+      connectedAt: new Date(),
+      disconnectedAt: null,
+      participation: {
+        id: "participation-1",
+        partyId: "party-1",
+        userId: "user-1",
+        role: "PLAYER",
+        status: "READY",
+      },
+    });
+    dbMocks.participationRepository.findParticipationById.mockResolvedValueOnce({
+      id: "participation-1",
+      partyId: "party-1",
+      userId: "user-1",
+      role: "PLAYER",
+      status: "READY",
+      paymentState: "NONE",
+      admissionState: "PENDING",
+    });
+
+    await expect(validateLiveToken("live-token")).resolves.toMatchObject({
+      valid: false,
+      reason: "PAYMENT_REQUIRED",
     });
   });
 });

@@ -27,7 +27,7 @@ export function mapDbRoundStatusToRoom(status: string | null | undefined): strin
   return DB_TO_ROOM[status.toUpperCase()] ?? "waiting";
 }
 
-export function pickCurrentRound<T extends { status: string; number: number }>(
+export function pickCurrentRound<T extends { id: string; status: string; number: number; deadline?: Date | null }>(
   rounds: T[],
 ): T | undefined {
   if (rounds.length === 0) return undefined;

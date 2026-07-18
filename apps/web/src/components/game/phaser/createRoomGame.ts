@@ -17,7 +17,7 @@ import {
 } from "../live-room-facade";
 import { getVirtualJoystick, resetVirtualJoystick } from "./room-controls";
 
-type ConnectionState = "connecting" | "connected" | "reconnecting" | "preview" | "offline";
+type ConnectionState = "connecting" | "connected" | "reconnecting" | "offline";
 
 type PlayerView = {
   sessionId: string;
@@ -222,11 +222,10 @@ export function createRoomGame(options: RoomGameOptions): RoomGameHandle {
 
     private async connectLive() {
       options.onConnectionChange("connecting");
-      // RealtimeAccess grant; on failure fall back to local preview (explicitly non-E2E live).
       const access = await requestLiveAccess(options.partyId);
       if (!access.success) {
-        this.mountPreviewPlayers();
-        options.onConnectionChange("preview");
+        options.onPlayerCountChange(0);
+        options.onConnectionChange("offline");
         return;
       }
 
@@ -258,8 +257,7 @@ export function createRoomGame(options: RoomGameOptions): RoomGameHandle {
           options.onConnectionChange("offline");
         });
       } catch {
-        // Join failed after access grant — not silent preview; surface offline.
-        this.mountPreviewPlayers();
+        options.onPlayerCountChange(0);
         options.onConnectionChange("offline");
       }
     }
@@ -283,16 +281,6 @@ export function createRoomGame(options: RoomGameOptions): RoomGameHandle {
       this.remoteTargets.set(sessionId, { x: player.x, y: player.y });
     }
 
-    private mountPreviewPlayers() {
-      if (this.remotePlayers.size > 0) return;
-      ROOM_SPAWNS.slice(1, 6).forEach((spawn, index) => {
-        const sprite = this.physics.add.sprite(spawn.x, spawn.y, "dungeon", 85 + index % 3)
-          .setScale(3).setDepth(5);
-        this.remotePlayers.set(`preview-${index}`, sprite);
-        this.remoteTargets.set(`preview-${index}`, spawn);
-      });
-      options.onPlayerCountChange(6);
-    }
   }
 
   const game = new Phaser.Game({

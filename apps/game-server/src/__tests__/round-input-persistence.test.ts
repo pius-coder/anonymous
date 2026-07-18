@@ -34,6 +34,8 @@ const dbMocks = vi.hoisted(() => ({
     markRoundParticipantsWaitingReview: vi.fn(),
   },
   participationRepository: {
+    findParticipationById: vi.fn(),
+    updateParticipation: vi.fn(),
     updateParticipationStatus: vi.fn(),
   },
 }));
