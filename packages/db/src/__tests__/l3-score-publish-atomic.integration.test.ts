@@ -79,6 +79,7 @@ describe.skipIf(!runL3)("L3 score publish + gains atomic", () => {
         participationId: part.id,
         score: 42,
         rank: 1,
+        evidenceHash: `hash-${suffix}`,
         prizeAmount: 250,
         walletId: wallet.id,
         userId: player.id,
@@ -107,6 +108,7 @@ describe.skipIf(!runL3)("L3 score publish + gains atomic", () => {
 
     const published = await scoreRepository.listPublishedScoresByRound(round.id);
     expect(published).toHaveLength(1);
+    expect(published[0]?.evidenceHash).toBe(`hash-${suffix}`);
 
     const prizeTx = await paymentRepository.findTransactionByIdempotencyKey(
       `prize:${round.id}:${part.id}`,

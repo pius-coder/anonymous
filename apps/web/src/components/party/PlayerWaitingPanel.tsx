@@ -59,8 +59,9 @@ export function PlayerWaitingPanel({ partyId, partyCode }: PlayerWaitingPanelPro
       <CardHeader>
         <CardTitle>Prochaine étape</CardTitle>
         <CardDescription>
-          Les scores et rangs restent invisibles pendant la vérification. Aucun score provisoire
-          n&apos;est transmis à cette vue.
+          Les scores et rangs restent invisibles pendant la vérification. La publication peut
+          rester bloquée par une revue admin ou une preuve runtime incomplète, sans jamais
+          transmettre de score provisoire à cette vue.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-3 sm:flex-row">
