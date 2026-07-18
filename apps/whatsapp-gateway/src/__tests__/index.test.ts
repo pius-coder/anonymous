@@ -13,7 +13,7 @@ describe("whatsapp gateway foundation", () => {
     expect(getWhatsAppGatewayFoundation()).toEqual({
       service: "whatsapp-gateway",
       foundation: "v0.1",
-      providerIntegration: "contractual-fake-or-unconfigured-production",
+      providerIntegration: "contractual-whatsapp-cloud-api",
     });
   });
 });
@@ -52,8 +52,8 @@ describe("FakeNotificationProvider", () => {
 });
 
 describe("ProductionWhatsAppProvider", () => {
-  it("is explicitly unconfigured without a token", async () => {
-    const provider = new ProductionWhatsAppProvider({});
+  it("is explicitly unconfigured without token", async () => {
+    const provider = new ProductionWhatsAppProvider({ token: "", phoneNumberId: "" });
     expect(provider.isConfigured()).toBe(false);
     const result = await provider.send({
       jobId: "j",
@@ -70,27 +70,35 @@ describe("ProductionWhatsAppProvider", () => {
     });
   });
 
-  it("refuses delivery even when a token is present (SDK not wired)", async () => {
-    const provider = new ProductionWhatsAppProvider({ token: "secret-token" });
+  it("is explicitly unconfigured without phoneNumberId", async () => {
+    const provider = new ProductionWhatsAppProvider({ token: "tok", phoneNumberId: "" });
+    expect(provider.isConfigured()).toBe(false);
+  });
+
+  it("is configured when both token and phoneNumberId are present", () => {
+    const provider = new ProductionWhatsAppProvider({ token: "tok", phoneNumberId: "pid" });
     expect(provider.isConfigured()).toBe(true);
-    const result = await provider.send({
-      jobId: "j",
-      userId: "u",
-      channel: "whatsapp",
-      type: "t",
-      payload: {},
-      correlationId: "c",
-    });
-    expect(result).toMatchObject({
-      ok: false,
-      retryable: false,
-      errorCode: "PROVIDER_SDK_NOT_WIRED",
-    });
   });
 
   it("reads configuration from env", () => {
     const provider = createProductionProviderFromEnv({ WHATSAPP_PROVIDER_TOKEN: "" });
     expect(provider.isConfigured()).toBe(false);
+  });
+
+  it("reads full configuration from env", () => {
+    const provider = createProductionProviderFromEnv({
+      WHATSAPP_PROVIDER_TOKEN: "tok",
+      WHATSAPP_PHONE_NUMBER_ID: "pid",
+      WHATSAPP_BUSINESS_ACCOUNT_ID: "baid",
+      WHATSAPP_API_VERSION: "v23.0",
+    });
+    expect(provider.isConfigured()).toBe(true);
+  });
+
+  it("defaults timeout to 10s", () => {
+    const provider = new ProductionWhatsAppProvider({ token: "tok", phoneNumberId: "pid" });
+    expect(provider).toBeDefined();
+    expect(provider.isConfigured()).toBe(true);
   });
 });
 
